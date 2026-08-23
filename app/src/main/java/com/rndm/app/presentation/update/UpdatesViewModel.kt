@@ -59,7 +59,14 @@ class UpdatesViewModel @Inject constructor(
     private val _downloadedApks = MutableStateFlow<List<File>>(emptyList())
     val downloadedApks: StateFlow<List<File>> = _downloadedApks.asStateFlow()
 
+    private val _dismissedVersion = MutableStateFlow<String?>(null)
+    val dismissedVersion: StateFlow<String?> = _dismissedVersion.asStateFlow()
+
     private var lastUpdateCheckTime: Long = 0L
+
+    fun dismissUpdate(versionName: String) {
+        _dismissedVersion.value = versionName
+    }
 
     init {
         observeDownloadState()

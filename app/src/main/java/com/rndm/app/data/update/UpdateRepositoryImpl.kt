@@ -107,16 +107,35 @@ class UpdateRepositoryImpl @Inject constructor(
         _downloadState.value = DownloadState.Idle
     }
 
+    private fun getInstalledPackageInfo(): Pair<String, Int> {
+        return try {
+            val pm = context.packageManager
+            val pInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.getPackageInfo(context.packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))
+            } else {
+                pm.getPackageInfo(context.packageName, 0)
+            }
+            val vName = pInfo.versionName ?: BuildConfig.VERSION_NAME
+            val vCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                pInfo.longVersionCode.toInt()
+            } else {
+                pInfo.versionCode
+            }
+            Pair(vName, vCode)
+        } catch (e: Exception) {
+            Pair(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
+        }
+    }
+
     override suspend fun checkForUpdates(onStep: suspend (CheckingStep) -> Unit): Result<UpdateInfo> = withContext(Dispatchers.IO) {
         try {
             onStep(CheckingStep.ReadingLocalVersion)
-            delay(250)
+            delay(200)
 
             val owner = BuildConfig.GITHUB_OWNER
             val repo = BuildConfig.GITHUB_REPO
 
-            val localVersionCode = BuildConfig.VERSION_CODE
-            val localVersionName = BuildConfig.VERSION_NAME
+            val (localVersionName, localVersionCode) = getInstalledPackageInfo()
             val localIdentity = BuildConfig.UPDATE_IDENTITY
 
             // 1. Primary Source: Fetch update.json manifest with cache busting query param
@@ -130,13 +149,16 @@ class UpdateRepositoryImpl @Inject constructor(
 
             if (manifest != null) {
                 onStep(CheckingStep.ComparingVersions)
-                delay(250)
+                delay(200)
 
-                val isNewerCode = manifest.versionCode > localVersionCode
-                val isNewerSemVer = isVersionNewer(localVersionName, manifest.versionName)
-                val isNewerIdentity = (manifest.versionName.removePrefix("v") == localVersionName.removePrefix("v")) && (manifest.updateIdentity > localIdentity)
-
-                val hasUpdate = isNewerCode || isNewerSemVer || isNewerIdentity
+                val hasUpdate = isCandidateStrictlyNewer(
+                    localName = localVersionName,
+                    localCode = localVersionCode,
+                    localIdentity = localIdentity,
+                    remoteName = manifest.versionName,
+                    remoteCode = manifest.versionCode,
+                    remoteIdentity = manifest.updateIdentity
+                )
 
                 val updateInfo = UpdateInfo(
                     hasUpdate = hasUpdate,
@@ -160,9 +182,8 @@ class UpdateRepositoryImpl @Inject constructor(
                 client.fetchLatestRelease(owner, repo)
             } catch (e: retrofit2.HttpException) {
                 if (e.code() == 404) {
-                    // No release or update.json published yet in repository: consider up-to-date
                     onStep(CheckingStep.ComparingVersions)
-                    delay(200)
+                    delay(150)
                     val fallbackUpToDate = UpdateInfo(
                         hasUpdate = false,
                         versionCode = localVersionCode,
@@ -186,16 +207,23 @@ class UpdateRepositoryImpl @Inject constructor(
             }
 
             val apkAsset = release.assets.firstOrNull { it.name.endsWith(".apk") }
-
             val cleanTagName = release.tagName.removePrefix("v").trim()
-            val hasUpdate = apkAsset != null && isVersionNewer(localVersionName, cleanTagName)
+
+            val hasUpdate = apkAsset != null && isCandidateStrictlyNewer(
+                localName = localVersionName,
+                localCode = localVersionCode,
+                localIdentity = localIdentity,
+                remoteName = cleanTagName,
+                remoteCode = localVersionCode,
+                remoteIdentity = 0L
+            )
 
             val sha256 = release.body?.lineSequence()
                 ?.mapNotNull { line -> Regex("(?i)sha-?256\\s*[:=]\\s*([a-f0-9]{64})").find(line)?.groupValues?.get(1) }
                 ?.firstOrNull() ?: apkAsset?.digest?.removePrefix("sha256:")?.trim() ?: ""
 
             onStep(CheckingStep.ComparingVersions)
-            delay(200)
+            delay(150)
 
             val fallbackInfo = UpdateInfo(
                 hasUpdate = hasUpdate,
@@ -220,8 +248,11 @@ class UpdateRepositoryImpl @Inject constructor(
 
     override fun verifyApkSha256(file: File, expectedSha256: String): Boolean {
         val pm = context.packageManager
-        val packageInfo = pm.getPackageArchiveInfo(file.absolutePath, 0)
-        if (packageInfo == null) return false
+        val archiveInfo = pm.getPackageArchiveInfo(file.absolutePath, 0)
+        if (archiveInfo == null || archiveInfo.packageName != context.packageName) {
+            return false
+        }
+
         if (expectedSha256.isBlank()) return true
 
         return try {
@@ -284,15 +315,42 @@ class UpdateRepositoryImpl @Inject constructor(
         if (file.exists()) file.delete() else false
     }
 
-    private fun isVersionNewer(local: String, remote: String): Boolean {
-        val localParts = local.removePrefix("v").split(".").map { it.toIntOrNull() ?: 0 }
-        val remoteParts = remote.removePrefix("v").split(".").map { it.toIntOrNull() ?: 0 }
-        for (i in 0 until maxOf(localParts.size, remoteParts.size)) {
+    /**
+     * محرك مقارنة الإصدارات الدقيق المانع للإشعارات والتحديثات الوهمية
+     * يفحص بالتسلسل الهرمي: SemVer -> VersionCode -> UpdateIdentity
+     */
+    private fun isCandidateStrictlyNewer(
+        localName: String,
+        localCode: Int,
+        localIdentity: Long,
+        remoteName: String,
+        remoteCode: Int,
+        remoteIdentity: Long
+    ): Boolean {
+        val cleanLocal = localName.removePrefix("v").trim()
+        val cleanRemote = remoteName.removePrefix("v").trim()
+
+        if (cleanRemote.isBlank()) return false
+
+        // 1. استخراج ومقارنة أجزاء SemVer الرقمية (Major.Minor.Patch)
+        val localParts = cleanLocal.split(".").map { it.filter { ch -> ch.isDigit() }.toIntOrNull() ?: 0 }
+        val remoteParts = cleanRemote.split(".").map { it.filter { ch -> ch.isDigit() }.toIntOrNull() ?: 0 }
+
+        val maxLen = maxOf(localParts.size, remoteParts.size)
+        for (i in 0 until maxLen) {
             val l = localParts.getOrElse(i) { 0 }
             val r = remoteParts.getOrElse(i) { 0 }
             if (r > l) return true
-            if (l > r) return false
+            if (r < l) return false // الإصدار في المستودع أقدم من المثبت حالياً
         }
+
+        // 2. في حال تطابق اسم الإصدار تماماً، نقارن كود البناء (VersionCode)
+        if (remoteCode > localCode && remoteCode > 0 && localCode > 0) return true
+        if (remoteCode < localCode && remoteCode > 0 && localCode > 0) return false
+
+        // 3. في حال تطابق كود البناء أيضاً، نقارن المعرف الزمني للإصدار (UpdateIdentity)
+        if (remoteIdentity > localIdentity && localIdentity > 0L) return true
+
         return false
     }
 }

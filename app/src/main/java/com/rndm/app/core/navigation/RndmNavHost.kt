@@ -89,9 +89,10 @@ fun RndmNavHost(
     val currentDestination = navBackStackEntry?.destination
 
     val isTopLevelDestination = isTopLevel(currentDestination)
+    val isOnSettingsScreen = currentDestination?.hasRoute(Destination.Settings::class) == true
 
     val updateUiState by updatesViewModel.uiState.collectAsStateWithLifecycle()
-    var isUpdateDismissed by remember(updateUiState) { mutableStateOf(false) }
+    val dismissedVersion by updatesViewModel.dismissedVersion.collectAsStateWithLifecycle()
 
     // Automatic throttled check on resume
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -105,10 +106,16 @@ fun RndmNavHost(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val showUpdateBar = remember(updateUiState) {
-        updateUiState !is UpdateUiState.Idle &&
-        updateUiState !is UpdateUiState.Checking &&
-        updateUiState !is UpdateUiState.NoUpdate
+    val showUpdateBar = remember(updateUiState, dismissedVersion, isOnSettingsScreen) {
+        if (isOnSettingsScreen) return@remember false
+        when (val state = updateUiState) {
+            is UpdateUiState.UpdateAvailable -> state.info.versionName != dismissedVersion
+            is UpdateUiState.Downloading,
+            is UpdateUiState.Paused,
+            is UpdateUiState.ReadyToInstall,
+            is UpdateUiState.DownloadFailed -> true
+            else -> false
+        }
     }
 
     Box(
@@ -450,7 +457,7 @@ fun RndmNavHost(
             // Global Floating Update Bottom Bar
             val context = LocalContext.current
             AnimatedVisibility(
-                visible = showUpdateBar && !isUpdateDismissed,
+                visible = showUpdateBar,
                 enter = slideInVertically(
                     initialOffsetY = { fullHeight -> fullHeight },
                     animationSpec = spring(
@@ -476,7 +483,12 @@ fun RndmNavHost(
                     onPauseClick = { updatesViewModel.pauseDownload(it) },
                     onResumeClick = { updatesViewModel.resumeDownload(it) },
                     onInstallClick = { info, file -> updatesViewModel.installUpdate(context, info, file) },
-                    onDismiss = { isUpdateDismissed = true },
+                    onDismiss = {
+                        val version = (updateUiState as? UpdateUiState.UpdateAvailable)?.info?.versionName
+                        if (version != null) {
+                            updatesViewModel.dismissUpdate(version)
+                        }
+                    },
                     onNavigateToUpdates = {
                         navController.navigate(Destination.Settings) {
                             popUpTo(navController.graph.findStartDestination().id) {
