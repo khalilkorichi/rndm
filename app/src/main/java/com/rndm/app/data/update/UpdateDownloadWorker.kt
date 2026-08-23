@@ -67,8 +67,9 @@ class UpdateDownloadWorker(
         createNotificationChannel()
         clearPaused(apkUrl)
 
-        val tempFile = File(context.cacheDir, "rndm-update-temp.apk")
-        val startBytes = if (tempFile.exists()) tempFile.length() else 0L
+        val safeHashKey = if (apkSha256.isNotBlank()) apkSha256.trim().lowercase(Locale.US).take(12) else apkUrl.hashCode().toString()
+        val tempFile = File(context.cacheDir, "rndm-update-$safeHashKey.temp")
+        var startBytes = if (tempFile.exists()) tempFile.length() else 0L
 
         val repository = getRepository()
 
@@ -76,12 +77,14 @@ class UpdateDownloadWorker(
         if (apkSize > 0L && startBytes >= apkSize) {
             if (repository != null && repository.verifyApkSha256(tempFile, apkSha256)) {
                 val savedFile = repository.saveDownloadedApk(tempFile, versionName)
+                tempFile.delete()
                 showSuccessNotification(savedFile, versionName)
                 val info = getUpdateInfoFromJson(infoJson, apkUrl, apkSize, apkSha256, versionName)
                 updateRepositoryState(DownloadState.Success(savedFile, info))
                 return Result.success()
             } else {
                 tempFile.delete()
+                startBytes = 0L
             }
         }
 
@@ -100,6 +103,7 @@ class UpdateDownloadWorker(
                 val errorMsg = when (response.code) {
                     404 -> "ملف الـ APK غير متوفر على الخادم (رابط التحميل 404)"
                     403 -> "تم رفض الاتصال بالخادم (403 Forbidden)"
+                    416 -> "تم استكمال الملف مسبقاً أو تعارض النطاق (416)"
                     429 -> "تم تجاوز حد الطلبات المؤقت (Rate Limit)"
                     else -> "فشل الاستجابة من الخادم (رمز الخطأ: ${response.code})"
                 }
@@ -108,8 +112,8 @@ class UpdateDownloadWorker(
 
             val body = response.body ?: throw IOException("Empty response body")
             val remainingLength = body.contentLength()
-            val totalLength = if (startBytes > 0L && (response.code == 206 || response.code == 200)) {
-                if (response.code == 206) remainingLength + startBytes else remainingLength
+            val totalLength = if (startBytes > 0L && response.code == 206) {
+                remainingLength + startBytes
             } else if (apkSize > 0L) {
                 apkSize
             } else {
@@ -117,13 +121,13 @@ class UpdateDownloadWorker(
             }
 
             val isAppend = startBytes > 0L && response.code == 206
-            if (startBytes > 0L && response.code == 200 && tempFile.exists()) {
-                tempFile.delete()
+            if (response.code == 200) {
+                startBytes = 0L
             }
 
             body.byteStream().use { input ->
                 FileOutputStream(tempFile, isAppend).use { output ->
-                    val buffer = ByteArray(16384)
+                    val buffer = ByteArray(32768)
                     var bytesRead: Int
                     var totalBytesRead = 0L
                     var lastEmittedTime = System.currentTimeMillis()
@@ -182,6 +186,7 @@ class UpdateDownloadWorker(
                 val isValid = currentRepo.verifyApkSha256(tempFile, apkSha256)
                 if (isValid) {
                     val savedFile = currentRepo.saveDownloadedApk(tempFile, versionName)
+                    tempFile.delete()
                     showSuccessNotification(savedFile, versionName)
                     updateRepositoryState(DownloadState.Success(savedFile, info))
                     return Result.success()
