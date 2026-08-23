@@ -96,7 +96,15 @@ class UpdateDownloadWorker(
             setForeground(createForegroundInfo(0, "جاري البدء...", "جاري الحساب...", false, infoJson, apkUrl, apkSize, apkSha256, versionName))
 
             val response = client.newCall(request).execute()
-            if (!response.isSuccessful) throw IOException("Server returned code ${response.code}")
+            if (!response.isSuccessful) {
+                val errorMsg = when (response.code) {
+                    404 -> "ملف الـ APK غير متوفر على الخادم (رابط التحميل 404)"
+                    403 -> "تم رفض الاتصال بالخادم (403 Forbidden)"
+                    429 -> "تم تجاوز حد الطلبات المؤقت (Rate Limit)"
+                    else -> "فشل الاستجابة من الخادم (رمز الخطأ: ${response.code})"
+                }
+                throw IOException(errorMsg)
+            }
 
             val body = response.body ?: throw IOException("Empty response body")
             val remainingLength = body.contentLength()

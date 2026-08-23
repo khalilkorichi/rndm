@@ -27,7 +27,15 @@ import javax.inject.Inject
 sealed class UpdateUiState {
     data object Idle : UpdateUiState()
     data object Checking : UpdateUiState()
-    data class NoUpdate(val localVersion: String) : UpdateUiState()
+    data class NoUpdate(
+        val localVersion: String = BuildConfig.VERSION_NAME,
+        val localCode: Int = BuildConfig.VERSION_CODE,
+        val localIdentity: Long = BuildConfig.UPDATE_IDENTITY,
+        val remoteVersion: String = BuildConfig.VERSION_NAME,
+        val remoteCode: Int = BuildConfig.VERSION_CODE,
+        val checkedAt: Long = System.currentTimeMillis(),
+        val repositoryName: String = "${BuildConfig.GITHUB_OWNER}/${BuildConfig.GITHUB_REPO}"
+    ) : UpdateUiState()
     data class UpdateAvailable(val info: UpdateInfo) : UpdateUiState()
     data class Downloading(val info: UpdateInfo, val progress: Int, val speed: String = "", val eta: String = "") : UpdateUiState()
     data class Paused(val info: UpdateInfo, val progress: Int) : UpdateUiState()
@@ -103,7 +111,15 @@ class UpdatesViewModel @Inject constructor(
                     _uiState.value = UpdateUiState.UpdateAvailable(info)
                 } else {
                     if (!isBackground) {
-                        _uiState.value = UpdateUiState.NoUpdate("v${BuildConfig.VERSION_NAME}")
+                        _uiState.value = UpdateUiState.NoUpdate(
+                            localVersion = BuildConfig.VERSION_NAME,
+                            localCode = BuildConfig.VERSION_CODE,
+                            localIdentity = BuildConfig.UPDATE_IDENTITY,
+                            remoteVersion = info.versionName.ifBlank { BuildConfig.VERSION_NAME },
+                            remoteCode = if (info.versionCode > 0) info.versionCode else BuildConfig.VERSION_CODE,
+                            checkedAt = System.currentTimeMillis(),
+                            repositoryName = "${BuildConfig.GITHUB_OWNER}/${BuildConfig.GITHUB_REPO}"
+                        )
                     }
                 }
             }.onFailure { err ->

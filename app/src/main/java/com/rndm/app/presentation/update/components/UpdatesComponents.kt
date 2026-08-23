@@ -626,7 +626,7 @@ fun FallbackRecoveryFlowCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        Icons.AutoMirrored.Outlined.HelpOutline,
+                        Icons.Outlined.HelpOutline,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(20.dp)

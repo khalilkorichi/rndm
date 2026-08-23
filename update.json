@@ -4,8 +4,8 @@
   "updateIdentity": 101,
   "publishedAt": "2026-08-23T20:00:00Z",
   "apkUrl": "https://raw.githubusercontent.com/khalilkorichi/rndm/main/.build-outputs/app-debug.apk?v=2",
-  "apkSize": 28450120,
-  "apkSha256": "393741cae268e33fa905514dc8def94469c05a28623be1452346833b2c630707",
+  "apkSize": 22612636,
+  "apkSha256": "aa7133fc27ec59d325222a0ff678dbb7f7aba8569880331705349a77628378e1",
   "releaseNotes": "تحديث جديد لتطبيق rndm v1.0.1:\n\n• إضافة نظام التحديثات الذاتي المباشر.\n• تقسيم صفحة الإعدادات إلى تبويبتين (عام والتحديثات).\n• تحسينات في سرعة وأداء الرسوم المتحركة.",
   "minSdkVersion": 26,
   "mandatory": false

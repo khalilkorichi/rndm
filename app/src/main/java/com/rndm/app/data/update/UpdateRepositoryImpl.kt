@@ -115,6 +115,10 @@ class UpdateRepositoryImpl @Inject constructor(
             val owner = BuildConfig.GITHUB_OWNER
             val repo = BuildConfig.GITHUB_REPO
 
+            val localVersionCode = BuildConfig.VERSION_CODE
+            val localVersionName = BuildConfig.VERSION_NAME
+            val localIdentity = BuildConfig.UPDATE_IDENTITY
+
             // 1. Primary Source: Fetch update.json manifest with cache busting query param
             onStep(CheckingStep.FetchingManifest)
             val manifestUrl = "https://raw.githubusercontent.com/$owner/$repo/main/update.json?t=${System.currentTimeMillis()}"
@@ -124,10 +128,6 @@ class UpdateRepositoryImpl @Inject constructor(
                 null
             }
 
-            val localVersionCode = BuildConfig.VERSION_CODE
-            val localVersionName = BuildConfig.VERSION_NAME
-            val localIdentity = BuildConfig.UPDATE_IDENTITY
-
             if (manifest != null) {
                 onStep(CheckingStep.ComparingVersions)
                 delay(250)
@@ -136,8 +136,10 @@ class UpdateRepositoryImpl @Inject constructor(
                 val isNewerSemVer = isVersionNewer(localVersionName, manifest.versionName)
                 val isNewerIdentity = (manifest.versionName.removePrefix("v") == localVersionName.removePrefix("v")) && (manifest.updateIdentity > localIdentity)
 
+                val hasUpdate = isNewerCode || isNewerSemVer || isNewerIdentity
+
                 val updateInfo = UpdateInfo(
-                    hasUpdate = isNewerCode || isNewerSemVer || isNewerIdentity,
+                    hasUpdate = hasUpdate,
                     versionCode = manifest.versionCode,
                     versionName = manifest.versionName,
                     updateIdentity = manifest.updateIdentity,
@@ -154,24 +156,54 @@ class UpdateRepositoryImpl @Inject constructor(
 
             // 2. Fallback: Query GitHub Releases API
             onStep(CheckingStep.FetchingReleaseFallback)
-            val release = client.fetchLatestRelease(owner, repo)
+            val release = try {
+                client.fetchLatestRelease(owner, repo)
+            } catch (e: retrofit2.HttpException) {
+                if (e.code() == 404) {
+                    // No release or update.json published yet in repository: consider up-to-date
+                    onStep(CheckingStep.ComparingVersions)
+                    delay(200)
+                    val fallbackUpToDate = UpdateInfo(
+                        hasUpdate = false,
+                        versionCode = localVersionCode,
+                        versionName = localVersionName,
+                        updateIdentity = localIdentity,
+                        apkUrl = "",
+                        apkSize = 0L,
+                        apkSha256 = "",
+                        mandatory = false,
+                        releaseNotes = "لا توجد إصدارات أحدث منشورة في المستودع حالياً."
+                    )
+                    onStep(CheckingStep.Success(fallbackUpToDate))
+                    return@withContext Result.success(fallbackUpToDate)
+                } else if (e.code() == 403) {
+                    throw Exception("تم تجاوز حد الطلبات المؤقت لـ GitHub (Rate Limit)، يرجى المحاولة لاحقاً.")
+                } else {
+                    throw Exception("تعذر الوصول لخادم GitHub (رمز الخطأ: ${e.code()})")
+                }
+            } catch (e: java.io.IOException) {
+                throw Exception("تعذر الاتصال بخوادم GitHub، يرجى التحقق من اتصال الإنترنت.")
+            }
+
             val apkAsset = release.assets.firstOrNull { it.name.endsWith(".apk") }
-                ?: return@withContext Result.failure(Exception("لم يتم العثور على ملف APK في إصدارات GitHub."))
 
             val cleanTagName = release.tagName.removePrefix("v").trim()
-            val hasUpdate = isVersionNewer(localVersionName, cleanTagName)
+            val hasUpdate = apkAsset != null && isVersionNewer(localVersionName, cleanTagName)
 
             val sha256 = release.body?.lineSequence()
                 ?.mapNotNull { line -> Regex("(?i)sha-?256\\s*[:=]\\s*([a-f0-9]{64})").find(line)?.groupValues?.get(1) }
-                ?.firstOrNull() ?: apkAsset.digest?.removePrefix("sha256:")?.trim() ?: ""
+                ?.firstOrNull() ?: apkAsset?.digest?.removePrefix("sha256:")?.trim() ?: ""
+
+            onStep(CheckingStep.ComparingVersions)
+            delay(200)
 
             val fallbackInfo = UpdateInfo(
                 hasUpdate = hasUpdate,
-                versionCode = 1,
+                versionCode = localVersionCode,
                 versionName = cleanTagName,
                 updateIdentity = System.currentTimeMillis(),
-                apkUrl = apkAsset.browserDownloadUrl,
-                apkSize = apkAsset.size,
+                apkUrl = apkAsset?.browserDownloadUrl ?: "",
+                apkSize = apkAsset?.size ?: 0L,
                 apkSha256 = sha256,
                 mandatory = false,
                 releaseNotes = release.body,
@@ -180,9 +212,9 @@ class UpdateRepositoryImpl @Inject constructor(
             onStep(CheckingStep.Success(fallbackInfo))
             Result.success(fallbackInfo)
         } catch (e: Exception) {
-            val errorMsg = e.localizedMessage ?: "حدث خطأ أثناء فحص التحديثات"
+            val errorMsg = e.localizedMessage ?: "حدث خطأ غير متوقع أثناء فحص التحديثات"
             onStep(CheckingStep.Error(errorMsg))
-            Result.failure(e)
+            Result.failure(Exception(errorMsg))
         }
     }
 
