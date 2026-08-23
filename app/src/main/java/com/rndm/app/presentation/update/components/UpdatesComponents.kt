@@ -679,7 +679,7 @@ fun FallbackRecoveryFlowCard(
     }
 }
 
-private fun formatApkSize(bytes: Long): String {
+fun formatApkSize(bytes: Long): String {
     return when {
         bytes <= 0L -> "الحجم غير محدد"
         bytes >= 1024 * 1024 -> String.format(Locale.US, "%.1f ميجابايت", bytes.toDouble() / (1024 * 1024))
