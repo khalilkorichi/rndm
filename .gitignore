@@ -1,0 +1,53 @@
+# Built application files
+*.apk
+*.ap_
+*.aab
+*.dex
+*.exe
+
+# Gradle files
+.gradle/
+build/
+*/build/
+app/build/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Log files
+*.log
+
+# Android Studio / IntelliJ IDEA
+.idea/
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+*.iml
+.navigation/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Kotlin / KSP
+.kotlin/
+.kotlin/sessions/
+
+# Keystore / Signing
+*.jks
+*.keystore
+*.key
+signing.properties
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Agent Skills & Temp Tools
+.agents/skills/
+tools/audit_engine/audit_history.json
+tools/audit_engine/__pycache__/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/

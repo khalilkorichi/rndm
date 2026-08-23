@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.RNDM" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#121218</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:fontFamily">@font/ibm_plex_sans_arabic</item>
+    </style>
+</resources>

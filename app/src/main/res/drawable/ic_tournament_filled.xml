@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Solid Trophy Cup Body -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M17,2H7C6.45,2 6,2.45 6,3V9C6,12.31 8.69,15 12,15C15.31,15 18,12.31 18,9V3C18,2.45 17.55,2 17,2Z"/>
+    <!-- Left Handle -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M6,4H3C2.45,4 2,4.45 2,5V7C2,9.21 3.79,11 6,11V9C4.9,9 4,8.1 4,7V6H6V4Z"/>
+    <!-- Right Handle -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M18,4H21C21.55,4 22,4.45 22,5V7C22,9.21 20.21,11 18,11V9C19.1,9 20,8.1 20,7V6H18V4Z"/>
+    <!-- Stem and Base -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M13,15H11V18H8C7.45,18 7,18.45 7,19V21C7,21.55 7.45,22 8,22H16C16.55,22 17,21.55 17,21V19C17,18.45 16.55,18 16,18H13V15Z"/>
+</vector>

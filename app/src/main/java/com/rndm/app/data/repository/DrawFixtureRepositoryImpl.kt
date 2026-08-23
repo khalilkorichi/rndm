@@ -1,0 +1,245 @@
+package com.rndm.app.data.repository
+
+import com.rndm.app.data.local.dao.MatchDao
+import com.rndm.app.data.local.dao.TournamentDao
+import com.rndm.app.data.local.entity.MatchEntity
+import com.rndm.app.data.local.entity.TournamentEntity
+import com.rndm.app.data.local.entity.TournamentParticipantEntity
+import com.rndm.app.data.mapper.toDomain
+import com.rndm.app.data.mapper.toEntity
+import com.rndm.app.domain.model.DrawFixture
+import com.rndm.app.domain.model.Match
+import com.rndm.app.domain.model.MatchStage
+import com.rndm.app.domain.model.MatchStatus
+import com.rndm.app.domain.model.TournamentStage
+import com.rndm.app.domain.model.TournamentType
+import com.rndm.app.domain.repository.DrawFixtureRepository
+import com.rndm.app.domain.usecase.tournament.EvaluateBestLosersUseCase
+import com.rndm.app.domain.usecase.tournament.GenerateKnockoutBracketUseCase
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class DrawFixtureRepositoryImpl @Inject constructor(
+    private val tournamentDao: TournamentDao,
+    private val matchDao: MatchDao,
+    private val evaluateBestLosersUseCase: EvaluateBestLosersUseCase,
+    private val ioDispatcher: CoroutineDispatcher
+) : DrawFixtureRepository {
+
+    private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
+    private var _currentTournamentId: Long = 0L
+    override val currentTournamentId: Long
+        get() = _currentTournamentId
+
+    private val _fixtures = MutableStateFlow<List<DrawFixture>>(emptyList())
+    override val fixtures: StateFlow<List<DrawFixture>> = _fixtures.asStateFlow()
+
+    private val _pendingNewPlayers = MutableStateFlow<List<String>>(emptyList())
+    override val pendingNewPlayers: StateFlow<List<String>> = _pendingNewPlayers.asStateFlow()
+
+    override fun queueNewPlayersForDraw(names: List<String>) {
+        _pendingNewPlayers.update { current -> (current + names).distinct() }
+    }
+
+    override fun consumePendingNewPlayers(): List<String> {
+        val list = _pendingNewPlayers.value
+        _pendingNewPlayers.value = emptyList()
+        return list
+    }
+
+    override fun loadTournamentFixtures(tournamentId: Long) {
+        scope.launch {
+            _currentTournamentId = tournamentId
+            val participants = tournamentDao.getParticipantsList(tournamentId)
+            val participantClubs = participants.associate { it.playerName to it.clubName }
+            val matches = matchDao.getMatchesList(tournamentId)
+                .filter { it.roundIndex == 1 }
+                .sortedBy { it.bracketMatchIndex ?: it.id.toInt() }
+
+            val loaded = matches.mapIndexed { idx, m ->
+                DrawFixture(
+                    id = "fixture_${idx + 1}",
+                    matchNumber = idx + 1,
+                    playerOneName = m.playerOneName,
+                    playerOneTeam = participantClubs[m.playerOneName] ?: m.playerOneClub,
+                    playerTwoName = if (m.playerTwoName == "BYE" || m.playerTwoName == "TBD") null else m.playerTwoName,
+                    playerTwoTeam = participantClubs[m.playerTwoName] ?: m.playerTwoClub,
+                    scoreOne = m.scoreOne,
+                    scoreTwo = m.scoreTwo,
+                    isFinished = m.status == MatchStatus.FINISHED
+                )
+            }
+            if (loaded.isNotEmpty()) {
+                _fixtures.value = loaded
+            }
+        }
+    }
+
+    override fun setFixtures(fixtures: List<DrawFixture>) {
+        _fixtures.value = fixtures
+        syncToTournament(fixtures)
+    }
+
+    override fun addOrUpdateFixture(fixture: DrawFixture) {
+        _fixtures.update { current ->
+            val index = current.indexOfFirst { it.id == fixture.id }
+            val updated = if (index >= 0) {
+                current.toMutableList().apply { set(index, fixture) }
+            } else {
+                current + fixture
+            }
+            syncToTournament(updated)
+            updated
+        }
+    }
+
+    override fun updateFixtureScore(fixtureId: String, scoreOne: Int?, scoreTwo: Int?) {
+        _fixtures.update { current ->
+            val updated = current.map {
+                if (it.id == fixtureId) {
+                    it.copy(
+                        scoreOne = scoreOne,
+                        scoreTwo = scoreTwo,
+                        isFinished = scoreOne != null && scoreTwo != null
+                    )
+                } else {
+                    it
+                }
+            }
+            syncToTournament(updated)
+            updated
+        }
+    }
+
+    private fun syncToTournament(fixtures: List<DrawFixture>) {
+        if (fixtures.isEmpty()) return
+        scope.launch {
+            val totalPlayers = fixtures.flatMap { listOfNotNull(it.playerOneName, it.playerTwoName) }.distinct().size
+            val isSevenPlayers = fixtures.size == 4 && fixtures.lastOrNull()?.playerTwoName == null
+
+            val tournamentName = "بطولة قرعة ($totalPlayers لاعبين)"
+
+            if (currentTournamentId == 0L) {
+                val entity = TournamentEntity(
+                    name = tournamentName,
+                    type = TournamentType.DRAW_KNOCKOUT,
+                    stage = TournamentStage.KNOCKOUT_ROUNDS,
+                    playersProfileId = 0L,
+                    groupsCount = 0,
+                    qualifiersPerGroup = 0
+                )
+                _currentTournamentId = tournamentDao.insertTournament(entity)
+            } else {
+                val existing = tournamentDao.getTournamentById(currentTournamentId)
+                if (existing != null) {
+                    tournamentDao.updateTournament(
+                        existing.copy(
+                            name = tournamentName,
+                            stage = existing.stage,
+                            updatedAt = System.currentTimeMillis()
+                        )
+                    )
+                }
+            }
+
+            // Sync Participants
+            val participants = mutableListOf<TournamentParticipantEntity>()
+            fixtures.forEach { f ->
+                participants.add(
+                    TournamentParticipantEntity(
+                        tournamentId = currentTournamentId,
+                        playerItemId = 0L,
+                        playerName = f.playerOneName,
+                        clubName = f.playerOneTeam,
+                        groupIndex = 0
+                    )
+                )
+                f.playerTwoName?.let { p2 ->
+                    participants.add(
+                        TournamentParticipantEntity(
+                            tournamentId = currentTournamentId,
+                            playerItemId = 0L,
+                            playerName = p2,
+                            clubName = f.playerTwoTeam,
+                            groupIndex = 0
+                        )
+                    )
+                }
+            }
+            tournamentDao.deleteParticipantsByTournamentId(currentTournamentId)
+            tournamentDao.insertParticipants(participants.distinctBy { it.playerName })
+
+            val distinctParticipants = participants.distinctBy { it.playerName }.map { it.toDomain() }
+            val domainMatches = GenerateKnockoutBracketUseCase.generateBracketMatches(currentTournamentId, distinctParticipants)
+
+            val matches = domainMatches.mapIndexed { idx, match ->
+                val matchingFixture = fixtures.getOrNull(match.bracketMatchIndex?.minus(1) ?: idx)
+                if (matchingFixture != null && matchingFixture.isFinished && match.roundIndex == 1) {
+                    val winner = calculateWinner(matchingFixture.scoreOne, matchingFixture.scoreTwo, match.playerOneName, match.playerTwoName)
+                    match.copy(
+                        scoreOne = matchingFixture.scoreOne,
+                        scoreTwo = matchingFixture.scoreTwo,
+                        winnerName = winner,
+                        status = MatchStatus.FINISHED
+                    ).toEntity(currentTournamentId)
+                } else {
+                    match.toEntity(currentTournamentId)
+                }
+            }
+
+            matchDao.deleteMatchesByTournamentId(currentTournamentId)
+            matchDao.insertMatches(matches)
+        }
+    }
+
+    private fun calculateWinner(s1: Int?, s2: Int?, p1: String, p2: String?): String? {
+        if (s1 == null || s2 == null) return null
+        return when {
+            s1 > s2 -> p1
+            s2 > s1 -> p2 ?: "TBD"
+            else -> null
+        }
+    }
+
+    override fun replacePlayer(oldPlayerName: String, newPlayerName: String, newClubName: String?) {
+        _fixtures.update { list ->
+            list.map { f ->
+                var updated = f
+                if (f.playerOneName == oldPlayerName) {
+                    updated = updated.copy(
+                        playerOneName = newPlayerName,
+                        playerOneTeam = newClubName ?: updated.playerOneTeam
+                    )
+                }
+                if (f.playerTwoName == oldPlayerName) {
+                    updated = updated.copy(
+                        playerTwoName = newPlayerName,
+                        playerTwoTeam = newClubName ?: updated.playerTwoTeam
+                    )
+                }
+                updated
+            }
+        }
+
+        if (currentTournamentId > 0) {
+            scope.launch {
+                tournamentDao.replaceParticipant(currentTournamentId, oldPlayerName, newPlayerName, newClubName)
+                matchDao.replacePlayerInMatches(currentTournamentId, oldPlayerName, newPlayerName, newClubName)
+            }
+        }
+    }
+
+    override fun clearFixtures() {
+        _fixtures.value = emptyList()
+        _currentTournamentId = 0L
+    }
+}

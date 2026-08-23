@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RNDM Inspector - أداة التحليل الشامل للأداء وقواعد البيانات</title>
+  
+  <!-- Google Fonts: Cairo for Arabic & Outfit for English / Numbers -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons for rich UI -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-theme">
+
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-section">
+        <div class="brand-logo">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <div class="brand-info">
+          <div class="brand-title">RNDM Inspector <span class="badge-version">v2.0</span></div>
+          <div class="brand-subtitle">أداة الفحص والتدقيق الشامل لأداء الأكواد وقواعد البيانات</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Live Health Score Indicator -->
+        <div class="health-badge-container" id="healthBadgeHeader">
+          <div class="health-grade-ring" id="headerGradeRing">--</div>
+          <div class="health-meta">
+            <span class="health-label">التقييم العام</span>
+            <span class="health-val" id="headerScoreVal">0%</span>
+          </div>
+        </div>
+
+        <!-- Scan Button -->
+        <button id="btnRunScan" class="btn-primary-glow">
+          <i class="fa-solid fa-bolt" id="scanBtnIcon"></i>
+          <span>فحص التطبيق الآن</span>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button id="btnThemeToggle" class="btn-icon" title="تبديل المظهر (Dark / Light)">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="app-nav">
+      <div class="nav-container">
+        <button class="nav-tab active" data-tab="dashboard">
+          <i class="fa-solid fa-chart-pie"></i>
+          <span>لوحة المؤشرات والإحصائيات</span>
+        </button>
+        <button class="nav-tab" data-tab="database">
+          <i class="fa-solid fa-database"></i>
+          <span>قواعد البيانات والترحيل والفهرسة</span>
+          <span class="tab-badge" id="tabDbBadge">0</span>
+        </button>
+        <button class="nav-tab" data-tab="code-audit">
+          <i class="fa-solid fa-code"></i>
+          <span>فحص الأكواد والأداء</span>
+          <span class="tab-badge" id="tabCodeBadge">0</span>
+        </button>
+        <button class="nav-tab" data-tab="memory-recompose">
+          <i class="fa-solid fa-microchip"></i>
+          <span>فحص الذاكرة وتجميد الواجهة</span>
+        </button>
+        <button class="nav-tab" data-tab="export-center">
+          <i class="fa-solid fa-file-export"></i>
+          <span>مركز التقارير والنسخ</span>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="main-container">
+
+    <!-- TAB 1: DASHBOARD & OVERVIEW -->
+    <section id="tab-dashboard" class="tab-content active">
+      <!-- Top Metrics Row -->
+      <div class="metrics-grid">
+        <div class="metric-card card-health">
+          <div class="metric-icon-box grade-box" id="dashboardGradeBox">A</div>
+          <div class="metric-details">
+            <span class="metric-title">مؤشر الصحة والجودة</span>
+            <div class="metric-big-num" id="healthScoreNum">--</div>
+            <span class="metric-trend" id="healthScoreDesc">جاري الحساب...</span>
+          </div>
+        </div>
+
+        <div class="metric-card card-critical">
+          <div class="metric-icon-box"><i class="fa-solid fa-triangle-exclamation"></i></div>
+          <div class="metric-details">
+            <span class="metric-title">مشاكل حرجة (Critical)</span>
+            <div class="metric-big-num text-danger" id="metricCriticalCount">0</div>
+            <span class="metric-trend">تتطلب تدخلاً فورياً</span>
+          </div>
+        </div>
+
+        <div class="metric-card card-high">
+          <div class="metric-icon-box"><i class="fa-solid fa-circle-exclamation"></i></div>
+          <div class="metric-details">
+            <span class="metric-title">مشاكل عالية (High)</span>
+            <div class="metric-big-num text-warning" id="metricHighCount">0</div>
+            <span class="metric-trend">تسبب لاج وبطء في الاستجابة</span>
+          </div>
+        </div>
+
+        <div class="metric-card card-resolved">
+          <div class="metric-icon-box"><i class="fa-solid fa-circle-check"></i></div>
+          <div class="metric-details">
+            <span class="metric-title">تم حلها منذ آخر فحص</span>
+            <div class="metric-big-num text-success" id="metricResolvedCount">0</div>
+            <span class="metric-trend" id="metricResolvedTrend">إصلاحات ناجحة</span>
+          </div>
+        </div>
+
+        <div class="metric-card card-scanned">
+          <div class="metric-icon-box"><i class="fa-solid fa-folder-tree"></i></div>
+          <div class="metric-details">
+            <span class="metric-title">إجمالي الملفات المفحوصة</span>
+            <div class="metric-big-num" id="metricFilesCount">0</div>
+            <span class="metric-trend" id="metricScanDuration">المدة: 0ms</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Analysis Summary Banner -->
+      <div class="summary-banner" id="summaryBanner">
+        <div class="banner-icon"><i class="fa-solid fa-lightbulb"></i></div>
+        <div class="banner-text">
+          <h4>نبذة شاملة حول حالة التطبيق والكود الحالي</h4>
+          <p id="summaryBannerText">انقر على "فحص التطبيق الآن" لبدء التدقيق المباشر لقواعد البيانات وواجهات Compose ومسارات التزامن.</p>
+        </div>
+        <button class="btn-secondary" onclick="switchTab('code-audit')">
+          <i class="fa-solid fa-list-check"></i> استعراض كافة المشاكل
+        </button>
+      </div>
+
+      <!-- Two Column Overview (Charts & Breakdown) -->
+      <div class="dashboard-grid">
+        <!-- Category Breakdown Card -->
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="fa-solid fa-chart-column"></i>
+              <span>توزيع المشاكل حسب التصنيف</span>
+            </div>
+          </div>
+          <div class="category-bars" id="categoryBarsContainer">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Database & Architecture Quick Card -->
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="fa-solid fa-cubes-stacked"></i>
+              <span>جاهزية بنية قواعد البيانات والـ Compose</span>
+            </div>
+          </div>
+          <div class="quick-stats-list" id="quickStatsList">
+            <div class="stat-row">
+              <span class="stat-name"><i class="fa-solid fa-database text-primary"></i> إصدار قاعدة البيانات الحالي (Room Version)</span>
+              <span class="stat-val font-mono" id="statDbVersion">v4</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-name"><i class="fa-solid fa-table text-info"></i> عدد الكيانات والجداول (Entities)</span>
+              <span class="stat-val" id="statEntitiesCount">5</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-name"><i class="fa-solid fa-key text-warning"></i> المفاتيح الخارجية بدون فهارس (Missing FK Indexes)</span>
+              <span class="stat-val text-danger" id="statMissingFkCount">0</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-name"><i class="fa-solid fa-timeline text-success"></i> خطوات الترحيل المسجلة (Migrations)</span>
+              <span class="stat-val font-mono" id="statMigrationsCount">2</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-name"><i class="fa-solid fa-file-code text-secondary"></i> تصدير المخطط (exportSchema)</span>
+              <span class="stat-val" id="statSchemaExportStatus">مفعل</span>
+            </div>
+          </div>
+          <div class="card-footer-actions">
+            <button class="btn-outline" onclick="switchTab('database')">
+              <i class="fa-solid fa-arrow-left"></i> فتح محلل قواعد البيانات بالتفصيل
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: DATABASE, MIGRATIONS & INDEXING -->
+    <section id="tab-database" class="tab-content">
+      <!-- Database Sub-Header -->
+      <div class="section-hero">
+        <div class="hero-content">
+          <h2><i class="fa-solid fa-database text-primary"></i> تحليل قواعد البيانات والترحيل والفهرسة (Room & SQLite)</h2>
+          <p>فحص دقيق لجميع الكيانات (Entities)، المفاتيح الخارجية، الفهارس المفقودة، استعلامات الـ DAOs، وسلامة تسلسل الترحيلات لمنع أخطاء SQLite واللاج في التمرير.</p>
+        </div>
+        <div class="hero-action">
+          <button class="btn-accent" id="btnCopyAllDbFixes">
+            <i class="fa-solid fa-copy"></i> نسخ كافة أكواد إصلاح الفهارس (Kotlin / SQL)
+          </button>
+        </div>
+      </div>
+
+      <!-- Database Issues Alert Banner -->
+      <div id="dbIssuesBanner" class="alert-box alert-warning">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div class="alert-body">
+          <strong>تنبيهات الفهرسة وقواعد البيانات:</strong>
+          <span id="dbIssuesSummaryText">جاري الفحص...</span>
+        </div>
+      </div>
+
+      <!-- Database Views Tabs (Entities / Migrations / DAOs) -->
+      <div class="sub-tabs-container">
+        <button class="sub-tab active" data-subtab="db-entities">
+          <i class="fa-solid fa-table"></i> الجداول والكيانات والفهارس (<span id="subtabEntitiesCount">0</span>)
+        </button>
+        <button class="sub-tab" data-subtab="db-migrations">
+          <i class="fa-solid fa-code-merge"></i> مسارات الترحيل (Migrations Timeline) (<span id="subtabMigrationsCount">0</span>)
+        </button>
+        <button class="sub-tab" data-subtab="db-queries">
+          <i class="fa-solid fa-terminal"></i> استعلامات الـ DAOs والأداء (<span id="subtabDaosCount">0</span>)
+        </button>
+      </div>
+
+      <!-- SubTab Content: Entities & Indexes -->
+      <div id="subtab-db-entities" class="subtab-content active">
+        <div id="entitiesListContainer" class="entities-grid">
+          <!-- Dynamically populated entity cards -->
+        </div>
+      </div>
+
+      <!-- SubTab Content: Migrations -->
+      <div id="subtab-db-migrations" class="subtab-content">
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="card-title"><i class="fa-solid fa-timeline"></i> تسلسل إصدارات قاعدة البيانات وفحص أوامر الـ SQL</div>
+          </div>
+          <div id="migrationsTimeline" class="migrations-timeline">
+            <!-- Dynamically populated migration timeline -->
+          </div>
+        </div>
+      </div>
+
+      <!-- SubTab Content: DAOs & Queries -->
+      <div id="subtab-db-queries" class="subtab-content">
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="card-title"><i class="fa-solid fa-bolt"></i> استعلامات الـ DAO وتوصيات الفهرسة المركبة</div>
+          </div>
+          <div id="daosListContainer" class="daos-table-wrapper">
+            <!-- Dynamically populated queries table -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: CODE & PERFORMANCE AUDIT -->
+    <section id="tab-code-audit" class="tab-content">
+      <!-- Filter Bar -->
+      <div class="filter-toolbar">
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="searchInput" placeholder="بحث في المشاكل، أسماء الملفات، أو الأسطر المتضررة...">
+        </div>
+
+        <div class="filter-group">
+          <!-- Severity Filter -->
+          <select id="filterSeverity" class="custom-select">
+            <option value="ALL">جميع المستويات (Severity: All)</option>
+            <option value="CRITICAL">🔴 حرجة (Critical)</option>
+            <option value="HIGH">🟠 عالية (High)</option>
+            <option value="MEDIUM">🟡 متوسطة (Medium)</option>
+            <option value="LOW">🔵 منخفضة (Low)</option>
+            <option value="INFO">ℹ️ معلومات (Info)</option>
+          </select>
+
+          <!-- Category Filter -->
+          <select id="filterCategory" class="custom-select">
+            <option value="ALL">جميع التصنيفات (All Categories)</option>
+            <option value="Database & Indexing">قواعد البيانات والفهرسة</option>
+            <option value="Compose Performance">أداء واجهات Compose</option>
+            <option value="Concurrency & Coroutines">التزامن وخيوط المعالجة</option>
+            <option value="Memory & Leaks">الذاكرة وتسريبات الموارد</option>
+            <option value="Architecture & Clean Code">جودة الكود والبنية</option>
+          </select>
+
+          <!-- File Filter -->
+          <select id="filterFile" class="custom-select">
+            <option value="ALL">جميع الملفات (All Files)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Issues Counter & Bulk Action -->
+      <div class="issues-status-bar">
+        <div class="issues-counter">
+          عرض <span id="displayedIssuesCount">0</span> من إجمالي <span id="totalIssuesCount">0</span> مشكلة
+        </div>
+        <div class="issues-bulk-actions">
+          <button class="btn-secondary-sm" id="btnCopyFilteredMarkdown">
+            <i class="fa-solid fa-copy"></i> نسخ نتائج الفلترة الحالية كتقرير Markdown
+          </button>
+        </div>
+      </div>
+
+      <!-- Issues List Container -->
+      <div id="issuesListContainer" class="issues-list">
+        <!-- Dynamically populated issues cards -->
+      </div>
+    </section>
+
+    <!-- TAB 4: MEMORY & RECOMPOSITION -->
+    <section id="tab-memory-recompose" class="tab-content">
+      <div class="section-hero">
+        <div class="hero-content">
+          <h2><i class="fa-solid fa-microchip text-accent"></i> فحص الذاكرة وتجميد الواجهة (Memory & Recomposition Churn)</h2>
+          <p>تحليل مخصص لكشف تسريبات الذاكرة (Context Leaks)، إعادة الرسم غير الضرورية في Jetpack Compose، وتجميد خيط المعالجة الرئيسي (ANR Prevention).</p>
+        </div>
+      </div>
+
+      <div class="memory-grid">
+        <!-- Recomposition Warnings -->
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="fa-solid fa-arrows-rotate text-warning"></i>
+              <span>تحذيرات وميض وإعادة الرسم (Recomposition Bottlenecks)</span>
+            </div>
+          </div>
+          <div id="recomposeWarningsList" class="compact-issue-list">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Coroutine & Thread Leaks -->
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="fa-solid fa-shield-virus text-danger"></i>
+              <span>مخاطر تسريب الـ Coroutines وحجب الخيوط (Thread Blocking)</span>
+            </div>
+          </div>
+          <div id="concurrencyWarningsList" class="compact-issue-list">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: EXPORT & ACTION CENTER -->
+    <section id="tab-export-center" class="tab-content">
+      <div class="section-hero">
+        <div class="hero-content">
+          <h2><i class="fa-solid fa-file-export text-success"></i> مركز التقارير والنسخ الذكي (Export & Action Plan)</h2>
+          <p>تصدير تقرير التدقيق بالكامل، توليد برومبت جاهز لحل المشاكل مع الذكاء الاصطناعي، ونسخ خطة العمل المنظمة.</p>
+        </div>
+      </div>
+
+      <div class="export-grid">
+        <!-- Export Full Markdown Card -->
+        <div class="export-card">
+          <div class="export-icon"><i class="fa-brands fa-markdown"></i></div>
+          <h3>تقرير Markdown شامل</h3>
+          <p>تقرير مفصل بجميع الأخطاء، الملفات، التحذيرات، والأكواد المصححة بصيغة Markdown معتمدة.</p>
+          <div class="export-actions">
+            <button class="btn-primary" id="btnCopyFullMarkdown">
+              <i class="fa-solid fa-clipboard"></i> نسخ التقرير للحافظة
+            </button>
+            <button class="btn-secondary" id="btnDownloadMarkdown">
+              <i class="fa-solid fa-download"></i> تنزيل ملف (.md)
+            </button>
+          </div>
+        </div>
+
+        <!-- Export AI Prompt Card -->
+        <div class="export-card">
+          <div class="export-icon"><i class="fa-solid fa-robot"></i></div>
+          <h3>برومبت الذكاء الاصطناعي للإصلاح</h3>
+          <p>توليد برومبت ذكي مجهز بأدق التفاصيل والملفات والأسطر لتقديمه لأي نموذج ذكاء اصطناعي لحل المشاكل تلقائياً.</p>
+          <div class="export-actions">
+            <button class="btn-accent" id="btnCopyAiPrompt">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> نسخ برومبت الإصلاح الشامل
+            </button>
+          </div>
+        </div>
+
+        <!-- Export Raw JSON Card -->
+        <div class="export-card">
+          <div class="export-icon"><i class="fa-solid fa-code"></i></div>
+          <h3>بيانات JSON الخام</h3>
+          <p>تصدير كامل تفاصيل الفحص بصيغة JSON للدمج مع أنظمة CI/CD أو الأرشفة.</p>
+          <div class="export-actions">
+            <button class="btn-outline" id="btnDownloadJson">
+              <i class="fa-solid fa-file-code"></i> تنزيل ملف JSON
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview of Markdown Report -->
+      <div class="glass-card mt-4">
+        <div class="card-header">
+          <div class="card-title"><i class="fa-solid fa-eye"></i> معاينة التقرير المولد</div>
+        </div>
+        <textarea id="markdownPreviewTextarea" class="code-preview-area" readonly placeholder="جاري توليد التقرير..."></textarea>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast Notification Container -->
+  <div id="toastNotification" class="toast-popup">
+    <i class="fa-solid fa-circle-check"></i>
+    <span id="toastMessage">تم النسخ إلى الحافظة بنجاح!</span>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-box">
+      <div class="spinner-ring"></div>
+      <h3>جاري فحص وتدقيق الكود وقواعد البيانات...</h3>
+      <p id="loadingStatusText">تحليل ملفات الـ Kotlin و Compose و Room والمؤشرات...</p>
+    </div>
+  </div>
+
+  <!-- Main JavaScript File -->
+  <script src="app.js"></script>
+</body>
+</html>
