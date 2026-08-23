@@ -127,6 +127,10 @@ class UpdatesViewModel @Inject constructor(
                             checkedAt = System.currentTimeMillis(),
                             repositoryName = "${BuildConfig.GITHUB_OWNER}/${BuildConfig.GITHUB_REPO}"
                         )
+                    } else {
+                        if (_uiState.value is UpdateUiState.UpdateAvailable) {
+                            _uiState.value = UpdateUiState.Idle
+                        }
                     }
                 }
             }.onFailure { err ->
