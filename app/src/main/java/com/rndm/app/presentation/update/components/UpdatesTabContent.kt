@@ -152,8 +152,8 @@ private fun MainUpdateHubCard(
                             .background(
                                 when (uiState) {
                                     is UpdateUiState.UpdateAvailable -> MaterialTheme.colorScheme.primaryContainer
-                                    is UpdateUiState.NoUpdate -> Color(0xFF10B981).copy(alpha = 0.15f)
-                                    is UpdateUiState.DownloadFailed, is UpdateUiState.Error -> Color(0xFFEF4444).copy(alpha = 0.15f)
+                                    is UpdateUiState.NoUpdate -> com.rndm.app.core.theme.UpdateSuccessGreen.copy(alpha = 0.15f)
+                                    is UpdateUiState.DownloadFailed, is UpdateUiState.Error -> com.rndm.app.core.theme.UpdateErrorRed.copy(alpha = 0.15f)
                                     else -> MaterialTheme.colorScheme.primaryContainer
                                 }
                             ),
@@ -169,8 +169,8 @@ private fun MainUpdateHubCard(
                             contentDescription = null,
                             tint = when (uiState) {
                                 is UpdateUiState.UpdateAvailable -> MaterialTheme.colorScheme.primary
-                                is UpdateUiState.NoUpdate -> Color(0xFF10B981)
-                                is UpdateUiState.DownloadFailed, is UpdateUiState.Error -> Color(0xFFEF4444)
+                                is UpdateUiState.NoUpdate -> com.rndm.app.core.theme.UpdateSuccessGreen
+                                is UpdateUiState.DownloadFailed, is UpdateUiState.Error -> com.rndm.app.core.theme.UpdateErrorRed
                                 else -> MaterialTheme.colorScheme.primary
                             },
                             modifier = Modifier.size(24.dp)
@@ -194,12 +194,12 @@ private fun MainUpdateHubCard(
                 // Dynamic Status Badge on the right
                 Surface(
                     color = when (uiState) {
-                        is UpdateUiState.UpdateAvailable -> Color(0xFF10B981).copy(alpha = 0.15f)
-                        is UpdateUiState.NoUpdate -> Color(0xFF10B981).copy(alpha = 0.15f)
+                        is UpdateUiState.UpdateAvailable -> com.rndm.app.core.theme.UpdateSuccessGreen.copy(alpha = 0.15f)
+                        is UpdateUiState.NoUpdate -> com.rndm.app.core.theme.UpdateSuccessGreen.copy(alpha = 0.15f)
                         is UpdateUiState.Downloading -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                        is UpdateUiState.Paused -> Color(0xFFF59E0B).copy(alpha = 0.15f)
-                        is UpdateUiState.ReadyToInstall -> Color(0xFF10B981).copy(alpha = 0.2f)
-                        is UpdateUiState.DownloadFailed, is UpdateUiState.Error -> Color(0xFFEF4444).copy(alpha = 0.15f)
+                        is UpdateUiState.Paused -> com.rndm.app.core.theme.UpdateWarningAmber.copy(alpha = 0.15f)
+                        is UpdateUiState.ReadyToInstall -> com.rndm.app.core.theme.UpdateSuccessGreen.copy(alpha = 0.2f)
+                        is UpdateUiState.DownloadFailed, is UpdateUiState.Error -> com.rndm.app.core.theme.UpdateErrorRed.copy(alpha = 0.15f)
                         else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                     },
                     shape = RoundedCornerShape(8.dp)
@@ -215,12 +215,12 @@ private fun MainUpdateHubCard(
                             else -> "v${BuildConfig.VERSION_NAME}"
                         },
                         color = when (uiState) {
-                            is UpdateUiState.UpdateAvailable -> Color(0xFF10B981)
-                            is UpdateUiState.NoUpdate -> Color(0xFF10B981)
+                            is UpdateUiState.UpdateAvailable -> com.rndm.app.core.theme.UpdateSuccessGreen
+                            is UpdateUiState.NoUpdate -> com.rndm.app.core.theme.UpdateSuccessGreen
                             is UpdateUiState.Downloading -> MaterialTheme.colorScheme.primary
-                            is UpdateUiState.Paused -> Color(0xFFF59E0B)
-                            is UpdateUiState.ReadyToInstall -> Color(0xFF10B981)
-                            is UpdateUiState.DownloadFailed, is UpdateUiState.Error -> Color(0xFFEF4444)
+                            is UpdateUiState.Paused -> com.rndm.app.core.theme.UpdateWarningAmber
+                            is UpdateUiState.ReadyToInstall -> com.rndm.app.core.theme.UpdateSuccessGreen
+                            is UpdateUiState.DownloadFailed, is UpdateUiState.Error -> com.rndm.app.core.theme.UpdateErrorRed
                             else -> MaterialTheme.colorScheme.primary
                         },
                         fontWeight = FontWeight.Bold,
@@ -399,7 +399,7 @@ private fun MainUpdateHubCard(
                                         Icon(
                                             Icons.Outlined.Shield,
                                             contentDescription = null,
-                                            tint = Color(0xFF10B981),
+                                            tint = com.rndm.app.core.theme.UpdateSuccessGreen,
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Text(
@@ -481,7 +481,7 @@ private fun MainUpdateHubCard(
                                     .fillMaxWidth()
                                     .height(8.dp)
                                     .clip(RoundedCornerShape(4.dp)),
-                                color = if (isPaused) Color(0xFFF59E0B) else MaterialTheme.colorScheme.primary,
+                                color = if (isPaused) com.rndm.app.core.theme.UpdateWarningAmber else MaterialTheme.colorScheme.primary,
                                 trackColor = MaterialTheme.colorScheme.surfaceVariant
                             )
 
@@ -553,7 +553,7 @@ private fun MainUpdateHubCard(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Surface(
-                                color = Color(0xFF10B981).copy(alpha = 0.12f),
+                                color = com.rndm.app.core.theme.UpdateSuccessGreen.copy(alpha = 0.12f),
                                 shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -567,7 +567,7 @@ private fun MainUpdateHubCard(
                                     Icon(
                                         Icons.Default.CheckCircle,
                                         contentDescription = null,
-                                        tint = Color(0xFF10B981),
+                                        tint = com.rndm.app.core.theme.UpdateSuccessGreen,
                                         modifier = Modifier.size(24.dp)
                                     )
                                     Column {
@@ -634,7 +634,7 @@ private fun MainUpdateHubCard(
                                             text = "محدث لأحدث إصدار ✨",
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF10B981)
+                                            color = com.rndm.app.core.theme.UpdateSuccessGreen
                                         )
                                     }
 
@@ -696,7 +696,7 @@ private fun MainUpdateHubCard(
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Surface(
-                                color = Color(0xFFEF4444).copy(alpha = 0.1f),
+                                color = com.rndm.app.core.theme.UpdateErrorRed.copy(alpha = 0.1f),
                                 shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -713,14 +713,14 @@ private fun MainUpdateHubCard(
                                         Icon(
                                             Icons.Default.ErrorOutline,
                                             contentDescription = null,
-                                            tint = Color(0xFFEF4444),
+                                            tint = com.rndm.app.core.theme.UpdateErrorRed,
                                             modifier = Modifier.size(18.dp)
                                         )
                                         Text(
                                             text = "فشل تحميل التحديث",
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold,
-                                            color = Color(0xFFEF4444)
+                                            color = com.rndm.app.core.theme.UpdateErrorRed
                                         )
                                     }
                                     Text(
@@ -750,7 +750,7 @@ private fun MainUpdateHubCard(
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Surface(
-                                color = Color(0xFFF59E0B).copy(alpha = 0.1f),
+                                color = com.rndm.app.core.theme.UpdateWarningAmber.copy(alpha = 0.1f),
                                 shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -767,14 +767,14 @@ private fun MainUpdateHubCard(
                                         Icon(
                                             Icons.Default.WarningAmber,
                                             contentDescription = null,
-                                            tint = Color(0xFFF59E0B),
+                                            tint = com.rndm.app.core.theme.UpdateWarningAmber,
                                             modifier = Modifier.size(18.dp)
                                         )
                                         Text(
                                             text = "تعذر التحقق من التحديثات",
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold,
-                                            color = Color(0xFFF59E0B)
+                                            color = com.rndm.app.core.theme.UpdateWarningAmber
                                         )
                                     }
                                     Text(
@@ -902,7 +902,7 @@ private fun CheckingStepLine(
                 .clip(CircleShape)
                 .background(
                     when {
-                        isDone -> Color(0xFF10B981)
+                        isDone -> com.rndm.app.core.theme.UpdateSuccessGreen
                         isActive -> MaterialTheme.colorScheme.primary
                         else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     }

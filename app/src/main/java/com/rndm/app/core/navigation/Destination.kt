@@ -38,6 +38,9 @@ sealed interface Destination {
     data object CreateTournament : Destination
 
     @Serializable
+    data object JoinTournament : Destination
+
+    @Serializable
     data class TournamentDetail(val tournamentId: Long) : Destination
 
     @Serializable
@@ -48,6 +51,12 @@ sealed interface Destination {
 
     @Serializable
     data object TournamentArchive : Destination
+
+    @Serializable
+    data class PlayerProfile(val playerName: String) : Destination
+
+    @Serializable
+    data object PlayersLeaderboard : Destination
 
     @Serializable
     data object Settings : Destination

@@ -51,7 +51,9 @@ import com.rndm.app.domain.model.MatchStatus
 fun TournamentMatchesTab(
     matches: List<Match>,
     onMatchClick: (Match) -> Unit,
-    onReplacePlayerClick: ((playerName: String, clubName: String?) -> Unit)? = null,
+    onPlayerClick: ((String) -> Unit)? = null,
+    onReorderMatchClick: ((Match) -> Unit)? = null,
+    onSwapPlayerClick: ((match: Match, isSlotOne: Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val spacing = RndmThemeTokens.spacing
@@ -148,7 +150,9 @@ fun TournamentMatchesTab(
                         MatchFixtureCard(
                             match = match,
                             onClick = { onMatchClick(match) },
-                            onReplacePlayerClick = onReplacePlayerClick
+                            onPlayerClick = onPlayerClick,
+                            onReorderMatchClick = onReorderMatchClick,
+                            onSwapPlayerClick = onSwapPlayerClick
                         )
                     }
 
@@ -165,7 +169,9 @@ fun TournamentMatchesTab(
 fun MatchFixtureCard(
     match: Match,
     onClick: () -> Unit,
-    onReplacePlayerClick: ((playerName: String, clubName: String?) -> Unit)? = null,
+    onPlayerClick: ((String) -> Unit)? = null,
+    onReorderMatchClick: ((Match) -> Unit)? = null,
+    onSwapPlayerClick: ((match: Match, isSlotOne: Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isFinished = match.status == MatchStatus.FINISHED
@@ -193,12 +199,44 @@ fun MatchFixtureCard(
                     match.groupIndex != null -> "المجموعة ${('أ'.code + match.groupIndex).toChar()} • الجولة ${match.roundIndex}"
                     else -> match.stage.displayName
                 }
-                Text(
-                    text = headerLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Medium
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = headerLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    if (onReorderMatchClick != null && !isFinished) {
+                        Surface(
+                            onClick = { onReorderMatchClick(match) },
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_swap),
+                                    contentDescription = "ترتيب المباراة",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(11.dp)
+                                )
+                                Text(
+                                    text = "ترتيب",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
 
                 if (isFinished) {
                     val statusText = if (hasPenalties) "انتهت (ض.ج)" else "انتهت"
@@ -243,9 +281,9 @@ fun MatchFixtureCard(
                     modifier = Modifier
                         .weight(1f)
                         .then(
-                            if (onReplacePlayerClick != null && !isFinished) {
+                            if (onPlayerClick != null) {
                                 Modifier.clickable {
-                                    onReplacePlayerClick(match.playerOneName, match.playerOneClub)
+                                    onPlayerClick(match.playerOneName)
                                 }
                             } else Modifier
                         ),
@@ -263,7 +301,7 @@ fun MatchFixtureCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            painter = painterResource(id = if (onReplacePlayerClick != null && !isFinished) R.drawable.ic_redo else R.drawable.ic_profile_filled),
+                            painter = painterResource(id = R.drawable.ic_profile_filled),
                             contentDescription = null,
                             tint = if (isP1Winner) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
@@ -271,14 +309,35 @@ fun MatchFixtureCard(
                     }
 
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = match.playerOneName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = if (isP1Winner) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isP1Winner) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = match.playerOneName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isP1Winner) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isP1Winner) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (onSwapPlayerClick != null && !isFinished) {
+                                Surface(
+                                    onClick = { onSwapPlayerClick(match, true) },
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_swap),
+                                        contentDescription = "تبديل مكان اللاعب",
+                                        tint = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier
+                                            .size(16.dp)
+                                            .padding(2.dp)
+                                    )
+                                }
+                            }
+                        }
                         match.playerOneClub?.let {
                             Text(
                                 text = it,
@@ -327,10 +386,10 @@ fun MatchFixtureCard(
                     modifier = Modifier
                         .weight(1f)
                         .then(
-                            if (onReplacePlayerClick != null && match.playerTwoName != null && !isFinished && !match.isPlayerTwoLuckyLoser) {
+                            if (onPlayerClick != null && match.playerTwoName != null && !match.isPlayerTwoLuckyLoser) {
                                 Modifier.clickable {
                                     match.playerTwoName?.let { p2 ->
-                                        onReplacePlayerClick(p2, match.playerTwoClub)
+                                        onPlayerClick(p2)
                                     }
                                 }
                             } else Modifier
@@ -342,15 +401,36 @@ fun MatchFixtureCard(
                         modifier = Modifier.weight(1f),
                         horizontalAlignment = Alignment.End
                     ) {
-                        Text(
-                            text = match.playerTwoName ?: "BYE",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = if (isP2Winner) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isP2Winner) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.End
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            if (onSwapPlayerClick != null && match.playerTwoName != null && !isFinished && !match.isPlayerTwoLuckyLoser) {
+                                Surface(
+                                    onClick = { onSwapPlayerClick(match, false) },
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_swap),
+                                        contentDescription = "تبديل مكان اللاعب",
+                                        tint = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier
+                                            .size(16.dp)
+                                            .padding(2.dp)
+                                    )
+                                }
+                            }
+                            Text(
+                                text = match.playerTwoName ?: "BYE",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isP2Winner) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isP2Winner) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.End
+                            )
+                        }
                         match.playerTwoClub?.let {
                             Text(
                                 text = it,
@@ -375,7 +455,7 @@ fun MatchFixtureCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            painter = painterResource(id = if (onReplacePlayerClick != null && match.playerTwoName != null && !isFinished && !match.isPlayerTwoLuckyLoser) R.drawable.ic_redo else R.drawable.ic_profile_filled),
+                            painter = painterResource(id = R.drawable.ic_profile_filled),
                             contentDescription = null,
                             tint = if (isP2Winner) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)

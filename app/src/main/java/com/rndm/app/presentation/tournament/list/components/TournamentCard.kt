@@ -142,6 +142,14 @@ fun TournamentCard(
                             MaterialTheme.colorScheme.primary
                         }
                     )
+
+                    if (tournament.isRemote) {
+                        com.rndm.app.presentation.tournament.share.SyncStatusBadge(
+                            syncStatus = tournament.syncStatus,
+                            isRemote = tournament.isRemote,
+                            isHost = tournament.isHost
+                        )
+                    }
                 }
             }
         }

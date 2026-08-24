@@ -24,6 +24,7 @@ import com.rndm.app.presentation.tournament.detail.components.ScoreInputDialog
 @Composable
 fun TournamentBracketScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToPlayer: (String) -> Unit = {},
     viewModel: TournamentBracketViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -51,7 +52,8 @@ fun TournamentBracketScreen(
 
                 GoogleKnockoutBracketView(
                     matches = uiState.knockoutMatches,
-                    onMatchClick = viewModel::onSelectMatchForScore
+                    onMatchClick = viewModel::onSelectMatchForScore,
+                    onPlayerClick = onNavigateToPlayer
                 )
 
                 Spacer(modifier = Modifier.height(48.dp))

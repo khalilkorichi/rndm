@@ -23,7 +23,10 @@ fun MatchEntity.toDomain(): Match {
         status = status,
         scheduledTimestamp = scheduledTimestamp,
         isPlayerOneLuckyLoser = isPlayerOneLuckyLoser,
-        isPlayerTwoLuckyLoser = isPlayerTwoLuckyLoser
+        isPlayerTwoLuckyLoser = isPlayerTwoLuckyLoser,
+        remoteId = remoteId,
+        syncStatus = syncStatus,
+        updatedAt = updatedAt
     )
 }
 
@@ -47,6 +50,9 @@ fun Match.toEntity(tournamentId: Long = this.tournamentId): MatchEntity {
         status = status,
         scheduledTimestamp = scheduledTimestamp,
         isPlayerOneLuckyLoser = isPlayerOneLuckyLoser,
-        isPlayerTwoLuckyLoser = isPlayerTwoLuckyLoser
+        isPlayerTwoLuckyLoser = isPlayerTwoLuckyLoser,
+        remoteId = remoteId,
+        syncStatus = syncStatus,
+        updatedAt = updatedAt
     )
 }

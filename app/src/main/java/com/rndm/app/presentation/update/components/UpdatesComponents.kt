@@ -114,7 +114,7 @@ private fun StepRow(
                 .clip(CircleShape)
                 .background(
                     when {
-                        isDone -> Color(0xFF10B981)
+                        isDone -> com.rndm.app.core.theme.UpdateSuccessGreen
                         isActive -> MaterialTheme.colorScheme.primary
                         else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     }
@@ -201,12 +201,12 @@ fun UpdateCard(
                 }
 
                 Surface(
-                    color = Color(0xFF10B981).copy(alpha = 0.15f),
+                    color = com.rndm.app.core.theme.UpdateSuccessGreen.copy(alpha = 0.15f),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
                         text = if (info.mandatory) "تحديث إجباري" else "تحديث متوفر 🎉",
-                        color = Color(0xFF10B981),
+                        color = com.rndm.app.core.theme.UpdateSuccessGreen,
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -327,7 +327,7 @@ fun DownloadProgressCard(
                     Icon(
                         if (isPaused) Icons.Default.PauseCircle else Icons.Default.CloudDownload,
                         contentDescription = null,
-                        tint = if (isPaused) Color(0xFFF59E0B) else MaterialTheme.colorScheme.primary,
+                        tint = if (isPaused) com.rndm.app.core.theme.UpdateWarningAmber else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(22.dp)
                     )
                     Text(
@@ -346,7 +346,7 @@ fun DownloadProgressCard(
 
             LinearProgressIndicator(
                 progress = { progress / 100f },
-                color = if (isPaused) Color(0xFFF59E0B) else MaterialTheme.colorScheme.primary,
+                color = if (isPaused) com.rndm.app.core.theme.UpdateWarningAmber else MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -379,7 +379,7 @@ fun DownloadProgressCard(
                 OutlinedButton(
                     onClick = onCancelClick,
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = com.rndm.app.core.theme.UpdateErrorRed),
                     modifier = Modifier.height(36.dp)
                 ) {
                     Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -430,13 +430,13 @@ fun ReadyToInstallCard(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF10B981).copy(alpha = 0.2f)),
+                        .background(com.rndm.app.core.theme.UpdateSuccessGreen.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Default.CheckCircle,
                         contentDescription = null,
-                        tint = Color(0xFF10B981),
+                        tint = com.rndm.app.core.theme.UpdateSuccessGreen,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -583,7 +583,7 @@ private fun DownloadedApkItem(
                     Icon(
                         Icons.Default.PlayCircle,
                         contentDescription = "تثبيت",
-                        tint = Color(0xFF10B981),
+                        tint = com.rndm.app.core.theme.UpdateSuccessGreen,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -592,7 +592,7 @@ private fun DownloadedApkItem(
                     Icon(
                         Icons.Outlined.Delete,
                         contentDescription = "حذف",
-                        tint = Color(0xFFEF4444),
+                        tint = com.rndm.app.core.theme.UpdateErrorRed,
                         modifier = Modifier.size(18.dp)
                     )
                 }

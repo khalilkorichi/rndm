@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -34,7 +36,8 @@ import com.rndm.app.domain.model.DrawFixture
 fun FixtureMatchCard(
     fixture: DrawFixture,
     onEditScoreClick: () -> Unit,
-    onReplacePlayerClick: ((playerName: String, clubName: String?) -> Unit)? = null,
+    onReorderClick: (() -> Unit)? = null,
+    onSwapPlayerClick: ((isSlotOne: Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val spacing = RndmThemeTokens.spacing
@@ -51,17 +54,49 @@ fun FixtureMatchCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = MaterialTheme.shapes.small
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = "المباراة ${fixture.matchNumber}",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(horizontal = spacing.sm, vertical = spacing.xs)
-                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(
+                            text = "المباراة ${fixture.matchNumber}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = spacing.sm, vertical = spacing.xs)
+                        )
+                    }
+
+                    if (onReorderClick != null && !fixture.isFinished) {
+                        Surface(
+                            onClick = onReorderClick,
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_swap),
+                                    contentDescription = "ترتيب المباراة",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = "ترتيب",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
                 }
 
                 val statusText = when {
@@ -95,12 +130,7 @@ fun FixtureMatchCard(
             ) {
                 // Player 1
                 Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable(
-                            enabled = onReplacePlayerClick != null && !fixture.isFinished,
-                            onClick = { onReplacePlayerClick?.invoke(fixture.playerOneName, fixture.playerOneTeam) }
-                        ),
+                    modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Row(
@@ -116,14 +146,22 @@ fun FixtureMatchCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        if (onReplacePlayerClick != null && !fixture.isFinished) {
+                        if (onSwapPlayerClick != null && !fixture.isFinished) {
                             Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_redo),
-                                contentDescription = "استبدال اللاعب",
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                                modifier = Modifier.size(12.dp)
-                            )
+                            Surface(
+                                onClick = { onSwapPlayerClick(true) },
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_swap),
+                                    contentDescription = "تبديل مكان اللاعب",
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .padding(2.dp)
+                                )
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(spacing.xs))
@@ -192,16 +230,7 @@ fun FixtureMatchCard(
 
                 // Player 2
                 Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable(
-                            enabled = onReplacePlayerClick != null && fixture.playerTwoName != null && !fixture.isFinished,
-                            onClick = {
-                                fixture.playerTwoName?.let { p2 ->
-                                    onReplacePlayerClick?.invoke(p2, fixture.playerTwoTeam)
-                                }
-                            }
-                        ),
+                    modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Row(
@@ -217,14 +246,22 @@ fun FixtureMatchCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        if (onReplacePlayerClick != null && fixture.playerTwoName != null && !fixture.isFinished) {
+                        if (onSwapPlayerClick != null && fixture.playerTwoName != null && !fixture.isFinished) {
                             Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_redo),
-                                contentDescription = "استبدال اللاعب",
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                                modifier = Modifier.size(12.dp)
-                            )
+                            Surface(
+                                onClick = { onSwapPlayerClick(false) },
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_swap),
+                                    contentDescription = "تبديل مكان اللاعب",
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .padding(2.dp)
+                                )
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(spacing.xs))

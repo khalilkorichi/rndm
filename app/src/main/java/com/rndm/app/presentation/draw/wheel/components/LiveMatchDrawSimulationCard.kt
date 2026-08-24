@@ -54,7 +54,6 @@ fun LiveMatchDrawSimulationCard(
     remainingPlayersCount: Int,
     remainingClubsCount: Int,
     remainingTeamsCount: Int,
-    onReplacePlayerClick: ((playerName: String, clubName: String?) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val lastFixture = fixtures.lastOrNull()
@@ -66,7 +65,6 @@ fun LiveMatchDrawSimulationCard(
                 fixtures = fixtures,
                 lastFixture = lastFixture,
                 remainingPlayersCount = remainingPlayersCount,
-                onReplacePlayerClick = onReplacePlayerClick,
                 modifier = modifier
             )
         }
@@ -86,7 +84,6 @@ private fun PlayerDrawSimulation(
     fixtures: List<DrawFixture>,
     lastFixture: DrawFixture?,
     remainingPlayersCount: Int,
-    onReplacePlayerClick: ((playerName: String, clubName: String?) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isSlot1Filled = lastFixture != null && lastFixture.playerTwoName == null
@@ -185,9 +182,6 @@ private fun PlayerDrawSimulation(
                     isTargetSlot = !isSlot1Filled && !isAllDrawn,
                     pulseAlpha = pulseAlpha,
                     roleLabel = "الطرف 1",
-                    onReplaceClick = if (isSlot1Filled && player1Name != null && onReplacePlayerClick != null) {
-                        { onReplacePlayerClick(player1Name, lastFixture?.playerOneTeam) }
-                    } else null,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -222,7 +216,6 @@ private fun PlayerDrawSimulation(
                     isTargetSlot = isSlot1Filled && !isAllDrawn,
                     pulseAlpha = pulseAlpha,
                     roleLabel = "الطرف 2",
-                    onReplaceClick = null,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -385,7 +378,6 @@ private fun MatchParticipantSlot(
     isTargetSlot: Boolean,
     pulseAlpha: Float,
     roleLabel: String,
-    onReplaceClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val borderColor by animateColorAsState(
@@ -398,12 +390,7 @@ private fun MatchParticipantSlot(
     )
 
     Surface(
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .then(
-                if (onReplaceClick != null) Modifier.clickable(onClick = onReplaceClick)
-                else Modifier
-            ),
+        modifier = modifier.clip(RoundedCornerShape(14.dp)),
         shape = RoundedCornerShape(14.dp),
         color = if (isFilled) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
         else MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.35f),
@@ -426,8 +413,8 @@ private fun MatchParticipantSlot(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    painter = painterResource(id = if (onReplaceClick != null) R.drawable.ic_redo else R.drawable.ic_profile_filled),
-                    contentDescription = if (onReplaceClick != null) "استبدال اللاعب" else null,
+                    painter = painterResource(id = R.drawable.ic_profile_filled),
+                    contentDescription = null,
                     tint = if (isFilled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.size(18.dp)
                 )
@@ -454,9 +441,9 @@ private fun MatchParticipantSlot(
             Spacer(modifier = Modifier.height(2.dp))
 
             Text(
-                text = if (onReplaceClick != null) "اضغط للاستبدال ↺" else roleLabel,
+                text = roleLabel,
                 style = MaterialTheme.typography.labelSmall,
-                color = if (onReplaceClick != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
         }
     }

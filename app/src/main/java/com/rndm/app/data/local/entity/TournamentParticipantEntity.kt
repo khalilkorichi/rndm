@@ -15,7 +15,10 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["tournamentId"])]
+    indices = [
+        Index(value = ["tournamentId"]),
+        Index(value = ["remoteId"])
+    ]
 )
 data class TournamentParticipantEntity(
     @PrimaryKey(autoGenerate = true)
@@ -24,5 +27,6 @@ data class TournamentParticipantEntity(
     val playerItemId: Long,
     val playerName: String,
     val clubName: String? = null,
-    val groupIndex: Int = 0
+    val groupIndex: Int = 0,
+    val remoteId: String? = null
 )

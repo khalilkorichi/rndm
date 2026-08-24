@@ -415,4 +415,100 @@ class WheelDrawViewModelTest {
         assertEquals("ديدو", viewModel.uiState.value.fixtures[1].playerOneName)
         assertEquals("طارق", viewModel.uiState.value.fixtures[1].playerTwoName)
     }
+
+    @Test
+    fun `excluding candidate removes from wheel and adds to excluded list without deleting from profile`() = runTest {
+        val viewModel = WheelDrawViewModel(
+            getAllProfilesUseCase,
+            getProfileByIdUseCase,
+            fixtureRepository,
+            randomProvider,
+            SavedStateHandle(mapOf("profileId" to 1L))
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(4, viewModel.uiState.value.remainingPlayers.size)
+        assertEquals(0, viewModel.uiState.value.excludedPlayers.size)
+
+        val playerToExclude = viewModel.uiState.value.remainingPlayers.first { it.label == "ديدو" }
+        viewModel.excludeItem(DrawCategory.PLAYERS, playerToExclude)
+
+        assertEquals(3, viewModel.uiState.value.remainingPlayers.size)
+        assertTrue(viewModel.uiState.value.remainingPlayers.none { it.label == "ديدو" })
+        assertEquals(1, viewModel.uiState.value.excludedPlayers.size)
+        assertEquals("ديدو", viewModel.uiState.value.excludedPlayers[0].label)
+        // Original profile items remain 4
+        assertEquals(4, viewModel.uiState.value.selectedPlayersProfile?.items?.size)
+    }
+
+    @Test
+    fun `restoring excluded candidate puts them back in wheel remaining items`() = runTest {
+        val viewModel = WheelDrawViewModel(
+            getAllProfilesUseCase,
+            getProfileByIdUseCase,
+            fixtureRepository,
+            randomProvider,
+            SavedStateHandle(mapOf("profileId" to 1L))
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val playerToExclude = viewModel.uiState.value.remainingPlayers.first { it.label == "ديدو" }
+        viewModel.excludeItem(DrawCategory.PLAYERS, playerToExclude)
+
+        assertEquals(3, viewModel.uiState.value.remainingPlayers.size)
+        assertEquals(1, viewModel.uiState.value.excludedPlayers.size)
+
+        // Restore
+        viewModel.restoreExcludedItem(DrawCategory.PLAYERS, playerToExclude)
+
+        assertEquals(4, viewModel.uiState.value.remainingPlayers.size)
+        assertEquals(0, viewModel.uiState.value.excludedPlayers.size)
+        assertTrue(viewModel.uiState.value.remainingPlayers.any { it.label == "ديدو" })
+    }
+
+    @Test
+    fun `resetDraw clears excluded lists and restores all initial profile items`() = runTest {
+        val viewModel = WheelDrawViewModel(
+            getAllProfilesUseCase,
+            getProfileByIdUseCase,
+            fixtureRepository,
+            randomProvider,
+            SavedStateHandle(mapOf("profileId" to 1L))
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val item1 = viewModel.uiState.value.remainingPlayers[0]
+        val item2 = viewModel.uiState.value.remainingPlayers[1]
+        viewModel.excludeItem(DrawCategory.PLAYERS, item1)
+        viewModel.excludeItem(DrawCategory.PLAYERS, item2)
+
+        assertEquals(2, viewModel.uiState.value.remainingPlayers.size)
+        assertEquals(2, viewModel.uiState.value.excludedPlayers.size)
+
+        viewModel.resetDraw()
+
+        assertEquals(4, viewModel.uiState.value.remainingPlayers.size)
+        assertEquals(0, viewModel.uiState.value.excludedPlayers.size)
+        assertEquals(0, viewModel.uiState.value.fixtures.size)
+    }
+
+    @Test
+    fun `onOpenExcludeDialog and onDismissExcludeDialog manage dialog state`() = runTest {
+        val viewModel = WheelDrawViewModel(
+            getAllProfilesUseCase,
+            getProfileByIdUseCase,
+            fixtureRepository,
+            randomProvider,
+            SavedStateHandle(mapOf("profileId" to 1L))
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(false, viewModel.uiState.value.isExcludeDialogOpen)
+
+        viewModel.onOpenExcludeDialog()
+        assertEquals(true, viewModel.uiState.value.isExcludeDialogOpen)
+
+        viewModel.onDismissExcludeDialog()
+        assertEquals(false, viewModel.uiState.value.isExcludeDialogOpen)
+    }
 }

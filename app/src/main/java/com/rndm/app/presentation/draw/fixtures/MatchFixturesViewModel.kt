@@ -95,33 +95,62 @@ class MatchFixturesViewModel @Inject constructor(
         _uiState.update { it.copy(editingFixture = null) }
     }
 
-    fun onRequestReplacePlayer(playerName: String, clubName: String? = null) {
-        _uiState.update {
-            it.copy(
-                playerToReplace = playerName,
-                playerToReplaceClub = clubName
-            )
+
+
+    fun onOpenReorderFixtureDialog(fixture: DrawFixture) {
+        _uiState.update { it.copy(reorderingFixture = fixture) }
+    }
+
+    fun onDismissReorderDialog() {
+        _uiState.update { it.copy(reorderingFixture = null) }
+    }
+
+    fun onSwapFixtures(fromFixtureId: String, toFixtureId: String) {
+        val list = _uiState.value.fixtures
+        val idx1 = list.indexOfFirst { it.id == fromFixtureId }
+        val idx2 = list.indexOfFirst { it.id == toFixtureId }
+        if (idx1 >= 0 && idx2 >= 0 && idx1 != idx2) {
+            drawFixtureRepository.swapFixtures(idx1, idx2)
+        }
+        _uiState.update { it.copy(reorderingFixture = null) }
+    }
+
+    fun onMoveFixtureUp(fixture: DrawFixture) {
+        val list = _uiState.value.fixtures
+        val idx = list.indexOfFirst { it.id == fixture.id }
+        if (idx > 0) {
+            drawFixtureRepository.moveFixture(idx, idx - 1)
         }
     }
 
-    fun onDismissReplacePlayerDialog() {
-        _uiState.update {
-            it.copy(
-                playerToReplace = null,
-                playerToReplaceClub = null
-            )
+    fun onMoveFixtureDown(fixture: DrawFixture) {
+        val list = _uiState.value.fixtures
+        val idx = list.indexOfFirst { it.id == fixture.id }
+        if (idx >= 0 && idx < list.size - 1) {
+            drawFixtureRepository.moveFixture(idx, idx + 1)
         }
     }
 
-    fun onConfirmReplacePlayer(newPlayerName: String, newClubName: String?) {
-        val oldPlayerName = _uiState.value.playerToReplace ?: return
-        drawFixtureRepository.replacePlayer(oldPlayerName, newPlayerName, newClubName)
-        _uiState.update {
-            it.copy(
-                playerToReplace = null,
-                playerToReplaceClub = null
-            )
-        }
+    fun onOpenSwapPlayerDialog(fixture: DrawFixture, isSlotOne: Boolean) {
+        _uiState.update { it.copy(swappingPlayerSlot = Pair(fixture, isSlotOne)) }
+    }
+
+    fun onDismissSwapPlayerDialog() {
+        _uiState.update { it.copy(swappingPlayerSlot = null) }
+    }
+
+    fun onConfirmSwapPlayers(targetFixtureId: String, isTargetSlotOne: Boolean) {
+        val currentSlot = _uiState.value.swappingPlayerSlot ?: return
+        val currentFixture = currentSlot.first
+        val isCurrentSlotOne = currentSlot.second
+
+        drawFixtureRepository.swapPlayers(
+            fixtureId1 = currentFixture.id,
+            isSlot1A = isCurrentSlotOne,
+            fixtureId2 = targetFixtureId,
+            isSlot1B = isTargetSlotOne
+        )
+        _uiState.update { it.copy(swappingPlayerSlot = null) }
     }
 
     fun formatFixturesSummary(): String {

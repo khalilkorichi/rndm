@@ -32,4 +32,12 @@ interface TournamentRepository {
         newPlayerName: String,
         newClubName: String? = null
     )
+    suspend fun swapMatchOrder(tournamentId: Long, matchId1: Long, matchId2: Long)
+    suspend fun swapPlayersInMatches(
+        tournamentId: Long,
+        matchId1: Long,
+        isSlot1A: Boolean,
+        matchId2: Long,
+        isSlot1B: Boolean
+    )
 }

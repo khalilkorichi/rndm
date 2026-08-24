@@ -128,5 +128,30 @@ class TournamentRepositoryImpl @Inject constructor(
         tournamentDao.replaceParticipant(tournamentId, oldPlayerName, newPlayerName, newClubName)
         matchDao.replacePlayerInMatches(tournamentId, oldPlayerName, newPlayerName, newClubName)
     }
+
+    override suspend fun swapMatchOrder(tournamentId: Long, matchId1: Long, matchId2: Long) = withContext(ioDispatcher) {
+        matchDao.swapMatchOrder(matchId1, matchId2)
+    }
+
+    override suspend fun swapPlayersInMatches(
+        tournamentId: Long,
+        matchId1: Long,
+        isSlot1A: Boolean,
+        matchId2: Long,
+        isSlot1B: Boolean
+    ) = withContext(ioDispatcher) {
+        val m1 = matchDao.getMatchById(matchId1)
+        val m2 = matchDao.getMatchById(matchId2)
+        matchDao.swapPlayersInMatches(matchId1, isSlot1A, matchId2, isSlot1B)
+
+        if (m1 != null && m2 != null && m1.groupIndex != null && m2.groupIndex != null && m1.groupIndex != m2.groupIndex) {
+            val nameA = if (isSlot1A) m1.playerOneName else (m1.playerTwoName ?: "")
+            val nameB = if (isSlot1B) m2.playerOneName else (m2.playerTwoName ?: "")
+            if (nameA.isNotBlank() && nameB.isNotBlank()) {
+                tournamentDao.updateParticipantGroup(tournamentId, nameA, m2.groupIndex)
+                tournamentDao.updateParticipantGroup(tournamentId, nameB, m1.groupIndex)
+            }
+        }
+    }
 }
 

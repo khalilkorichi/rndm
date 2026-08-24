@@ -39,7 +39,8 @@ import com.rndm.app.domain.model.DrawFixture
 fun DrawnMatchesFeed(
     fixtures: List<DrawFixture>,
     onViewFixturesClick: () -> Unit,
-    onReplacePlayerClick: ((playerName: String, clubName: String?) -> Unit)? = null,
+    onReorderClick: ((DrawFixture) -> Unit)? = null,
+    onSwapPlayerClick: ((fixture: DrawFixture, isSlotOne: Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val completedFixtures = remember(fixtures) {
@@ -80,7 +81,8 @@ fun DrawnMatchesFeed(
             completedFixtures.forEach { fixture ->
                 DrawnMatchCard(
                     fixture = fixture,
-                    onReplacePlayerClick = onReplacePlayerClick
+                    onReorderClick = onReorderClick,
+                    onSwapPlayerClick = onSwapPlayerClick
                 )
             }
         }
@@ -90,7 +92,8 @@ fun DrawnMatchesFeed(
 @Composable
 private fun DrawnMatchCard(
     fixture: DrawFixture,
-    onReplacePlayerClick: ((playerName: String, clubName: String?) -> Unit)? = null,
+    onReorderClick: ((DrawFixture) -> Unit)? = null,
+    onSwapPlayerClick: ((fixture: DrawFixture, isSlotOne: Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -107,18 +110,50 @@ private fun DrawnMatchCard(
                 .fillMaxWidth()
                 .padding(12.dp)
         ) {
-            // Card Header: Match Number & Status
+            // Card Header: Match Number, Status & Reorder Action
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "المباراة #${fixture.matchNumber}",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "المباراة #${fixture.matchNumber}",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    if (onReorderClick != null && !fixture.isFinished) {
+                        Surface(
+                            onClick = { onReorderClick(fixture) },
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_swap),
+                                    contentDescription = "ترتيب المباراة",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(11.dp)
+                                )
+                                Text(
+                                    text = "ترتيب",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
 
                 val teamsAssigned = fixture.playerOneTeam != null && fixture.playerTwoTeam != null
                 if (teamsAssigned) {
@@ -147,15 +182,7 @@ private fun DrawnMatchCard(
             ) {
                 // Competitor 1
                 Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .then(
-                            if (onReplacePlayerClick != null && !fixture.isFinished) {
-                                Modifier.clickable {
-                                    onReplacePlayerClick(fixture.playerOneName, fixture.playerOneTeam)
-                                }
-                            } else Modifier
-                        ),
+                    modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -167,7 +194,7 @@ private fun DrawnMatchCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            painter = painterResource(id = if (onReplacePlayerClick != null && !fixture.isFinished) R.drawable.ic_redo else R.drawable.ic_profile_filled),
+                            painter = painterResource(id = R.drawable.ic_profile_filled),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
@@ -175,14 +202,35 @@ private fun DrawnMatchCard(
                     }
 
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = fixture.playerOneName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = fixture.playerOneName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (onSwapPlayerClick != null && !fixture.isFinished) {
+                                Surface(
+                                    onClick = { onSwapPlayerClick(fixture, true) },
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_swap),
+                                        contentDescription = "تبديل مكان اللاعب",
+                                        tint = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier
+                                            .size(16.dp)
+                                            .padding(2.dp)
+                                    )
+                                }
+                            }
+                        }
 
                         if (fixture.playerOneTeam != null) {
                             Row(
@@ -228,15 +276,7 @@ private fun DrawnMatchCard(
 
                 // Competitor 2
                 Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .then(
-                            if (onReplacePlayerClick != null && fixture.playerTwoName != null && !fixture.isFinished) {
-                                Modifier.clickable {
-                                    onReplacePlayerClick(fixture.playerTwoName, fixture.playerTwoTeam)
-                                }
-                            } else Modifier
-                        ),
+                    modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End
                 ) {
@@ -244,15 +284,36 @@ private fun DrawnMatchCard(
                         modifier = Modifier.weight(1f),
                         horizontalAlignment = Alignment.End
                     ) {
-                        Text(
-                            text = fixture.playerTwoName ?: "BYE",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.End
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            if (onSwapPlayerClick != null && fixture.playerTwoName != null && !fixture.isFinished) {
+                                Surface(
+                                    onClick = { onSwapPlayerClick(fixture, false) },
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_swap),
+                                        contentDescription = "تبديل مكان اللاعب",
+                                        tint = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier
+                                            .size(16.dp)
+                                            .padding(2.dp)
+                                    )
+                                }
+                            }
+                            Text(
+                                text = fixture.playerTwoName ?: "BYE",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.End
+                            )
+                        }
 
                         if (fixture.playerTwoTeam != null) {
                             Row(
@@ -288,7 +349,7 @@ private fun DrawnMatchCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            painter = painterResource(id = if (onReplacePlayerClick != null && fixture.playerTwoName != null && !fixture.isFinished) R.drawable.ic_redo else R.drawable.ic_profile_filled),
+                            painter = painterResource(id = R.drawable.ic_profile_filled),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)

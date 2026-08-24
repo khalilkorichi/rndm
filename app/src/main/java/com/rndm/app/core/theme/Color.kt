@@ -95,6 +95,29 @@ val ProfileClubsColorDark = Color(0xFF059669)
 val ProfileNationalTeamsColor = Color(0xFFF59E0B)
 val ProfileNationalTeamsColorDark = Color(0xFFD97706)
 
+// Achievement & Medal Tokens
+val GoldMedalColor = Color(0xFFFFD700)
+val SilverMedalColor = Color(0xFFC0C0C0)
+val BronzeMedalColor = Color(0xFFCD7F32)
+val OrangeGoldColor = Color(0xFFFF8C00)
+
+// Status & Career Stats Tokens
+val StatsSuccessGreen = Color(0xFF4CAF50)
+val StatsWarningAmber = Color(0xFFFFB300)
+val StatsErrorRed = Color(0xFFF44336)
+val StatsOrangeFlame = Color(0xFFFF5722)
+
+// In-App Update & Download Tokens
+val UpdateSuccessGreen = Color(0xFF10B981)
+val UpdateSuccessGreenDark = Color(0xFF047857)
+val UpdateSuccessGreenLight = Color(0xFF34D399)
+val UpdateBluePrimary = Color(0xFF3B82F6)
+val UpdateBlueDark = Color(0xFF1D4ED8)
+val UpdateBlueNavy = Color(0xFF1E3A8A)
+val UpdateWarningAmber = Color(0xFFF59E0B)
+val UpdateErrorRed = Color(0xFFEF4444)
+val UpdateErrorRedDark = Color(0xFFDC2626)
+
 // Extended Colors for Wheel & Draw segments
 @Immutable
 data class ExtendedColors(

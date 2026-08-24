@@ -8,8 +8,10 @@ import com.rndm.app.domain.model.MatchStage
 @Composable
 fun ScoreInputDialog(
     match: Match,
+    isRequestMode: Boolean = false,
     onDismiss: () -> Unit,
-    onConfirm: (scoreOne: Int, scoreTwo: Int, penaltyOne: Int?, penaltyTwo: Int?) -> Unit
+    onConfirm: (scoreOne: Int, scoreTwo: Int, penaltyOne: Int?, penaltyTwo: Int?) -> Unit,
+    onConfirmRequest: ((scoreOne: Int, scoreTwo: Int, penaltyOne: Int?, penaltyTwo: Int?, note: String) -> Unit)? = null
 ) {
     val subtitleText = when {
         match.groupIndex != null -> "المجموعة ${('أ'.code + match.groupIndex).toChar()}"
@@ -26,9 +28,10 @@ fun ScoreInputDialog(
         initialPenaltyScoreOne = match.penaltyScoreOne,
         initialPenaltyScoreTwo = match.penaltyScoreTwo,
         isKnockout = match.stage != MatchStage.GROUP_STAGE,
-        title = "تسجيل النتيجة",
+        isRequestMode = isRequestMode,
         subtitle = subtitleText,
         onDismiss = onDismiss,
-        onConfirmWithPenalties = onConfirm
+        onConfirmWithPenalties = onConfirm,
+        onConfirmRequest = onConfirmRequest
     )
 }

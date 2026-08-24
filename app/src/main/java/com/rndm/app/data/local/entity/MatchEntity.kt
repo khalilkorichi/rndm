@@ -6,6 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.rndm.app.domain.model.MatchStage
 import com.rndm.app.domain.model.MatchStatus
+import com.rndm.app.domain.model.SyncStatus
 
 @Entity(
     tableName = "matches",
@@ -19,7 +20,9 @@ import com.rndm.app.domain.model.MatchStatus
     ],
     indices = [
         Index(value = ["tournamentId"]),
-        Index(value = ["tournamentId", "stage", "roundIndex"])
+        Index(value = ["tournamentId", "stage", "roundIndex"]),
+        Index(value = ["playerOneName", "playerTwoName", "id"]),
+        Index(value = ["remoteId"])
     ]
 )
 data class MatchEntity(
@@ -42,5 +45,8 @@ data class MatchEntity(
     val status: MatchStatus = MatchStatus.PENDING,
     val scheduledTimestamp: Long? = null,
     val isPlayerOneLuckyLoser: Boolean = false,
-    val isPlayerTwoLuckyLoser: Boolean = false
+    val isPlayerTwoLuckyLoser: Boolean = false,
+    val remoteId: String? = null,
+    val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    val updatedAt: Long = System.currentTimeMillis()
 )

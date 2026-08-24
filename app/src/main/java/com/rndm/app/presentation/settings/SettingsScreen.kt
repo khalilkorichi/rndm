@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
@@ -21,14 +22,18 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rndm.app.BuildConfig
 import com.rndm.app.R
 import com.rndm.app.core.ui.components.BentoCard
 import com.rndm.app.core.ui.components.RndmTopAppBar
+import com.rndm.app.domain.model.UserRole
+import com.rndm.app.presentation.admin.AdminLoginDialog
+import com.rndm.app.presentation.admin.AdminRequestsTabContent
+import com.rndm.app.presentation.admin.AdminRequestsViewModel
 import com.rndm.app.presentation.settings.components.NotificationSettingCard
+import com.rndm.app.presentation.settings.components.RoleManagementCard
 import com.rndm.app.presentation.settings.components.SoundSettingCard
 import com.rndm.app.presentation.settings.components.ThemeSettingCard
 import com.rndm.app.presentation.update.UpdateUiState
@@ -37,6 +42,7 @@ import com.rndm.app.presentation.update.components.UpdatesTabContent
 
 enum class SettingsTab(val title: String, val icon: ImageVector) {
     GENERAL("عام", Icons.Outlined.Settings),
+    ADMIN_REQUESTS("الطلبات", Icons.Default.AdminPanelSettings),
     UPDATES("التحديثات", Icons.Default.SystemUpdate)
 }
 
@@ -44,18 +50,36 @@ enum class SettingsTab(val title: String, val icon: ImageVector) {
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
-    updatesViewModel: UpdatesViewModel = hiltViewModel()
+    updatesViewModel: UpdatesViewModel = hiltViewModel(),
+    adminRequestsViewModel: AdminRequestsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val updateUiState by updatesViewModel.uiState.collectAsStateWithLifecycle()
+    val adminUiState by adminRequestsViewModel.uiState.collectAsStateWithLifecycle()
 
     var selectedTab by remember { mutableStateOf(SettingsTab.GENERAL) }
+
+    val availableTabs = remember(uiState.userRole) {
+        if (uiState.userRole == UserRole.ADMIN) {
+            listOf(SettingsTab.GENERAL, SettingsTab.ADMIN_REQUESTS, SettingsTab.UPDATES)
+        } else {
+            listOf(SettingsTab.GENERAL, SettingsTab.UPDATES)
+        }
+    }
+
+    LaunchedEffect(uiState.userRole) {
+        if (uiState.userRole != UserRole.ADMIN && selectedTab == SettingsTab.ADMIN_REQUESTS) {
+            selectedTab = SettingsTab.GENERAL
+        }
+    }
 
     val hasUpdateNotification = remember(updateUiState) {
         updateUiState is UpdateUiState.UpdateAvailable ||
         updateUiState is UpdateUiState.Downloading ||
         updateUiState is UpdateUiState.ReadyToInstall
     }
+
+    val pendingRequestsCount = adminUiState.pendingCount
 
     Scaffold(
         topBar = {
@@ -73,9 +97,11 @@ fun SettingsScreen(
         ) {
             // Segmented Tab Selector
             SettingsTabSelector(
+                tabs = availableTabs,
                 selectedTab = selectedTab,
                 onTabSelected = { selectedTab = it },
                 hasUpdateBadge = hasUpdateNotification,
+                pendingRequestsCount = pendingRequestsCount,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -85,13 +111,7 @@ fun SettingsScreen(
             AnimatedContent(
                 targetState = selectedTab,
                 transitionSpec = {
-                    if (targetState == SettingsTab.UPDATES) {
-                        (slideInHorizontally { width -> -width / 3 } + fadeIn())
-                            .togetherWith(slideOutHorizontally { width -> width / 3 } + fadeOut())
-                    } else {
-                        (slideInHorizontally { width -> width / 3 } + fadeIn())
-                            .togetherWith(slideOutHorizontally { width -> -width / 3 } + fadeOut())
-                    }
+                    fadeIn() togetherWith fadeOut()
                 },
                 label = "settings_tab_animation",
                 modifier = Modifier.fillMaxSize()
@@ -104,6 +124,11 @@ fun SettingsScreen(
                             onNavigateToUpdatesTab = { selectedTab = SettingsTab.UPDATES }
                         )
                     }
+                    SettingsTab.ADMIN_REQUESTS -> {
+                        AdminRequestsTabContent(
+                            viewModel = adminRequestsViewModel
+                        )
+                    }
                     SettingsTab.UPDATES -> {
                         UpdatesTabContent(
                             viewModel = updatesViewModel
@@ -113,13 +138,35 @@ fun SettingsScreen(
             }
         }
     }
+
+    if (uiState.isAdminLoginDialogOpen) {
+        AdminLoginDialog(
+            onDismissRequest = viewModel::onDismissAdminLoginDialog,
+            onLoginSuccess = viewModel::onDismissAdminLoginDialog
+        )
+    }
+
+    if (uiState.isUserManagementDialogOpen) {
+        com.rndm.app.presentation.settings.components.UserManagementDialog(
+            users = uiState.usersList,
+            currentUserUid = uiState.currentUserProfile?.uid,
+            isLoading = uiState.isUserActionLoading,
+            actionMessage = uiState.userActionMessage,
+            onPromoteUser = viewModel::onPromoteUser,
+            onDemoteUser = viewModel::onDemoteUser,
+            onPromoteByEmail = viewModel::onPromoteByEmail,
+            onDismissRequest = viewModel::onDismissUserManagementDialog
+        )
+    }
 }
 
 @Composable
 private fun SettingsTabSelector(
+    tabs: List<SettingsTab>,
     selectedTab: SettingsTab,
     onTabSelected: (SettingsTab) -> Unit,
     hasUpdateBadge: Boolean,
+    pendingRequestsCount: Int,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -133,7 +180,7 @@ private fun SettingsTabSelector(
                 .padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            SettingsTab.values().forEach { tab ->
+            tabs.forEach { tab ->
                 val isSelected = selectedTab == tab
                 val interactionSource = remember { MutableInteractionSource() }
 
@@ -171,13 +218,30 @@ private fun SettingsTabSelector(
                             color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
+                        if (tab == SettingsTab.ADMIN_REQUESTS && pendingRequestsCount > 0) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                color = if (isSelected) Color.White else Color(0xFFF59E0B),
+                                shape = CircleShape
+                            ) {
+                                Text(
+                                    text = "$pendingRequestsCount",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
+
                         if (tab == SettingsTab.UPDATES && hasUpdateBadge) {
                             Spacer(modifier = Modifier.width(6.dp))
                             Box(
                                 modifier = Modifier
                                     .size(8.dp)
                                     .clip(CircleShape)
-                                    .background(if (isSelected) Color.White else Color(0xFF10B981))
+                                    .background(if (isSelected) Color.White else com.rndm.app.core.theme.UpdateSuccessGreen)
                             )
                         }
                     }
@@ -198,6 +262,16 @@ private fun GeneralSettingsContent(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        item {
+            RoleManagementCard(
+                userRole = uiState.userRole,
+                currentUserProfile = uiState.currentUserProfile,
+                onOpenAdminLogin = viewModel::onOpenAdminLoginDialog,
+                onOpenUserManagement = viewModel::onOpenUserManagementDialog,
+                onLogoutAdmin = viewModel::onLogoutAdmin
+            )
+        }
+
         item {
             ThemeSettingCard(
                 themeMode = uiState.themeMode,

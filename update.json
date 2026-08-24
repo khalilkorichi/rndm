@@ -1,12 +1,12 @@
 {
-  "versionCode": 2,
-  "versionName": "1.0.1",
-  "updateIdentity": 101,
-  "publishedAt": "2026-08-23T20:27:00Z",
-  "apkUrl": "https://raw.githubusercontent.com/khalilkorichi/rndm/main/.build-outputs/app-debug.apk?v=5",
-  "apkSize": 22394548,
-  "apkSha256": "718ebd1b5335e6938f119f8b3b725ff1e12a90b3a67a7573bcfbc6d01d5ba1ce",
-  "releaseNotes": "تحديث جديد لتطبيق rndm v1.0.1:\n\n• إضافة نظام التحديثات الذاتي المباشر.\n• تقسيم صفحة الإعدادات إلى تبويبتين (عام والتحديثات).\n• تحسينات في سرعة وأداء الرسوم المتحركة.",
+  "versionCode": 3,
+  "versionName": "1.0.2",
+  "updateIdentity": 102,
+  "publishedAt": "2026-08-24T21:40:00Z",
+  "apkUrl": "https://raw.githubusercontent.com/khalilkorichi/rndm/main/.build-outputs/app-debug.apk",
+  "apkSize": 28012531,
+  "apkSha256": "0c80ed1ed8f5a1f9af75b1188861fe954c7ce8ad8e8afe3b8905c3bd19f07124",
+  "releaseNotes": "تحديث جديد لتطبيق RNDM v1.0.2:\n\n• نظام سحابي متكامل لإرسال واعتماد طلبات تعديل نتائج المباريات واستبدال اللاعبين وترتيب المباريات.\n• لوحة تحكم وإدارة للمدراء (Admins) لمراجعة واعتماد وتطبيق الطلبات السحابية فوراً.\n• حل مشكلة مشاركة أكواد البطولات السحابية والانضمام السريع بدون مهلة زمنية.\n• اعتماد تلقائي ودائم للمدراء الرسميين وترقية الحسابات بضغطة زر واحدة.\n• تحسينات شاملة في الأداء والسرعة والمزامنة اللحظية.",
   "minSdkVersion": 26,
   "mandatory": false
 }

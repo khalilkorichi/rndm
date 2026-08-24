@@ -1,6 +1,7 @@
 package com.rndm.app.presentation.tournament.detail.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,6 +25,7 @@ import com.rndm.app.domain.model.GroupStanding
 @Composable
 fun GroupStandingsTable(
     standings: List<GroupStanding>,
+    onPlayerClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val spacing = RndmThemeTokens.spacing
@@ -62,6 +64,11 @@ fun GroupStandingsTable(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(rowBackground, shape = MaterialTheme.shapes.small)
+                        .then(
+                            if (onPlayerClick != null) {
+                                Modifier.clickable { onPlayerClick(standing.participant.playerName) }
+                            } else Modifier
+                        )
                         .padding(vertical = spacing.xs, horizontal = spacing.xs),
                     verticalAlignment = Alignment.CenterVertically
                 ) {

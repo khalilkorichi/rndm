@@ -25,6 +25,9 @@ data class WheelDrawUiState(
     val remainingPlayers: List<ProfileItem> = emptyList(),
     val remainingClubs: List<ProfileItem> = emptyList(),
     val remainingNationalTeams: List<ProfileItem> = emptyList(),
+    val excludedPlayers: List<ProfileItem> = emptyList(),
+    val excludedClubs: List<ProfileItem> = emptyList(),
+    val excludedNationalTeams: List<ProfileItem> = emptyList(),
     val fixtures: List<DrawFixture> = emptyList(),
     val isSpinning: Boolean = false,
     val selectedIndex: Int = -1,
@@ -32,18 +35,26 @@ data class WheelDrawUiState(
     val targetRotation: Float = 0f,
     val spinTrigger: Long = 0L,
     val currentDrawingPrompt: String = "",
-    val playerToReplace: String? = null,
-    val playerToReplaceClub: String? = null,
     val isAddPlayersDialogOpen: Boolean = false,
+    val isExcludeDialogOpen: Boolean = false,
+    val reorderingFixture: DrawFixture? = null,
+    val swappingPlayerSlot: Pair<DrawFixture, Boolean>? = null,
     val error: String? = null
 ) {
     val existingPlayerNames: List<String>
-        get() = (fixtures.flatMap { listOfNotNull(it.playerOneName, it.playerTwoName) } + remainingPlayers.map { it.label }).distinct()
+        get() = (fixtures.flatMap { listOfNotNull(it.playerOneName, it.playerTwoName) } + remainingPlayers.map { it.label } + excludedPlayers.map { it.label }).distinct()
     val currentWheelItems: List<ProfileItem>
         get() = when (selectedCategory) {
             DrawCategory.PLAYERS -> remainingPlayers
             DrawCategory.CLUBS -> remainingClubs
             DrawCategory.NATIONAL_TEAMS -> remainingNationalTeams
+        }
+
+    val currentExcludedItems: List<ProfileItem>
+        get() = when (selectedCategory) {
+            DrawCategory.PLAYERS -> excludedPlayers
+            DrawCategory.CLUBS -> excludedClubs
+            DrawCategory.NATIONAL_TEAMS -> excludedNationalTeams
         }
 
     val currentProfileName: String

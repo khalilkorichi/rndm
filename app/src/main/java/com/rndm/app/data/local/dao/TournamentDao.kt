@@ -46,6 +46,12 @@ interface TournamentDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertParticipants(participants: List<TournamentParticipantEntity>)
 
+    @Query("SELECT * FROM tournament_participants")
+    fun getAllParticipants(): Flow<List<TournamentParticipantEntity>>
+
+    @Query("SELECT * FROM tournament_participants WHERE playerName = :playerName")
+    fun getParticipantsByPlayerName(playerName: String): Flow<List<TournamentParticipantEntity>>
+
     @Query("SELECT * FROM tournament_participants WHERE tournamentId = :tournamentId ORDER BY groupIndex ASC, id ASC")
     fun getParticipantsByTournamentId(tournamentId: Long): Flow<List<TournamentParticipantEntity>>
 
@@ -55,6 +61,9 @@ interface TournamentDao {
     @Query("DELETE FROM tournament_participants WHERE tournamentId = :tournamentId")
     suspend fun deleteParticipantsByTournamentId(tournamentId: Long)
 
-    @Query("UPDATE tournament_participants SET playerName = :newPlayerName, clubName = COALESCE(:newClubName, clubName) WHERE tournamentId = :tournamentId AND playerName = :oldPlayerName")
+    @Query("UPDATE tournament_participants SET playerName = :newPlayerName, clubName = CASE WHEN :newClubName IS NOT NULL THEN :newClubName ELSE clubName END WHERE tournamentId = :tournamentId AND playerName = :oldPlayerName")
     suspend fun replaceParticipant(tournamentId: Long, oldPlayerName: String, newPlayerName: String, newClubName: String?)
+
+    @Query("UPDATE tournament_participants SET groupIndex = :newGroupIndex WHERE tournamentId = :tournamentId AND playerName = :playerName")
+    suspend fun updateParticipantGroup(tournamentId: Long, playerName: String, newGroupIndex: Int)
 }

@@ -77,6 +77,8 @@ class DrawSetupViewModel @Inject constructor(
     }
 
     fun onDrawTypeSelected(drawType: DrawType) {
-        _uiState.update { it.copy(selectedDrawType = drawType) }
+        if (drawType == DrawType.WHEEL) {
+            _uiState.update { it.copy(selectedDrawType = drawType) }
+        }
     }
 }

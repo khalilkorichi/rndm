@@ -11,6 +11,9 @@ interface DrawFixtureRepository {
     fun addOrUpdateFixture(fixture: DrawFixture)
     fun updateFixtureScore(fixtureId: String, scoreOne: Int?, scoreTwo: Int?)
     fun replacePlayer(oldPlayerName: String, newPlayerName: String, newClubName: String? = null)
+    fun swapFixtures(index1: Int, index2: Int)
+    fun moveFixture(fromIndex: Int, toIndex: Int)
+    fun swapPlayers(fixtureId1: String, isSlot1A: Boolean, fixtureId2: String, isSlot1B: Boolean)
     fun loadTournamentFixtures(tournamentId: Long)
     fun queueNewPlayersForDraw(names: List<String>)
     fun consumePendingNewPlayers(): List<String>

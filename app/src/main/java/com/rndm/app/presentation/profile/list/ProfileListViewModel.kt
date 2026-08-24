@@ -91,9 +91,12 @@ class ProfileListViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true) }
-                val defaultProfiles = ProfilePresets.createDefaultInitialProfiles()
-                defaultProfiles.forEach { profile ->
-                    createProfileUseCase(profile)
+                val currentProfiles = _uiState.value.profiles
+                val missingProfiles = ProfilePresets.getMissingDefaultProfiles(currentProfiles)
+                if (missingProfiles.isNotEmpty()) {
+                    missingProfiles.forEach { profile ->
+                        createProfileUseCase(profile)
+                    }
                 }
                 _uiState.update { it.copy(isLoading = false) }
             } catch (e: Exception) {

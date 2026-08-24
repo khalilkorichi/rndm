@@ -4,7 +4,10 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rndm.app.domain.model.PlayerQuickStats
 import com.rndm.app.domain.model.Profile
+import com.rndm.app.domain.model.ProfileType
+import com.rndm.app.domain.usecase.player.GetPlayersQuickStatsUseCase
 import com.rndm.app.domain.usecase.profile.GetProfileByIdUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,12 +21,14 @@ import javax.inject.Inject
 data class ProfileDetailUiState(
     val isLoading: Boolean = true,
     val profile: Profile? = null,
+    val playerStatsMap: Map<String, PlayerQuickStats> = emptyMap(),
     val error: String? = null
 )
 
 @HiltViewModel
 class ProfileDetailViewModel @Inject constructor(
     private val getProfileByIdUseCase: GetProfileByIdUseCase,
+    private val getPlayersQuickStatsUseCase: GetPlayersQuickStatsUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -49,6 +54,12 @@ class ProfileDetailViewModel @Inject constructor(
             val profile = getProfileByIdUseCase(profileId)
             if (profile != null) {
                 _uiState.update { it.copy(isLoading = false, profile = profile, error = null) }
+                if (profile.type == ProfileType.PLAYERS) {
+                    val playerNames = profile.items.map { it.label }
+                    getPlayersQuickStatsUseCase(playerNames).collect { statsMap ->
+                        _uiState.update { it.copy(playerStatsMap = statsMap) }
+                    }
+                }
             } else {
                 _uiState.update { it.copy(isLoading = false, error = "البروفايل غير موجود") }
             }

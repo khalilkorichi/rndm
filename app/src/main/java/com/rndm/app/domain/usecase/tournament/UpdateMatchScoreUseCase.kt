@@ -4,13 +4,15 @@ import com.rndm.app.domain.model.Match
 import com.rndm.app.domain.model.MatchStage
 import com.rndm.app.domain.model.MatchStatus
 import com.rndm.app.domain.model.TournamentStage
+import com.rndm.app.domain.repository.SyncRepository
 import com.rndm.app.domain.repository.TournamentRepository
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 class UpdateMatchScoreUseCase @Inject constructor(
     private val tournamentRepository: TournamentRepository,
-    private val evaluateBestLosersUseCase: EvaluateBestLosersUseCase
+    private val evaluateBestLosersUseCase: EvaluateBestLosersUseCase,
+    private val syncRepository: SyncRepository
 ) {
 
     suspend operator fun invoke(
@@ -21,6 +23,9 @@ class UpdateMatchScoreUseCase @Inject constructor(
         penaltyScoreOne: Int? = null,
         penaltyScoreTwo: Int? = null
     ) {
+        val oldScoreOne = match.scoreOne
+        val oldScoreTwo = match.scoreTwo
+
         val winnerName = when {
             scoreOne > scoreTwo -> match.playerOneName
             scoreTwo > scoreOne -> match.playerTwoName ?: "TBD"
@@ -37,7 +42,8 @@ class UpdateMatchScoreUseCase @Inject constructor(
             penaltyScoreOne = penaltyScoreOne,
             penaltyScoreTwo = penaltyScoreTwo,
             winnerName = winnerName,
-            status = MatchStatus.FINISHED
+            status = MatchStatus.FINISHED,
+            updatedAt = System.currentTimeMillis()
         )
         tournamentRepository.updateMatch(updatedMatch)
 
@@ -47,6 +53,14 @@ class UpdateMatchScoreUseCase @Inject constructor(
             val allMatches = allMatchesFromRepo.map { if (it.id == updatedMatch.id) updatedMatch else it }
             advanceKnockoutWinners(tournamentId, updatedMatch, winnerName, loserName, allMatches)
         }
+
+        // Sync to remote Firestore and log audit trail if remote tournament
+        syncRepository.syncMatchScore(
+            tournamentId = tournamentId,
+            match = updatedMatch,
+            oldScoreOne = oldScoreOne,
+            oldScoreTwo = oldScoreTwo
+        )
     }
 
     private suspend fun advanceKnockoutWinners(

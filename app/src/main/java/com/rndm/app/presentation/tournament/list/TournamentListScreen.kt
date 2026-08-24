@@ -58,6 +58,7 @@ fun TournamentListScreen(
     onNavigateToDrawSetup: (Long) -> Unit,
     onNavigateToEditTournament: (Long) -> Unit,
     onNavigateToArchive: () -> Unit,
+    onNavigateToJoinTournament: () -> Unit = {},
     viewModel: TournamentListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -75,6 +76,10 @@ fun TournamentListScreen(
             onSelectGroupsTournament = {
                 showCreateOptionsSheet = false
                 onNavigateToCreateTournament()
+            },
+            onSelectJoinTournament = {
+                showCreateOptionsSheet = false
+                onNavigateToJoinTournament()
             }
         )
     }

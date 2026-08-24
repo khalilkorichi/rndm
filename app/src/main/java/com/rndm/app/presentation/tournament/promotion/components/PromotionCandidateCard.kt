@@ -1,6 +1,7 @@
 package com.rndm.app.presentation.tournament.promotion.components
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,9 +26,18 @@ fun PromotionCandidateCard(
     participant: TournamentParticipant,
     badgeText: String,
     @DrawableRes iconRes: Int? = null,
+    onPlayerClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    BentoCard(modifier = modifier.fillMaxWidth()) {
+    BentoCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (onPlayerClick != null) {
+                    Modifier.clickable { onPlayerClick(participant.playerName) }
+                } else Modifier
+            )
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

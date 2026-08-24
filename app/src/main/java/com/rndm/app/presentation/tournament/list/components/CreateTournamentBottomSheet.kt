@@ -1,6 +1,7 @@
 package com.rndm.app.presentation.tournament.list.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +37,7 @@ fun CreateTournamentBottomSheet(
     onDismiss: () -> Unit,
     onSelectDrawTournament: () -> Unit,
     onSelectGroupsTournament: () -> Unit,
+    onSelectJoinTournament: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -54,7 +58,7 @@ fun CreateTournamentBottomSheet(
         ) {
             // Header
             Text(
-                text = "إنشاء بطولة جديدة",
+                text = "البطولات وإدارتها",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -63,14 +67,83 @@ fun CreateTournamentBottomSheet(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "اختر نظام البطولة",
+                text = "اختر إنشاء بطولة جديدة أو الانضمام لبطولة مشتركة",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(spacing.lg))
 
-            // Option 1: Draw Tournament (بطولة بالقرعة)
+            // Option 1: Join Tournament (الانضمام عبر كود)
+            BentoCard(
+                onClick = {
+                    onDismiss()
+                    onSelectJoinTournament()
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        modifier = Modifier.size(52.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.GroupAdd,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(spacing.md))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "الانضمام بكود",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                            ) {
+                                Text(
+                                    text = "متابعة مباشرة",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = "أدخل كود البطولة لمتابعة المباريات والنتائج فورياً",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(spacing.md))
+
+            // Option 2: Draw Tournament (بطولة بالقرعة)
             BentoCard(
                 onClick = {
                     onDismiss()
@@ -87,12 +160,14 @@ fun CreateTournamentBottomSheet(
                         color = MaterialTheme.colorScheme.tertiaryContainer,
                         modifier = Modifier.size(52.dp)
                     ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_target),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.padding(12.dp)
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_target),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(spacing.md))
@@ -127,7 +202,7 @@ fun CreateTournamentBottomSheet(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "سحب مواجهات مباشرة وحفظ النتائج",
+                            text = "سحب مواجهات مباشرة وتوليد أقواس المباريات",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -137,7 +212,7 @@ fun CreateTournamentBottomSheet(
 
             Spacer(modifier = Modifier.height(spacing.md))
 
-            // Option 2: Groups Tournament (بطولة مجموعات)
+            // Option 3: Groups Tournament (بطولة مجموعات)
             BentoCard(
                 onClick = {
                     onDismiss()
@@ -154,12 +229,14 @@ fun CreateTournamentBottomSheet(
                         color = MaterialTheme.colorScheme.primaryContainer,
                         modifier = Modifier.size(52.dp)
                     ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_tournament_filled),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(12.dp)
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_tournament_filled),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(spacing.md))

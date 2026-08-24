@@ -16,6 +16,7 @@ import com.rndm.app.presentation.tournament.bracket.components.GoogleKnockoutBra
 fun TournamentKnockoutTab(
     knockoutMatches: List<Match>,
     onMatchClick: (Match) -> Unit,
+    onPlayerClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -26,7 +27,8 @@ fun TournamentKnockoutTab(
     ) {
         GoogleKnockoutBracketView(
             matches = knockoutMatches,
-            onMatchClick = onMatchClick
+            onMatchClick = onMatchClick,
+            onPlayerClick = onPlayerClick
         )
 
         Spacer(modifier = Modifier.height(32.dp))

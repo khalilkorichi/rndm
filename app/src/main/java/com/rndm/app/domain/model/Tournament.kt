@@ -10,6 +10,7 @@ data class Tournament(
     val name: String,
     val type: TournamentType = TournamentType.GROUPS_KNOCKOUT,
     val stage: TournamentStage = TournamentStage.GROUPS,
+    val status: TournamentStatus = TournamentStatus.ACTIVE,
     val playersProfileId: Long,
     val clubsProfileId: Long? = null,
     val groupsCount: Int = 2,
@@ -19,5 +20,13 @@ data class Tournament(
     val knockoutMatches: List<Match> = emptyList(),
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
-    val isArchived: Boolean = false
+    val isArchived: Boolean = false,
+    val remoteId: String? = null,
+    val shareCode: String? = null,
+    val isRemote: Boolean = false,
+    val isHost: Boolean = true,
+    val hostUid: String? = null,
+    val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    val lastSyncedAt: Long? = null,
+    val remoteVersion: Long = 0L
 )

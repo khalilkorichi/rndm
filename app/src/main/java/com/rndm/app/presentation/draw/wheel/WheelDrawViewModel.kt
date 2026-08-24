@@ -158,9 +158,21 @@ class WheelDrawViewModel @Inject constructor(
     fun onSelectProfileForCategory(category: DrawCategory, profile: Profile) {
         _uiState.update { current ->
             when (category) {
-                DrawCategory.PLAYERS -> current.copy(selectedPlayersProfile = profile, remainingPlayers = profile.items)
-                DrawCategory.CLUBS -> current.copy(selectedClubsProfile = profile, remainingClubs = profile.items)
-                DrawCategory.NATIONAL_TEAMS -> current.copy(selectedNationalTeamsProfile = profile, remainingNationalTeams = profile.items)
+                DrawCategory.PLAYERS -> current.copy(
+                    selectedPlayersProfile = profile,
+                    remainingPlayers = profile.items,
+                    excludedPlayers = emptyList()
+                )
+                DrawCategory.CLUBS -> current.copy(
+                    selectedClubsProfile = profile,
+                    remainingClubs = profile.items,
+                    excludedClubs = emptyList()
+                )
+                DrawCategory.NATIONAL_TEAMS -> current.copy(
+                    selectedNationalTeamsProfile = profile,
+                    remainingNationalTeams = profile.items,
+                    excludedNationalTeams = emptyList()
+                )
             }
         }
         updatePrompt()
@@ -373,57 +385,67 @@ class WheelDrawViewModel @Inject constructor(
         updatePrompt()
     }
 
+    fun onOpenExcludeDialog() {
+        _uiState.update { it.copy(isExcludeDialogOpen = true) }
+    }
+
+    fun onDismissExcludeDialog() {
+        _uiState.update { it.copy(isExcludeDialogOpen = false) }
+    }
+
     fun excludeItem(category: DrawCategory, item: ProfileItem) {
         _uiState.update { current ->
             when (category) {
                 DrawCategory.PLAYERS -> current.copy(
-                    remainingPlayers = current.remainingPlayers.filter { it.id != item.id || it.label != item.label }
+                    remainingPlayers = current.remainingPlayers.filter { it.id != item.id || it.label != item.label },
+                    excludedPlayers = (current.excludedPlayers + item).distinctBy { it.label },
+                    selectedIndex = -1,
+                    targetRotation = 0f
                 )
                 DrawCategory.CLUBS -> current.copy(
-                    remainingClubs = current.remainingClubs.filter { it.id != item.id || it.label != item.label }
+                    remainingClubs = current.remainingClubs.filter { it.id != item.id || it.label != item.label },
+                    excludedClubs = (current.excludedClubs + item).distinctBy { it.label },
+                    selectedIndex = -1,
+                    targetRotation = 0f
                 )
                 DrawCategory.NATIONAL_TEAMS -> current.copy(
-                    remainingNationalTeams = current.remainingNationalTeams.filter { it.id != item.id || it.label != item.label }
+                    remainingNationalTeams = current.remainingNationalTeams.filter { it.id != item.id || it.label != item.label },
+                    excludedNationalTeams = (current.excludedNationalTeams + item).distinctBy { it.label },
+                    selectedIndex = -1,
+                    targetRotation = 0f
                 )
             }
         }
         updatePrompt()
     }
 
-    fun onRequestReplacePlayer(playerName: String, clubName: String? = null) {
-        _uiState.update {
-            it.copy(
-                playerToReplace = playerName,
-                playerToReplaceClub = clubName
-            )
-        }
-    }
-
-    fun onDismissReplacePlayerDialog() {
-        _uiState.update {
-            it.copy(
-                playerToReplace = null,
-                playerToReplaceClub = null
-            )
-        }
-    }
-
-    fun onConfirmReplacePlayer(newPlayerName: String, newClubName: String?) {
-        val oldPlayerName = _uiState.value.playerToReplace ?: return
-        drawFixtureRepository.replacePlayer(oldPlayerName, newPlayerName, newClubName)
-
+    fun restoreExcludedItem(category: DrawCategory, item: ProfileItem) {
         _uiState.update { current ->
-            val updatedRemainingPlayers = current.remainingPlayers.map { item ->
-                if (item.label == oldPlayerName) item.copy(label = newPlayerName) else item
+            when (category) {
+                DrawCategory.PLAYERS -> current.copy(
+                    remainingPlayers = (current.remainingPlayers + item).distinctBy { it.label },
+                    excludedPlayers = current.excludedPlayers.filter { it.id != item.id || it.label != item.label },
+                    selectedIndex = -1,
+                    targetRotation = 0f
+                )
+                DrawCategory.CLUBS -> current.copy(
+                    remainingClubs = (current.remainingClubs + item).distinctBy { it.label },
+                    excludedClubs = current.excludedClubs.filter { it.id != item.id || it.label != item.label },
+                    selectedIndex = -1,
+                    targetRotation = 0f
+                )
+                DrawCategory.NATIONAL_TEAMS -> current.copy(
+                    remainingNationalTeams = (current.remainingNationalTeams + item).distinctBy { it.label },
+                    excludedNationalTeams = current.excludedNationalTeams.filter { it.id != item.id || it.label != item.label },
+                    selectedIndex = -1,
+                    targetRotation = 0f
+                )
             }
-            current.copy(
-                playerToReplace = null,
-                playerToReplaceClub = null,
-                remainingPlayers = updatedRemainingPlayers
-            )
         }
         updatePrompt()
     }
+
+
 
     fun onOpenAddPlayersDialog() {
         _uiState.update { it.copy(isAddPlayersDialogOpen = true) }
@@ -479,6 +501,62 @@ class WheelDrawViewModel @Inject constructor(
         updatePrompt()
     }
 
+    fun onOpenReorderFixtureDialog(fixture: DrawFixture) {
+        _uiState.update { it.copy(reorderingFixture = fixture) }
+    }
+
+    fun onDismissReorderDialog() {
+        _uiState.update { it.copy(reorderingFixture = null) }
+    }
+
+    fun onSwapFixtures(fromFixtureId: String, toFixtureId: String) {
+        val list = _uiState.value.fixtures
+        val idx1 = list.indexOfFirst { it.id == fromFixtureId }
+        val idx2 = list.indexOfFirst { it.id == toFixtureId }
+        if (idx1 >= 0 && idx2 >= 0 && idx1 != idx2) {
+            drawFixtureRepository.swapFixtures(idx1, idx2)
+        }
+        _uiState.update { it.copy(reorderingFixture = null) }
+    }
+
+    fun onMoveFixtureUp(fixture: DrawFixture) {
+        val list = _uiState.value.fixtures
+        val idx = list.indexOfFirst { it.id == fixture.id }
+        if (idx > 0) {
+            drawFixtureRepository.moveFixture(idx, idx - 1)
+        }
+    }
+
+    fun onMoveFixtureDown(fixture: DrawFixture) {
+        val list = _uiState.value.fixtures
+        val idx = list.indexOfFirst { it.id == fixture.id }
+        if (idx >= 0 && idx < list.size - 1) {
+            drawFixtureRepository.moveFixture(idx, idx + 1)
+        }
+    }
+
+    fun onOpenSwapPlayerDialog(fixture: DrawFixture, isSlotOne: Boolean) {
+        _uiState.update { it.copy(swappingPlayerSlot = Pair(fixture, isSlotOne)) }
+    }
+
+    fun onDismissSwapPlayerDialog() {
+        _uiState.update { it.copy(swappingPlayerSlot = null) }
+    }
+
+    fun onConfirmSwapPlayers(targetFixtureId: String, isTargetSlotOne: Boolean) {
+        val currentSlot = _uiState.value.swappingPlayerSlot ?: return
+        val currentFixture = currentSlot.first
+        val isCurrentSlotOne = currentSlot.second
+
+        drawFixtureRepository.swapPlayers(
+            fixtureId1 = currentFixture.id,
+            isSlot1A = isCurrentSlotOne,
+            fixtureId2 = targetFixtureId,
+            isSlot1B = isTargetSlotOne
+        )
+        _uiState.update { it.copy(swappingPlayerSlot = null) }
+    }
+
     fun resetDraw() {
         val state = _uiState.value
         val defaultPlayers = state.selectedPlayersProfile?.items
@@ -502,9 +580,11 @@ class WheelDrawViewModel @Inject constructor(
                 isSpinning = false,
                 selectedIndex = -1,
                 drawResult = null,
-                playerToReplace = null,
-                playerToReplaceClub = null,
-                isAddPlayersDialogOpen = false
+                isAddPlayersDialogOpen = false,
+                isExcludeDialogOpen = false,
+                excludedPlayers = emptyList(),
+                excludedClubs = emptyList(),
+                excludedNationalTeams = emptyList()
             )
         }
         updatePrompt()

@@ -1,6 +1,7 @@
 package com.rndm.app.presentation.tournament.detail.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +49,7 @@ fun TournamentStandingsTab(
     allMatches: List<Match>,
     selectedGroupIndex: Int,
     onGroupSelect: (Int) -> Unit,
+    onPlayerClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val spacing = RndmThemeTokens.spacing
@@ -106,7 +108,10 @@ fun TournamentStandingsTab(
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    GroupStandingsTable(standings = currentGroup.standings)
+                    GroupStandingsTable(
+                        standings = currentGroup.standings,
+                        onPlayerClick = onPlayerClick
+                    )
 
                     // Legend description
                     Row(
@@ -239,7 +244,10 @@ fun TournamentStandingsTab(
             }
 
             if (bestLosers.isNotEmpty()) {
-                BestLosersStandingsTable(candidates = bestLosers)
+                BestLosersStandingsTable(
+                    candidates = bestLosers,
+                    onPlayerClick = onPlayerClick
+                )
             } else {
                 BentoCard(
                     modifier = Modifier.fillMaxWidth()
@@ -323,6 +331,11 @@ fun TournamentStandingsTab(
                                     MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
                                     shape = RoundedCornerShape(8.dp)
                                 )
+                                .then(
+                                    if (onPlayerClick != null) {
+                                        Modifier.clickable { onPlayerClick(championName) }
+                                    } else Modifier
+                                )
                                 .padding(horizontal = 12.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -356,6 +369,11 @@ fun TournamentStandingsTab(
                                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                                     shape = RoundedCornerShape(8.dp)
                                 )
+                                .then(
+                                    if (onPlayerClick != null) {
+                                        Modifier.clickable { onPlayerClick(runnerUpName) }
+                                    } else Modifier
+                                )
                                 .padding(horizontal = 12.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -388,6 +406,11 @@ fun TournamentStandingsTab(
                                 .background(
                                     MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.25f),
                                     shape = RoundedCornerShape(8.dp)
+                                )
+                                .then(
+                                    if (onPlayerClick != null) {
+                                        Modifier.clickable { onPlayerClick(thirdPlaceWinner) }
+                                    } else Modifier
                                 )
                                 .padding(horizontal = 12.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,

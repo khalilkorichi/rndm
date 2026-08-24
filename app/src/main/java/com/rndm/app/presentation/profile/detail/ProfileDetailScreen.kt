@@ -3,6 +3,7 @@ package com.rndm.app.presentation.profile.detail
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,11 +31,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rndm.app.R
@@ -45,6 +44,7 @@ import com.rndm.app.core.ui.components.RndmTopAppBar
 import com.rndm.app.core.ui.components.RndmTopBarAction
 import com.rndm.app.core.util.Constants
 import com.rndm.app.domain.model.ProfileType
+import com.rndm.app.presentation.profile.detail.components.PlayerProfileItemCard
 import com.rndm.app.presentation.profile.detail.components.ProfileDetailSkeleton
 import com.rndm.app.presentation.profile.detail.components.ProfileItemDetailRow
 
@@ -55,6 +55,8 @@ fun ProfileDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEdit: (Long) -> Unit,
     onNavigateToDraw: (Long) -> Unit,
+    onNavigateToPlayerProfile: (String) -> Unit = {},
+    onNavigateToLeaderboard: () -> Unit = {},
     viewModel: ProfileDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -111,6 +113,7 @@ fun ProfileDetailScreen(
             } else {
                 val profile = uiState.profile
                 if (profile != null) {
+                    val isPlayersProfile = profile.type == ProfileType.PLAYERS
                     val (typeLabel, typeColor, typeIcon) = when (profile.type) {
                         ProfileType.PLAYERS -> Triple("أشخاص", com.rndm.app.core.theme.ProfilePlayersColor, R.drawable.ic_person)
                         ProfileType.CLUBS -> Triple("أندية", com.rndm.app.core.theme.ProfileClubsColor, R.drawable.ic_shield)
@@ -183,20 +186,88 @@ fun ProfileDetailScreen(
                             }
                         }
 
+                        // For PLAYERS profiles, add Leaderboard Shortcut Banner
+                        if (isPlayersProfile) {
+                            item {
+                                Surface(
+                                    onClick = onNavigateToLeaderboard,
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(id = R.drawable.ic_trophy),
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Column {
+                                                Text(
+                                                    text = "لوحة صدارة وترتيب اللاعبين 👑",
+                                                    style = MaterialTheme.typography.labelLarge,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                                Text(
+                                                    text = "عرض الهدافين التاريخيين وأصحاب أكثر الألقاب",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_arrow_back),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         item {
                             Text(
-                                text = "قائمة العناصر المسجلة",
+                                text = if (isPlayersProfile) "قائمة اللاعبين والبروفايلات" else "قائمة العناصر المسجلة",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
                             )
                         }
 
-                        itemsIndexed(
-                            items = profile.items,
-                            key = { index, item -> item.id.takeIf { it != 0L } ?: "$index-${item.label}" }
-                        ) { index, item ->
-                            ProfileItemDetailRow(index = index, label = item.label)
+                        if (isPlayersProfile) {
+                            itemsIndexed(
+                                items = profile.items,
+                                key = { index, item -> item.id.takeIf { it != 0L } ?: "$index-${item.label}" }
+                            ) { index, item ->
+                                val quickStats = uiState.playerStatsMap[item.label]
+                                PlayerProfileItemCard(
+                                    index = index,
+                                    playerName = item.label,
+                                    quickStats = quickStats,
+                                    onClick = { onNavigateToPlayerProfile(item.label) }
+                                )
+                            }
+                        } else {
+                            itemsIndexed(
+                                items = profile.items,
+                                key = { index, item -> item.id.takeIf { it != 0L } ?: "$index-${item.label}" }
+                            ) { index, item ->
+                                ProfileItemDetailRow(index = index, label = item.label)
+                            }
                         }
 
                         item {

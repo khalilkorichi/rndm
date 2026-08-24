@@ -1,6 +1,7 @@
 package com.rndm.app.presentation.tournament.detail.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import com.rndm.app.domain.usecase.tournament.LoserCandidate
 @Composable
 fun BestLosersStandingsTable(
     candidates: List<LoserCandidate>,
+    onPlayerClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val spacing = RndmThemeTokens.spacing
@@ -112,6 +114,11 @@ fun BestLosersStandingsTable(
                         .fillMaxWidth()
                         .padding(vertical = 3.dp)
                         .background(rowBackground, shape = RoundedCornerShape(8.dp))
+                        .then(
+                            if (onPlayerClick != null) {
+                                Modifier.clickable { onPlayerClick(candidate.playerName) }
+                            } else Modifier
+                        )
                         .padding(vertical = 8.dp, horizontal = spacing.xs),
                     verticalAlignment = Alignment.CenterVertically
                 ) {

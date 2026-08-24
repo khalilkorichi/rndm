@@ -45,9 +45,11 @@ import com.rndm.app.core.ui.components.RndmTopBarAction
 import com.rndm.app.core.util.Constants
 import com.rndm.app.presentation.draw.wheel.components.DrawCategorySelector
 import com.rndm.app.presentation.draw.wheel.components.DrawnMatchesFeed
+import com.rndm.app.presentation.draw.wheel.components.ExcludeFromDrawDialog
 import com.rndm.app.presentation.draw.wheel.components.LiveMatchDrawSimulationCard
 import com.rndm.app.presentation.draw.wheel.components.WheelArrowIndicator
 import com.rndm.app.presentation.draw.wheel.components.WheelCanvas
+import com.rndm.app.presentation.draw.wheel.components.WheelCenterExclusionHub
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -276,6 +278,13 @@ fun WheelDrawScreen(
                         extendedColors = extendedColors
                     )
 
+                    // Smart Center "✕" Exclusion Button inside the circle
+                    WheelCenterExclusionHub(
+                        isSpinning = uiState.isSpinning,
+                        excludedCount = uiState.currentExcludedItems.size,
+                        onClick = { viewModel.onOpenExcludeDialog() }
+                    )
+
                     WheelArrowIndicator(
                         modifier = Modifier.align(Alignment.TopCenter)
                     )
@@ -340,7 +349,6 @@ fun WheelDrawScreen(
                 remainingPlayersCount = uiState.remainingPlayers.size,
                 remainingClubsCount = uiState.remainingClubs.size,
                 remainingTeamsCount = uiState.remainingNationalTeams.size,
-                onReplacePlayerClick = viewModel::onRequestReplacePlayer,
                 modifier = Modifier.padding(horizontal = spacing.md)
             )
 
@@ -350,19 +358,123 @@ fun WheelDrawScreen(
             DrawnMatchesFeed(
                 fixtures = uiState.fixtures,
                 onViewFixturesClick = onNavigateToFixtures,
-                onReplacePlayerClick = viewModel::onRequestReplacePlayer,
+                onReorderClick = viewModel::onOpenReorderFixtureDialog,
+                onSwapPlayerClick = viewModel::onOpenSwapPlayerDialog,
                 modifier = Modifier.padding(horizontal = spacing.md)
             )
 
             Spacer(modifier = Modifier.height(80.dp)) // Extra space for FAB
         }
 
-        uiState.playerToReplace?.let { oldPlayerName ->
-            com.rndm.app.core.ui.components.ReplacePlayerDialog(
-                oldPlayerName = oldPlayerName,
-                initialClubName = uiState.playerToReplaceClub,
-                onDismiss = viewModel::onDismissReplacePlayerDialog,
-                onConfirm = viewModel::onConfirmReplacePlayer
+
+
+        uiState.reorderingFixture?.let { currentFixture ->
+            val otherMatches = remember(uiState.fixtures, currentFixture.id) {
+                uiState.fixtures
+                    .filter { it.id != currentFixture.id && it.playerTwoName != null }
+                    .map { f ->
+                        com.rndm.app.core.ui.components.ReorderMatchOption(
+                            matchIdentifier = f.id,
+                            matchNumberText = "المباراة #${f.matchNumber}",
+                            playerOneName = f.playerOneName,
+                            playerOneClub = f.playerOneTeam,
+                            playerTwoName = f.playerTwoName,
+                            playerTwoClub = f.playerTwoTeam
+                        )
+                    }
+            }
+
+            com.rndm.app.core.ui.components.ReorderMatchDialog(
+                currentMatch = com.rndm.app.core.ui.components.ReorderMatchOption(
+                    matchIdentifier = currentFixture.id,
+                    matchNumberText = "المباراة #${currentFixture.matchNumber}",
+                    playerOneName = currentFixture.playerOneName,
+                    playerOneClub = currentFixture.playerOneTeam,
+                    playerTwoName = currentFixture.playerTwoName,
+                    playerTwoClub = currentFixture.playerTwoTeam,
+                    isCurrent = true
+                ),
+                otherMatches = otherMatches,
+                onSelectMatchToSwap = { targetId ->
+                    viewModel.onSwapFixtures(currentFixture.id, targetId.toString())
+                },
+                onMoveUp = { viewModel.onMoveFixtureUp(currentFixture) },
+                onMoveDown = { viewModel.onMoveFixtureDown(currentFixture) },
+                onDismiss = viewModel::onDismissReorderDialog
+            )
+        }
+
+        uiState.swappingPlayerSlot?.let { (currentFixture, isSlotOne) ->
+            val sourceName = if (isSlotOne) currentFixture.playerOneName else (currentFixture.playerTwoName ?: "BYE")
+            val sourceClub = if (isSlotOne) currentFixture.playerOneTeam else currentFixture.playerTwoTeam
+
+            val otherFixtures = remember(uiState.fixtures, currentFixture.id) {
+                uiState.fixtures.filter { it.id != currentFixture.id }
+            }
+
+            val candidates = remember(otherFixtures, currentFixture, isSlotOne) {
+                val list = mutableListOf<com.rndm.app.core.ui.components.SwapPlayerCandidate>()
+
+                // Opponent in same match
+                if (isSlotOne && currentFixture.playerTwoName != null) {
+                    list.add(
+                        com.rndm.app.core.ui.components.SwapPlayerCandidate(
+                            matchIdentifier = currentFixture.id,
+                            matchTitle = "المباراة #${currentFixture.matchNumber}",
+                            isSlotOne = false,
+                            playerName = currentFixture.playerTwoName!!,
+                            playerClub = currentFixture.playerTwoTeam,
+                            isSameMatchOpponent = true
+                        )
+                    )
+                } else if (!isSlotOne) {
+                    list.add(
+                        com.rndm.app.core.ui.components.SwapPlayerCandidate(
+                            matchIdentifier = currentFixture.id,
+                            matchTitle = "المباراة #${currentFixture.matchNumber}",
+                            isSlotOne = true,
+                            playerName = currentFixture.playerOneName,
+                            playerClub = currentFixture.playerOneTeam,
+                            isSameMatchOpponent = true
+                        )
+                    )
+                }
+
+                // Players in other matches
+                otherFixtures.forEach { f ->
+                    list.add(
+                        com.rndm.app.core.ui.components.SwapPlayerCandidate(
+                            matchIdentifier = f.id,
+                            matchTitle = "المباراة #${f.matchNumber}",
+                            isSlotOne = true,
+                            playerName = f.playerOneName,
+                            playerClub = f.playerOneTeam
+                        )
+                    )
+                    f.playerTwoName?.let { p2 ->
+                        list.add(
+                            com.rndm.app.core.ui.components.SwapPlayerCandidate(
+                                matchIdentifier = f.id,
+                                matchTitle = "المباراة #${f.matchNumber}",
+                                isSlotOne = false,
+                                playerName = p2,
+                                playerClub = f.playerTwoTeam
+                            )
+                        )
+                    }
+                }
+                list
+            }
+
+            com.rndm.app.core.ui.components.SwapPlayersDialog(
+                sourcePlayerName = sourceName,
+                sourcePlayerClub = sourceClub,
+                sourceMatchTitle = "المباراة #${currentFixture.matchNumber}",
+                candidates = candidates,
+                onSelectCandidateToSwap = { candidate ->
+                    viewModel.onConfirmSwapPlayers(candidate.matchIdentifier.toString(), candidate.isSlotOne)
+                },
+                onDismiss = viewModel::onDismissSwapPlayerDialog
             )
         }
 
@@ -372,6 +484,18 @@ fun WheelDrawScreen(
                 availableProfiles = uiState.playersProfiles,
                 onDismiss = viewModel::onDismissAddPlayersDialog,
                 onConfirm = viewModel::onAddNewPlayers
+            )
+        }
+
+        if (uiState.isExcludeDialogOpen) {
+            ExcludeFromDrawDialog(
+                category = uiState.selectedCategory,
+                profileName = uiState.currentProfileName,
+                remainingItems = uiState.currentWheelItems,
+                excludedItems = uiState.currentExcludedItems,
+                onExcludeItem = { item -> viewModel.excludeItem(uiState.selectedCategory, item) },
+                onRestoreItem = { item -> viewModel.restoreExcludedItem(uiState.selectedCategory, item) },
+                onDismiss = viewModel::onDismissExcludeDialog
             )
         }
     }

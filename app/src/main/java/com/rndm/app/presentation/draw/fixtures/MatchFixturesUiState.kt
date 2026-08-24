@@ -12,9 +12,9 @@ data class MatchFixturesUiState(
     val editingFixture: DrawFixture? = null,
     val inputScoreOne: String = "",
     val inputScoreTwo: String = "",
-    val playerToReplace: String? = null,
-    val playerToReplaceClub: String? = null,
     val isAddPlayersDialogOpen: Boolean = false,
+    val reorderingFixture: DrawFixture? = null,
+    val swappingPlayerSlot: Pair<DrawFixture, Boolean>? = null,
     val error: String? = null
 ) {
     val totalMatches: Int

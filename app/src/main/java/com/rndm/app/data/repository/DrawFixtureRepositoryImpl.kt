@@ -210,6 +210,81 @@ class DrawFixtureRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun swapFixtures(index1: Int, index2: Int) {
+        _fixtures.update { list ->
+            if (index1 !in list.indices || index2 !in list.indices || index1 == index2) return@update list
+            val mutable = list.toMutableList()
+            val temp = mutable[index1]
+            mutable[index1] = mutable[index2]
+            mutable[index2] = temp
+            val renumbered = mutable.mapIndexed { idx, item ->
+                item.copy(id = "fixture_${idx + 1}", matchNumber = idx + 1)
+            }
+            syncToTournament(renumbered)
+            renumbered
+        }
+    }
+
+    override fun moveFixture(fromIndex: Int, toIndex: Int) {
+        _fixtures.update { list ->
+            if (fromIndex !in list.indices || toIndex !in list.indices || fromIndex == toIndex) return@update list
+            val mutable = list.toMutableList()
+            val item = mutable.removeAt(fromIndex)
+            mutable.add(toIndex, item)
+            val renumbered = mutable.mapIndexed { idx, f ->
+                f.copy(id = "fixture_${idx + 1}", matchNumber = idx + 1)
+            }
+            syncToTournament(renumbered)
+            renumbered
+        }
+    }
+
+    override fun swapPlayers(fixtureId1: String, isSlot1A: Boolean, fixtureId2: String, isSlot1B: Boolean) {
+        _fixtures.update { list ->
+            val idx1 = list.indexOfFirst { it.id == fixtureId1 }
+            val idx2 = list.indexOfFirst { it.id == fixtureId2 }
+            if (idx1 < 0 || idx2 < 0) return@update list
+
+            val mutable = list.toMutableList()
+            val f1 = mutable[idx1]
+            val f2 = mutable[idx2]
+
+            if (idx1 == idx2) {
+                val updated = f1.copy(
+                    playerOneName = f1.playerTwoName ?: f1.playerOneName,
+                    playerOneTeam = f1.playerTwoTeam,
+                    playerTwoName = f1.playerOneName,
+                    playerTwoTeam = f1.playerOneTeam
+                )
+                mutable[idx1] = updated
+            } else {
+                val p1Name = if (isSlot1A) f1.playerOneName else (f1.playerTwoName ?: "BYE")
+                val p1Team = if (isSlot1A) f1.playerOneTeam else f1.playerTwoTeam
+
+                val p2Name = if (isSlot1B) f2.playerOneName else (f2.playerTwoName ?: "BYE")
+                val p2Team = if (isSlot1B) f2.playerOneTeam else f2.playerTwoTeam
+
+                val updatedF1 = if (isSlot1A) {
+                    f1.copy(playerOneName = p2Name, playerOneTeam = p2Team)
+                } else {
+                    f1.copy(playerTwoName = if (p2Name == "BYE") null else p2Name, playerTwoTeam = p2Team)
+                }
+
+                val updatedF2 = if (isSlot1B) {
+                    f2.copy(playerOneName = p1Name, playerOneTeam = p1Team)
+                } else {
+                    f2.copy(playerTwoName = if (p1Name == "BYE") null else p1Name, playerTwoTeam = p1Team)
+                }
+
+                mutable[idx1] = updatedF1
+                mutable[idx2] = updatedF2
+            }
+
+            syncToTournament(mutable)
+            mutable
+        }
+    }
+
     override fun replacePlayer(oldPlayerName: String, newPlayerName: String, newClubName: String?) {
         _fixtures.update { list ->
             list.map { f ->

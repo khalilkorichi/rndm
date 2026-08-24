@@ -58,6 +58,8 @@ import com.rndm.app.presentation.home.HomeScreen
 import com.rndm.app.presentation.profile.detail.ProfileDetailScreen
 import com.rndm.app.presentation.profile.edit.CreateEditProfileScreen
 import com.rndm.app.presentation.profile.list.ProfileListScreen
+import com.rndm.app.presentation.profile.player.PlayerProfileScreen
+import com.rndm.app.presentation.profile.player.leaderboard.PlayersLeaderboardScreen
 import com.rndm.app.presentation.settings.SettingsScreen
 import com.rndm.app.presentation.tournament.archive.TournamentArchiveScreen
 import com.rndm.app.presentation.tournament.bracket.TournamentBracketScreen
@@ -238,6 +240,9 @@ fun RndmNavHost(
                         },
                         onNavigateToProfileDetail = { profileId ->
                             navController.navigate(Destination.ProfileDetail(profileId))
+                        },
+                        onNavigateToLeaderboard = {
+                            navController.navigate(Destination.PlayersLeaderboard)
                         }
                     )
                 }
@@ -252,6 +257,12 @@ fun RndmNavHost(
                         },
                         onNavigateToDraw = { id ->
                             navController.navigate(Destination.DrawSetup(profileId = id))
+                        },
+                        onNavigateToPlayerProfile = { playerName ->
+                            navController.navigate(Destination.PlayerProfile(playerName))
+                        },
+                        onNavigateToLeaderboard = {
+                            navController.navigate(Destination.PlayersLeaderboard)
                         }
                     )
                 }
@@ -388,6 +399,20 @@ fun RndmNavHost(
                         },
                         onNavigateToArchive = {
                             navController.navigate(Destination.TournamentArchive)
+                        },
+                        onNavigateToJoinTournament = {
+                            navController.navigate(Destination.JoinTournament)
+                        }
+                    )
+                }
+
+                composable<Destination.JoinTournament> {
+                    com.rndm.app.presentation.tournament.join.JoinTournamentScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToTournament = { tournamentId ->
+                            navController.navigate(Destination.TournamentDetail(tournamentId)) {
+                                popUpTo<Destination.JoinTournament> { inclusive = true }
+                            }
                         }
                     )
                 }
@@ -418,6 +443,9 @@ fun RndmNavHost(
                         },
                         onNavigateToDraw = { profileId ->
                             navController.navigate(Destination.Draw(profileId = profileId, drawType = com.rndm.app.domain.model.DrawType.WHEEL))
+                        },
+                        onNavigateToPlayer = { playerName ->
+                            navController.navigate(Destination.PlayerProfile(playerName))
                         }
                     )
                 }
@@ -430,13 +458,19 @@ fun RndmNavHost(
                             navController.navigate(Destination.TournamentBracket(tournamentId)) {
                                 popUpTo<Destination.PromotionCandidate> { inclusive = true }
                             }
+                        },
+                        onNavigateToPlayer = { playerName ->
+                            navController.navigate(Destination.PlayerProfile(playerName))
                         }
                     )
                 }
 
                 composable<Destination.TournamentBracket> {
                     TournamentBracketScreen(
-                        onNavigateBack = { navController.popBackStack() }
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToPlayer = { playerName ->
+                            navController.navigate(Destination.PlayerProfile(playerName))
+                        }
                     )
                 }
 
@@ -445,6 +479,29 @@ fun RndmNavHost(
                         onNavigateBack = { navController.popBackStack() },
                         onNavigateToTournamentDetail = { tournamentId ->
                             navController.navigate(Destination.TournamentDetail(tournamentId))
+                        }
+                    )
+                }
+
+                composable<Destination.PlayerProfile> { backStackEntry ->
+                    val route: Destination.PlayerProfile = backStackEntry.toRoute()
+                    PlayerProfileScreen(
+                        playerName = route.playerName,
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToTournament = { tournamentId ->
+                            navController.navigate(Destination.TournamentDetail(tournamentId))
+                        },
+                        onNavigateToPlayer = { opponentName ->
+                            navController.navigate(Destination.PlayerProfile(opponentName))
+                        }
+                    )
+                }
+
+                composable<Destination.PlayersLeaderboard> {
+                    PlayersLeaderboardScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToPlayer = { playerName ->
+                            navController.navigate(Destination.PlayerProfile(playerName))
                         }
                     )
                 }

@@ -39,6 +39,7 @@ import com.rndm.app.presentation.tournament.promotion.components.PromotionCandid
 fun PromotionCandidateScreen(
     onNavigateBack: () -> Unit,
     onNavigateToBracket: (Long) -> Unit,
+    onNavigateToPlayer: (String) -> Unit = {},
     viewModel: PromotionCandidateViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -80,7 +81,8 @@ fun PromotionCandidateScreen(
                         PromotionCandidateCard(
                             participant = participant,
                             badgeText = "متأهل مباشر",
-                            iconRes = R.drawable.ic_check
+                            iconRes = R.drawable.ic_check,
+                            onPlayerClick = onNavigateToPlayer
                         )
                     }
                 }
@@ -98,7 +100,8 @@ fun PromotionCandidateScreen(
                             PromotionCandidateCard(
                                 participant = participant,
                                 badgeText = "ترقية بالنقاط",
-                                iconRes = R.drawable.ic_star
+                                iconRes = R.drawable.ic_star,
+                                onPlayerClick = onNavigateToPlayer
                             )
                         }
                     }
@@ -117,7 +120,8 @@ fun PromotionCandidateScreen(
                             PromotionCandidateCard(
                                 participant = participant,
                                 badgeText = if (uiState.selectedTieBreakWinner?.playerItemId == participant.playerItemId) "تم اختياره بالقرعة" else "مرشح متعادل",
-                                iconRes = if (uiState.selectedTieBreakWinner?.playerItemId == participant.playerItemId) R.drawable.ic_target else null
+                                iconRes = if (uiState.selectedTieBreakWinner?.playerItemId == participant.playerItemId) R.drawable.ic_target else null,
+                                onPlayerClick = onNavigateToPlayer
                             )
                         }
                     }

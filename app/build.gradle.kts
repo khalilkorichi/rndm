@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -15,11 +16,11 @@ android {
         applicationId = "com.rndm.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.2"
 
         buildConfigField("Long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L")
-        buildConfigField("Long", "UPDATE_IDENTITY", "101L")
+        buildConfigField("Long", "UPDATE_IDENTITY", "102L")
         buildConfigField("String", "GITHUB_OWNER", "\"khalilkorichi\"")
         buildConfigField("String", "GITHUB_REPO", "\"rndm\"")
 
@@ -119,6 +120,12 @@ dependencies {
     // DataStore & WorkManager
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.work.runtime.ktx)
+
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
 
     // Debugging
     debugImplementation(libs.androidx.ui.tooling)

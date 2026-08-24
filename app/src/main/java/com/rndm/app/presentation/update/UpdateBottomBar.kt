@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.rndm.app.core.theme.*
 import com.rndm.app.domain.model.UpdateInfo
 import java.io.File
 
@@ -35,11 +36,11 @@ fun UpdateBottomBar(
 ) {
     val gradientColors = remember(uiState) {
         when (uiState) {
-            is UpdateUiState.UpdateAvailable -> listOf(Color(0xFF3B82F6), Color(0xFF1D4ED8))
-            is UpdateUiState.Downloading, is UpdateUiState.Paused -> listOf(Color(0xFF1E3A8A), Color(0xFF3B82F6))
-            is UpdateUiState.ReadyToInstall -> listOf(Color(0xFF10B981), Color(0xFF047857))
-            is UpdateUiState.DownloadFailed, is UpdateUiState.Error -> listOf(Color(0xFFEF4444), Color(0xFFDC2626))
-            else -> listOf(Color(0xFF3B82F6), Color(0xFF1D4ED8))
+            is UpdateUiState.UpdateAvailable -> listOf(UpdateBluePrimary, UpdateBlueDark)
+            is UpdateUiState.Downloading, is UpdateUiState.Paused -> listOf(UpdateBlueNavy, UpdateBluePrimary)
+            is UpdateUiState.ReadyToInstall -> listOf(UpdateSuccessGreen, UpdateSuccessGreenDark)
+            is UpdateUiState.DownloadFailed, is UpdateUiState.Error -> listOf(UpdateErrorRed, UpdateErrorRedDark)
+            else -> listOf(UpdateBluePrimary, UpdateBlueDark)
         }
     }
 
@@ -80,7 +81,7 @@ fun UpdateBottomBar(
                         Spacer(modifier = Modifier.height(4.dp))
                         LinearProgressIndicator(
                             progress = { uiState.progress / 100f },
-                            color = Color(0xFF34D399),
+                            color = UpdateSuccessGreenLight,
                             trackColor = Color.White.copy(alpha = 0.2f),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -108,7 +109,7 @@ fun UpdateBottomBar(
                     is UpdateUiState.UpdateAvailable -> {
                         Button(
                             onClick = { onUpdateClick(uiState.info) },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF1D4ED8)),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = UpdateBlueDark),
                             shape = RoundedCornerShape(8.dp),
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                             modifier = Modifier.height(32.dp)
@@ -129,7 +130,7 @@ fun UpdateBottomBar(
                     is UpdateUiState.ReadyToInstall -> {
                         Button(
                             onClick = { onInstallClick(uiState.info, uiState.localApkFile) },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF047857)),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = UpdateSuccessGreenDark),
                             shape = RoundedCornerShape(8.dp),
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                             modifier = Modifier.height(32.dp)

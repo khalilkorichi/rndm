@@ -4,6 +4,7 @@ import com.rndm.app.domain.model.Match
 import com.rndm.app.domain.model.MatchStage
 import com.rndm.app.domain.model.MatchStatus
 import com.rndm.app.domain.model.TournamentStage
+import com.rndm.app.domain.repository.SyncRepository
 import com.rndm.app.domain.repository.TournamentRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -19,7 +20,8 @@ class UpdateMatchScoreUseCaseTest {
 
     private val tournamentRepository = mockk<TournamentRepository>(relaxed = true)
     private val evaluateBestLosersUseCase = EvaluateBestLosersUseCase()
-    private val useCase = UpdateMatchScoreUseCase(tournamentRepository, evaluateBestLosersUseCase)
+    private val syncRepository = mockk<SyncRepository>(relaxed = true)
+    private val useCase = UpdateMatchScoreUseCase(tournamentRepository, evaluateBestLosersUseCase, syncRepository)
 
     @Test
     fun `finishing QF match advances winner to corresponding Semi-Final match`() = runTest {

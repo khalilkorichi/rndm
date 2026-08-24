@@ -18,10 +18,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -54,7 +57,10 @@ fun TournamentOverviewTab(
     onNavigateToPromotion: () -> Unit,
     onGenerateKnockout: () -> Unit,
     onMatchClick: (Match) -> Unit,
-    onReplacePlayerClick: ((playerName: String, clubName: String?) -> Unit)? = null,
+    onPlayerClick: ((String) -> Unit)? = null,
+    onReorderMatchClick: ((Match) -> Unit)? = null,
+    onSwapPlayerClick: ((match: Match, isSlotOne: Boolean) -> Unit)? = null,
+    onEditParticipant: ((com.rndm.app.domain.model.TournamentParticipant) -> Unit)? = null,
     onAddPlayersClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -230,7 +236,13 @@ fun TournamentOverviewTab(
                 shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
                 border = androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (onPlayerClick != null) {
+                            Modifier.clickable { onPlayerClick(championName) }
+                        } else Modifier
+                    )
             ) {
                 Row(
                     modifier = Modifier
@@ -368,108 +380,155 @@ fun TournamentOverviewTab(
                             .fillMaxWidth()
                             .clickable { onMatchClick(match) }
                     ) {
-                        Row(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(12.dp)
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .then(
-                                        if (onReplacePlayerClick != null) {
-                                            Modifier.clickable {
-                                                onReplacePlayerClick(match.playerOneName, match.playerOneClub)
-                                            }
-                                        } else Modifier
-                                    )
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = match.playerOneName,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    if (onReplacePlayerClick != null) {
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Icon(
-                                            painter = painterResource(id = R.drawable.ic_redo),
-                                            contentDescription = "استبدال اللاعب",
-                                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                                            modifier = Modifier.size(12.dp)
-                                        )
+                            if (onReorderMatchClick != null) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    val headerLabel = when {
+                                        match.groupIndex != null -> "المجموعة ${('أ'.code + match.groupIndex).toChar()} • الجولة ${match.roundIndex}"
+                                        else -> match.stage.displayName
                                     }
-                                }
-                                match.playerOneClub?.let {
                                     Text(
-                                        text = it,
+                                        text = headerLabel,
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                }
-                            }
 
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                modifier = Modifier.padding(horizontal = 8.dp)
-                            ) {
-                                Text(
-                                    text = "تسجيل النتيجة",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                )
-                            }
-
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .then(
-                                        if (onReplacePlayerClick != null && match.playerTwoName != null && !match.isPlayerTwoLuckyLoser) {
-                                            Modifier.clickable {
-                                                match.playerTwoName?.let { p2 ->
-                                                    onReplacePlayerClick(p2, match.playerTwoClub)
-                                                }
-                                            }
-                                        } else Modifier
-                                    ),
-                                horizontalAlignment = Alignment.End
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.End
-                                ) {
-                                    if (onReplacePlayerClick != null && match.playerTwoName != null && !match.isPlayerTwoLuckyLoser) {
-                                        Icon(
-                                            painter = painterResource(id = R.drawable.ic_redo),
-                                            contentDescription = "استبدال اللاعب",
-                                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                                            modifier = Modifier.size(12.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
+                                    Surface(
+                                        onClick = { onReorderMatchClick(match) },
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(id = R.drawable.ic_swap),
+                                                contentDescription = "ترتيب المباراة",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(11.dp)
+                                            )
+                                            Text(
+                                                text = "ترتيب",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
                                     }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            text = match.playerOneName,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        if (onSwapPlayerClick != null) {
+                                            Surface(
+                                                onClick = { onSwapPlayerClick(match, true) },
+                                                shape = CircleShape,
+                                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.ic_swap),
+                                                    contentDescription = "تبديل مكان اللاعب",
+                                                    tint = MaterialTheme.colorScheme.secondary,
+                                                    modifier = Modifier
+                                                        .size(16.dp)
+                                                        .padding(2.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                    match.playerOneClub?.let {
+                                        Text(
+                                            text = it,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                ) {
                                     Text(
-                                        text = match.playerTwoName ?: "BYE",
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        text = "تسجيل النتيجة",
+                                        style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.End
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                                     )
                                 }
-                                match.playerTwoClub?.let {
-                                    Text(
-                                        text = it,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        textAlign = TextAlign.End
-                                    )
+
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    horizontalAlignment = Alignment.End
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        if (onSwapPlayerClick != null && match.playerTwoName != null && !match.isPlayerTwoLuckyLoser) {
+                                            Surface(
+                                                onClick = { onSwapPlayerClick(match, false) },
+                                                shape = CircleShape,
+                                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.ic_swap),
+                                                    contentDescription = "تبديل مكان اللاعب",
+                                                    tint = MaterialTheme.colorScheme.secondary,
+                                                    modifier = Modifier
+                                                        .size(16.dp)
+                                                        .padding(2.dp)
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            text = match.playerTwoName ?: "BYE",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            textAlign = TextAlign.End
+                                        )
+                                    }
+                                    match.playerTwoClub?.let {
+                                        Text(
+                                            text = it,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.End
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -499,9 +558,9 @@ fun TournamentOverviewTab(
                         modifier = Modifier
                             .fillMaxWidth()
                             .then(
-                                if (onReplacePlayerClick != null) {
+                                if (onPlayerClick != null) {
                                     Modifier.clickable {
-                                        onReplacePlayerClick(participant.playerName, participant.clubName)
+                                        onPlayerClick(participant.playerName)
                                     }
                                 } else Modifier
                             )
@@ -549,29 +608,17 @@ fun TournamentOverviewTab(
                                 }
                             }
 
-                            if (onReplacePlayerClick != null) {
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant
+                            if (onEditParticipant != null) {
+                                IconButton(
+                                    onClick = { onEditParticipant(participant) },
+                                    modifier = Modifier.size(32.dp)
                                 ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(id = R.drawable.ic_redo),
-                                            contentDescription = "استبدال",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(12.dp)
-                                        )
-                                        Text(
-                                            text = "استبدال",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
+                                    Icon(
+                                        imageVector = androidx.compose.material.icons.Icons.Default.Edit,
+                                        contentDescription = "تعديل اللاعب أو إرسال طلب",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
                                 }
                             }
                         }

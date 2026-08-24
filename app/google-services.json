@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "31537033462",
+    "project_id": "rndm-app-4954b",
+    "storage_bucket": "rndm-app-4954b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:31537033462:android:bb451f67db650070153cd7",
+        "android_client_info": {
+          "package_name": "com.rndm.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAD7zi30E6n-YMkPpncqwPJlD64qh70-J8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

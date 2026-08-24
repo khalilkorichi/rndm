@@ -13,6 +13,7 @@ fun TournamentEntity.toDomain(
         name = name,
         type = type,
         stage = stage,
+        status = status,
         playersProfileId = playersProfileId,
         clubsProfileId = clubsProfileId,
         groupsCount = groupsCount,
@@ -20,7 +21,15 @@ fun TournamentEntity.toDomain(
         participants = participants.map { it.toDomain() },
         createdAt = createdAt,
         updatedAt = updatedAt,
-        isArchived = isArchived
+        isArchived = isArchived,
+        remoteId = remoteId,
+        shareCode = shareCode,
+        isRemote = isRemote,
+        isHost = isHost,
+        hostUid = hostUid,
+        syncStatus = syncStatus,
+        lastSyncedAt = lastSyncedAt,
+        remoteVersion = remoteVersion
     )
 }
 
@@ -30,13 +39,22 @@ fun Tournament.toEntity(): TournamentEntity {
         name = name,
         type = type,
         stage = stage,
+        status = status,
         playersProfileId = playersProfileId,
         clubsProfileId = clubsProfileId,
         groupsCount = groupsCount,
         qualifiersPerGroup = qualifiersPerGroup,
         createdAt = createdAt,
         updatedAt = updatedAt,
-        isArchived = isArchived
+        isArchived = isArchived,
+        remoteId = remoteId,
+        shareCode = shareCode,
+        isRemote = isRemote,
+        isHost = isHost,
+        hostUid = hostUid,
+        syncStatus = syncStatus,
+        lastSyncedAt = lastSyncedAt,
+        remoteVersion = remoteVersion
     )
 }
 
@@ -47,7 +65,8 @@ fun TournamentParticipantEntity.toDomain(): TournamentParticipant {
         playerItemId = playerItemId,
         playerName = playerName,
         clubName = clubName,
-        groupIndex = groupIndex
+        groupIndex = groupIndex,
+        remoteId = remoteId
     )
 }
 
@@ -58,6 +77,7 @@ fun TournamentParticipant.toEntity(tournamentId: Long): TournamentParticipantEnt
         playerItemId = playerItemId,
         playerName = playerName,
         clubName = clubName,
-        groupIndex = groupIndex
+        groupIndex = groupIndex,
+        remoteId = remoteId
     )
 }

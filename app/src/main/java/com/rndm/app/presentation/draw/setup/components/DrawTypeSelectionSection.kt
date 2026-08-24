@@ -72,6 +72,7 @@ fun DrawTypeSelectionSection(
             description = "دوران عشوائي تفاعلي مع توقف تدريجي",
             iconRes = R.drawable.ic_wheel,
             isSelected = selectedDrawType == DrawType.WHEEL,
+            isAvailable = true,
             accentGradient = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary),
             onClick = { onDrawTypeSelected(DrawType.WHEEL) }
         )
@@ -84,6 +85,7 @@ fun DrawTypeSelectionSection(
             description = "كشف العناصر عشوائياً باللمس",
             iconRes = R.drawable.ic_cards,
             isSelected = selectedDrawType == DrawType.FLIP_CARDS,
+            isAvailable = false,
             accentGradient = listOf(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.secondaryContainer),
             onClick = { onDrawTypeSelected(DrawType.FLIP_CARDS) }
         )
@@ -96,6 +98,7 @@ fun DrawTypeSelectionSection(
             description = "شريط سحب سريع يتباطأ تدريجياً",
             iconRes = R.drawable.ic_spinlist,
             isSelected = selectedDrawType == DrawType.SPIN_LIST,
+            isAvailable = false,
             accentGradient = listOf(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.tertiaryContainer),
             onClick = { onDrawTypeSelected(DrawType.SPIN_LIST) }
         )
@@ -108,6 +111,7 @@ fun DrawTypeSelectionSection(
             description = "توزيع وتوليد جدول المباريات تلقائياً",
             iconRes = R.drawable.ic_roundrobin,
             isSelected = selectedDrawType == DrawType.ROUND_ROBIN,
+            isAvailable = false,
             accentGradient = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primaryContainer),
             onClick = { onDrawTypeSelected(DrawType.ROUND_ROBIN) }
         )

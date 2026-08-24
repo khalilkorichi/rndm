@@ -2,6 +2,10 @@ package com.rndm.app.domain.model
 
 object ProfilePresets {
 
+    const val DEFAULT_CLUBS_PROFILE_NAME = "أقوى الأندية الأوروبية"
+    const val DEFAULT_NATIONAL_TEAMS_PROFILE_NAME = "أقوى 10 منتخبات عالمية"
+    const val DEFAULT_PLAYERS_PROFILE_NAME = "دوري الأصدقاء (أشخاص)"
+
     /**
      * قائمة الأندية الثمانية الأساسية
      */
@@ -119,7 +123,7 @@ object ProfilePresets {
         return listOf(
             Profile(
                 id = 0L,
-                name = "أقوى الأندية الأوروبية",
+                name = DEFAULT_CLUBS_PROFILE_NAME,
                 type = ProfileType.CLUBS,
                 items = DEFAULT_TOP_CLUBS.mapIndexed { index, name ->
                     ProfileItem(id = 0L, label = name, order = index)
@@ -128,7 +132,7 @@ object ProfilePresets {
             ),
             Profile(
                 id = 0L,
-                name = "أقوى 10 منتخبات عالمية",
+                name = DEFAULT_NATIONAL_TEAMS_PROFILE_NAME,
                 type = ProfileType.NATIONAL_TEAMS,
                 items = DEFAULT_TOP_NATIONAL_TEAMS.mapIndexed { index, name ->
                     ProfileItem(id = 0L, label = name, order = index)
@@ -137,7 +141,7 @@ object ProfilePresets {
             ),
             Profile(
                 id = 0L,
-                name = "دوري الأصدقاء (أشخاص)",
+                name = DEFAULT_PLAYERS_PROFILE_NAME,
                 type = ProfileType.PLAYERS,
                 items = DEFAULT_PLAYERS.mapIndexed { index, name ->
                     ProfileItem(id = 0L, label = name, order = index)
@@ -146,4 +150,17 @@ object ProfilePresets {
             )
         )
     }
+
+    /**
+     * إرجاع البروفايلات الافتراضية الناقصة فقط غير الموجودة في قائمة البروفايلات الحالية
+     */
+    fun getMissingDefaultProfiles(existingProfiles: List<Profile>): List<Profile> {
+        val defaultProfiles = createDefaultInitialProfiles()
+        return defaultProfiles.filter { defaultProfile ->
+            existingProfiles.none { existing ->
+                existing.name.trim().equals(defaultProfile.name.trim(), ignoreCase = true) && existing.type == defaultProfile.type
+            }
+        }
+    }
 }
+

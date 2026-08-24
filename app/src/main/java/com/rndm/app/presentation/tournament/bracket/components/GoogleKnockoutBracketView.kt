@@ -52,6 +52,7 @@ import kotlinx.coroutines.launch
 fun GoogleKnockoutBracketView(
     matches: List<Match>,
     onMatchClick: (Match) -> Unit,
+    onPlayerClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -190,7 +191,8 @@ fun GoogleKnockoutBracketView(
                                 stageMatches.forEachIndexed { matchIndex, match ->
                                     GoogleMatchCard(
                                         match = match,
-                                        onClick = { onMatchClick(match) }
+                                        onClick = { onMatchClick(match) },
+                                        onPlayerClick = onPlayerClick
                                     )
                                     if (matchIndex < stageMatches.size - 1) {
                                         Spacer(modifier = Modifier.height(16.dp))
@@ -242,6 +244,7 @@ fun GoogleKnockoutBracketView(
                         GoogleMatchCard(
                             match = thirdPlaceMatch,
                             onClick = { onMatchClick(thirdPlaceMatch) },
+                            onPlayerClick = onPlayerClick,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -255,6 +258,7 @@ fun GoogleKnockoutBracketView(
 fun GoogleMatchCard(
     match: Match,
     onClick: () -> Unit,
+    onPlayerClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isFinished = match.status == MatchStatus.FINISHED
@@ -323,7 +327,8 @@ fun GoogleMatchCard(
                 penaltyScore = match.penaltyScoreOne,
                 isWinner = isP1Winner,
                 isFinished = isFinished,
-                isLuckyLoser = match.isPlayerOneLuckyLoser
+                isLuckyLoser = match.isPlayerOneLuckyLoser,
+                onPlayerClick = onPlayerClick
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -336,7 +341,8 @@ fun GoogleMatchCard(
                 penaltyScore = match.penaltyScoreTwo,
                 isWinner = isP2Winner,
                 isFinished = isFinished,
-                isLuckyLoser = match.isPlayerTwoLuckyLoser
+                isLuckyLoser = match.isPlayerTwoLuckyLoser,
+                onPlayerClick = onPlayerClick
             )
         }
     }
@@ -350,7 +356,8 @@ private fun CompetitorRow(
     penaltyScore: Int?,
     isWinner: Boolean,
     isFinished: Boolean,
-    isLuckyLoser: Boolean = false
+    isLuckyLoser: Boolean = false,
+    onPlayerClick: ((String) -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -423,7 +430,13 @@ private fun CompetitorRow(
 
             Column(
                 horizontalAlignment = Alignment.End,
-                modifier = Modifier.padding(end = 6.dp)
+                modifier = Modifier
+                    .padding(end = 6.dp)
+                    .then(
+                        if (onPlayerClick != null && playerName != "TBD" && playerName != "BYE") {
+                            Modifier.clickable { onPlayerClick(playerName) }
+                        } else Modifier
+                    )
             ) {
                 Text(
                     text = playerName,

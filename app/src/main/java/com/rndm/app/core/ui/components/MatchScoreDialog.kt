@@ -25,6 +25,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,11 +59,13 @@ fun MatchScoreDialog(
     initialPenaltyScoreOne: Int? = null,
     initialPenaltyScoreTwo: Int? = null,
     isKnockout: Boolean = false,
-    title: String = "تسجيل النتيجة",
+    isRequestMode: Boolean = false,
+    title: String = if (isRequestMode) "طلب تعديل النتيجة (إرسال للأدمن)" else "تسجيل النتيجة",
     subtitle: String? = null,
     onDismiss: () -> Unit,
     onConfirm: (scoreOne: Int, scoreTwo: Int) -> Unit = { _, _ -> },
-    onConfirmWithPenalties: ((scoreOne: Int, scoreTwo: Int, penaltyOne: Int?, penaltyTwo: Int?) -> Unit)? = null
+    onConfirmWithPenalties: ((scoreOne: Int, scoreTwo: Int, penaltyOne: Int?, penaltyTwo: Int?) -> Unit)? = null,
+    onConfirmRequest: ((scoreOne: Int, scoreTwo: Int, penaltyOne: Int?, penaltyTwo: Int?, note: String) -> Unit)? = null
 ) {
     var scoreOneText by remember(initialScoreOne) {
         mutableStateOf((initialScoreOne ?: 0).toString())
@@ -74,6 +78,9 @@ fun MatchScoreDialog(
     }
     var penaltyTwoText by remember(initialPenaltyScoreTwo) {
         mutableStateOf((initialPenaltyScoreTwo ?: 0).toString())
+    }
+    var requestNoteText by remember {
+        mutableStateOf("")
     }
     var enablePenalties by remember(initialPenaltyScoreOne, initialPenaltyScoreTwo) {
         mutableStateOf(initialPenaltyScoreOne != null || initialPenaltyScoreTwo != null)
@@ -337,7 +344,21 @@ fun MatchScoreDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                if (isRequestMode) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    androidx.compose.material3.OutlinedTextField(
+                        value = requestNoteText,
+                        onValueChange = { requestNoteText = it },
+                        label = { Text("ملاحظة أو سبب التعديل (اختياري)", style = MaterialTheme.typography.bodySmall) },
+                        placeholder = { Text("مثال: تم احتساب ركلات الترجيح باتفاق الطرفين", style = MaterialTheme.typography.bodySmall) },
+                        singleLine = false,
+                        maxLines = 2,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
 
                 // Actions
                 Row(
@@ -363,7 +384,9 @@ fun MatchScoreDialog(
                             val p1 = if (isKnockout && s1 == s2) penaltyOneText.toIntOrNull() ?: 0 else null
                             val p2 = if (isKnockout && s1 == s2) penaltyTwoText.toIntOrNull() ?: 0 else null
 
-                            if (onConfirmWithPenalties != null) {
+                            if (isRequestMode && onConfirmRequest != null) {
+                                onConfirmRequest(s1, s2, p1, p2, requestNoteText)
+                            } else if (onConfirmWithPenalties != null) {
                                 onConfirmWithPenalties(s1, s2, p1, p2)
                             } else {
                                 onConfirm(s1, s2)
@@ -371,22 +394,30 @@ fun MatchScoreDialog(
                         },
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
+                            containerColor = if (isRequestMode) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+                            contentColor = if (isRequestMode) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onPrimary
                         ),
-                        modifier = Modifier.weight(1.5f)
+                        modifier = Modifier.weight(1.6f)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_check),
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
+                            if (isRequestMode) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Send,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            } else {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_check),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                             Text(
-                                text = "حفظ النتيجة",
+                                text = if (isRequestMode) "إرسال الطلب للأدمن" else "حفظ النتيجة",
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold
                             )

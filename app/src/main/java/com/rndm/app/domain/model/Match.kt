@@ -14,7 +14,7 @@ data class Match(
     val bracketMatchIndex: Int? = null,
     val playerOneName: String,
     val playerOneClub: String? = null,
-    val playerTwoName: String? = null, // null for bye
+    val playerTwoName: String? = null,
     val playerTwoClub: String? = null,
     val scoreOne: Int? = null,
     val scoreTwo: Int? = null,
@@ -24,5 +24,8 @@ data class Match(
     val status: MatchStatus = MatchStatus.PENDING,
     val scheduledTimestamp: Long? = null,
     val isPlayerOneLuckyLoser: Boolean = false,
-    val isPlayerTwoLuckyLoser: Boolean = false
+    val isPlayerTwoLuckyLoser: Boolean = false,
+    val remoteId: String? = null,
+    val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
+    val updatedAt: Long = System.currentTimeMillis()
 )

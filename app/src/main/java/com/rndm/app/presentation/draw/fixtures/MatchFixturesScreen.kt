@@ -27,6 +27,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -38,7 +39,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rndm.app.R
 import com.rndm.app.core.theme.RndmThemeTokens
 import com.rndm.app.core.ui.components.EmptyState
-import com.rndm.app.core.ui.components.ReplacePlayerDialog
 import com.rndm.app.core.ui.components.RndmTopAppBar
 import com.rndm.app.core.ui.components.RndmTopBarAction
 import com.rndm.app.presentation.draw.fixtures.components.FixtureMatchCard
@@ -172,7 +172,8 @@ fun MatchFixturesScreen(
                         FixtureMatchCard(
                             fixture = fixture,
                             onEditScoreClick = { viewModel.onEditScoreClick(fixture) },
-                            onReplacePlayerClick = viewModel::onRequestReplacePlayer
+                            onReorderClick = { viewModel.onOpenReorderFixtureDialog(fixture) },
+                            onSwapPlayerClick = { isSlotOne -> viewModel.onOpenSwapPlayerDialog(fixture, isSlotOne) }
                         )
                     }
                     item {
@@ -194,12 +195,115 @@ fun MatchFixturesScreen(
             )
         }
 
-        uiState.playerToReplace?.let { oldPlayerName ->
-            ReplacePlayerDialog(
-                oldPlayerName = oldPlayerName,
-                initialClubName = uiState.playerToReplaceClub,
-                onDismiss = viewModel::onDismissReplacePlayerDialog,
-                onConfirm = viewModel::onConfirmReplacePlayer
+
+
+        uiState.reorderingFixture?.let { currentFixture ->
+            val otherMatches = remember(uiState.fixtures, currentFixture.id) {
+                uiState.fixtures
+                    .filter { it.id != currentFixture.id && it.playerTwoName != null }
+                    .map { f ->
+                        com.rndm.app.core.ui.components.ReorderMatchOption(
+                            matchIdentifier = f.id,
+                            matchNumberText = "المباراة #${f.matchNumber}",
+                            playerOneName = f.playerOneName,
+                            playerOneClub = f.playerOneTeam,
+                            playerTwoName = f.playerTwoName,
+                            playerTwoClub = f.playerTwoTeam
+                        )
+                    }
+            }
+
+            com.rndm.app.core.ui.components.ReorderMatchDialog(
+                currentMatch = com.rndm.app.core.ui.components.ReorderMatchOption(
+                    matchIdentifier = currentFixture.id,
+                    matchNumberText = "المباراة #${currentFixture.matchNumber}",
+                    playerOneName = currentFixture.playerOneName,
+                    playerOneClub = currentFixture.playerOneTeam,
+                    playerTwoName = currentFixture.playerTwoName,
+                    playerTwoClub = currentFixture.playerTwoTeam,
+                    isCurrent = true
+                ),
+                otherMatches = otherMatches,
+                onSelectMatchToSwap = { targetId ->
+                    viewModel.onSwapFixtures(currentFixture.id, targetId.toString())
+                },
+                onMoveUp = { viewModel.onMoveFixtureUp(currentFixture) },
+                onMoveDown = { viewModel.onMoveFixtureDown(currentFixture) },
+                onDismiss = viewModel::onDismissReorderDialog
+            )
+        }
+
+        uiState.swappingPlayerSlot?.let { (currentFixture, isSlotOne) ->
+            val sourceName = if (isSlotOne) currentFixture.playerOneName else (currentFixture.playerTwoName ?: "BYE")
+            val sourceClub = if (isSlotOne) currentFixture.playerOneTeam else currentFixture.playerTwoTeam
+
+            val otherFixtures = remember(uiState.fixtures, currentFixture.id) {
+                uiState.fixtures.filter { it.id != currentFixture.id }
+            }
+
+            val candidates = remember(otherFixtures, currentFixture, isSlotOne) {
+                val list = mutableListOf<com.rndm.app.core.ui.components.SwapPlayerCandidate>()
+
+                // Opponent in same match
+                if (isSlotOne && currentFixture.playerTwoName != null) {
+                    list.add(
+                        com.rndm.app.core.ui.components.SwapPlayerCandidate(
+                            matchIdentifier = currentFixture.id,
+                            matchTitle = "المباراة #${currentFixture.matchNumber}",
+                            isSlotOne = false,
+                            playerName = currentFixture.playerTwoName!!,
+                            playerClub = currentFixture.playerTwoTeam,
+                            isSameMatchOpponent = true
+                        )
+                    )
+                } else if (!isSlotOne) {
+                    list.add(
+                        com.rndm.app.core.ui.components.SwapPlayerCandidate(
+                            matchIdentifier = currentFixture.id,
+                            matchTitle = "المباراة #${currentFixture.matchNumber}",
+                            isSlotOne = true,
+                            playerName = currentFixture.playerOneName,
+                            playerClub = currentFixture.playerOneTeam,
+                            isSameMatchOpponent = true
+                        )
+                    )
+                }
+
+                // Players in other matches
+                otherFixtures.forEach { f ->
+                    list.add(
+                        com.rndm.app.core.ui.components.SwapPlayerCandidate(
+                            matchIdentifier = f.id,
+                            matchTitle = "المباراة #${f.matchNumber}",
+                            isSlotOne = true,
+                            playerName = f.playerOneName,
+                            playerClub = f.playerOneTeam
+                        )
+                    )
+                    f.playerTwoName?.let { p2 ->
+                        list.add(
+                            com.rndm.app.core.ui.components.SwapPlayerCandidate(
+                                matchIdentifier = f.id,
+                                matchTitle = "المباراة #${f.matchNumber}",
+                                isSlotOne = false,
+                                playerName = p2,
+                                playerClub = f.playerTwoTeam
+                            )
+                        )
+                    }
+                }
+                list
+            }
+
+            com.rndm.app.core.ui.components.SwapPlayersDialog(
+                sourcePlayerName = sourceName,
+                sourcePlayerClub = sourceClub,
+                sourceMatchTitle = "المباراة #${currentFixture.matchNumber}",
+                candidates = candidates,
+                onSelectCandidateToSwap = { candidate ->
+                    viewModel.onConfirmSwapPlayers(candidate.matchIdentifier.toString(), candidate.isSlotOne)
+                },
+                onDismiss = viewModel::onDismissSwapPlayerDialog
             )
         }
 

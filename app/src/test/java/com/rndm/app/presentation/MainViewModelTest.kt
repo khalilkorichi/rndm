@@ -2,7 +2,9 @@ package com.rndm.app.presentation
 
 import app.cash.turbine.test
 import com.rndm.app.domain.repository.UserPreferencesRepository
+import com.rndm.app.domain.usecase.auth.InitializeGuestSessionUseCase
 import com.rndm.app.presentation.settings.ThemeMode
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +24,7 @@ class MainViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private val repository = mockk<UserPreferencesRepository>()
+    private val initializeGuestSessionUseCase = mockk<InitializeGuestSessionUseCase>()
     private val themeModeFlow = MutableStateFlow(ThemeMode.DARK)
 
     @Before
@@ -29,6 +32,7 @@ class MainViewModelTest {
         Dispatchers.setMain(testDispatcher)
         every { repository.themeMode } returns themeModeFlow
         every { repository.getInitialThemeMode() } returns ThemeMode.DARK
+        coEvery { initializeGuestSessionUseCase() } returns Result.success("guest_uid")
     }
 
     @After
@@ -38,7 +42,7 @@ class MainViewModelTest {
 
     @Test
     fun `themeMode initializes with initial cached value immediately`() = runTest {
-        val viewModel = MainViewModel(repository)
+        val viewModel = MainViewModel(repository, initializeGuestSessionUseCase)
 
         // Verifies the initial value is directly DARK before coroutine collections
         assertEquals(ThemeMode.DARK, viewModel.themeMode.value)

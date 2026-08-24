@@ -65,6 +65,7 @@ class UpdateRepositoryImpl @Inject constructor(
                 }
             }
         } catch (e: Exception) {
+            if (e is kotlin.coroutines.cancellation.CancellationException) throw e
             // Ignore WorkManager initialization errors
         }
     }

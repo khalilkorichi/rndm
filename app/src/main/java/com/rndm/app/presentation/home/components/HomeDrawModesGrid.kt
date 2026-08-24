@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -22,6 +24,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
@@ -59,6 +63,7 @@ fun HomeDrawModesGrid(
                 subtitle = "دوران عشوائي كلاسيكي",
                 icon = painterResource(id = R.drawable.ic_wheel),
                 accentColor = MaterialTheme.colorScheme.primary,
+                isAvailable = true,
                 onClick = { onSelectDrawMode(DrawType.WHEEL) },
                 modifier = Modifier.weight(1f)
             )
@@ -68,7 +73,8 @@ fun HomeDrawModesGrid(
                 subtitle = "كشف العناصر باللمس",
                 icon = painterResource(id = R.drawable.ic_cards),
                 accentColor = MaterialTheme.colorScheme.secondary,
-                onClick = { onSelectDrawMode(DrawType.FLIP_CARDS) },
+                isAvailable = false,
+                onClick = {},
                 modifier = Modifier.weight(1f)
             )
         }
@@ -84,7 +90,8 @@ fun HomeDrawModesGrid(
                 subtitle = "سحب أفقي ديناميكي",
                 icon = painterResource(id = R.drawable.ic_fixtures),
                 accentColor = MaterialTheme.colorScheme.tertiary,
-                onClick = { onSelectDrawMode(DrawType.SPIN_LIST) },
+                isAvailable = false,
+                onClick = {},
                 modifier = Modifier.weight(1f)
             )
 
@@ -93,7 +100,8 @@ fun HomeDrawModesGrid(
                 subtitle = "جدول مباريات دوري",
                 icon = painterResource(id = R.drawable.ic_tournament_filled),
                 accentColor = MaterialTheme.colorScheme.primary,
-                onClick = { onSelectDrawMode(DrawType.ROUND_ROBIN) },
+                isAvailable = false,
+                onClick = {},
                 modifier = Modifier.weight(1f)
             )
         }
@@ -107,55 +115,105 @@ private fun DrawModeItem(
     icon: Painter,
     accentColor: Color,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isAvailable: Boolean = true
 ) {
     Surface(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .clickable { onClick() },
+            .then(
+                if (isAvailable) {
+                    Modifier.clickable { onClick() }
+                } else {
+                    Modifier
+                }
+            ),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.7f),
+        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = if (isAvailable) 0.7f else 0.45f),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            accentColor.copy(alpha = 0.25f)
+            if (isAvailable) accentColor.copy(alpha = 0.25f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f)
         )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
+            Row(
                 modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(accentColor.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .then(
+                        if (!isAvailable) {
+                            Modifier
+                                .blur(5.dp)
+                                .alpha(0.35f)
+                        } else Modifier
+                    )
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    painter = icon,
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(20.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(accentColor.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = icon,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.width(10.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
+            if (!isAvailable) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.92f),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+                    ),
+                    modifier = Modifier.padding(4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Text(
+                            text = "يتوفر قريباً",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
             }
         }
     }
