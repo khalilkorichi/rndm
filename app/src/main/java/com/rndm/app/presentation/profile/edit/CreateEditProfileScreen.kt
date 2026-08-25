@@ -1,20 +1,26 @@
 package com.rndm.app.presentation.profile.edit
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,7 +32,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -36,7 +41,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -51,7 +55,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rndm.app.R
@@ -65,7 +68,7 @@ import com.rndm.app.presentation.profile.edit.components.EditProfileItemDialog
 import com.rndm.app.presentation.profile.edit.components.ProfileItemRow
 import com.rndm.app.presentation.profile.edit.components.ProfileTypeSelector
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun CreateEditProfileScreen(
     profileId: Long,
@@ -77,9 +80,9 @@ fun CreateEditProfileScreen(
     val haptic = LocalHapticFeedback.current
     val spacing = RndmThemeTokens.spacing
     val listState = rememberLazyListState()
+    val isImeVisible = WindowInsets.isImeVisible
 
-    var editingItemIndex by remember { mutableStateOf<Int?>(null) }
-    var previousItemCount by remember { mutableIntStateOf(uiState.items.size) }
+    var editingItem by remember { mutableStateOf<ProfileEditableItem?>(null) }
 
     LaunchedEffect(profileId, typeName) {
         viewModel.initialize(profileId, typeName)
@@ -91,14 +94,17 @@ fun CreateEditProfileScreen(
         }
     }
 
-    // Auto-scroll when new items are added so the user immediately sees them above the keyboard
-    LaunchedEffect(uiState.items.size) {
-        if (uiState.items.size > previousItemCount) {
-            // Target index is the header items (4) + last item index
-            val targetIndex = 4 + uiState.items.size - 1
-            listState.animateScrollToItem(targetIndex)
+    // Smooth auto-scroll only when user explicitly adds a new item
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is CreateEditProfileEvent.ScrollToItem -> {
+                    // Target index = header items (4) + added item index
+                    val targetIndex = 4 + event.index
+                    listState.animateScrollToItem(targetIndex)
+                }
+            }
         }
-        previousItemCount = uiState.items.size
     }
 
     val typeColor = when (uiState.type) {
@@ -132,88 +138,99 @@ fun CreateEditProfileScreen(
             )
         },
         bottomBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                contentAlignment = Alignment.Center
+            AnimatedVisibility(
+                visible = !isImeVisible,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
             ) {
-                Surface(
-                    onClick = {
-                        if (uiState.canSave && !uiState.isLoading) {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            viewModel.onSave()
-                        }
-                    },
-                    shape = CircleShape,
-                    color = Color.Transparent,
-                    enabled = uiState.canSave && !uiState.isLoading,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(
-                            elevation = if (uiState.canSave) 16.dp else 0.dp,
-                            shape = CircleShape,
-                            spotColor = typeColor.copy(alpha = 0.5f),
-                            ambientColor = Color.Black.copy(alpha = 0.3f)
-                        )
-                        .clip(CircleShape)
-                        .background(
-                            brush = if (uiState.canSave) {
-                                Brush.horizontalGradient(
-                                    colors = listOf(typeColor, typeColor.copy(alpha = 0.85f))
-                                )
-                            } else {
-                                Brush.horizontalGradient(
-                                    colors = listOf(
-                                        MaterialTheme.colorScheme.surfaceVariant,
-                                        MaterialTheme.colorScheme.surfaceVariant
-                                    )
-                                )
-                            }
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = if (uiState.canSave) Color.White.copy(alpha = 0.3f) else Color.Transparent,
-                            shape = CircleShape
-                        )
+                        .navigationBarsPadding()
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Row(
-                        modifier = Modifier.padding(vertical = 14.dp, horizontal = 24.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                    Surface(
+                        onClick = {
+                            if (uiState.canSave && !uiState.isLoading) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.onSave()
+                            }
+                        },
+                        shape = CircleShape,
+                        color = Color.Transparent,
+                        enabled = uiState.canSave && !uiState.isLoading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(
+                                elevation = if (uiState.canSave) 16.dp else 0.dp,
+                                shape = CircleShape,
+                                spotColor = typeColor.copy(alpha = 0.5f),
+                                ambientColor = Color.Black.copy(alpha = 0.3f)
+                            )
+                            .clip(CircleShape)
+                            .background(
+                                brush = if (uiState.canSave) {
+                                    Brush.horizontalGradient(
+                                        colors = listOf(typeColor, typeColor.copy(alpha = 0.85f))
+                                    )
+                                } else {
+                                    Brush.horizontalGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.surfaceVariant,
+                                            MaterialTheme.colorScheme.surfaceVariant
+                                        )
+                                    )
+                                }
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = if (uiState.canSave) Color.White.copy(alpha = 0.3f) else Color.Transparent,
+                                shape = CircleShape
+                            )
                     ) {
-                        Icon(
-                            painter = painterResource(
-                                id = if (uiState.isEditMode) R.drawable.ic_check else R.drawable.ic_add
-                            ),
-                            contentDescription = null,
-                            tint = if (uiState.canSave) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.size(20.dp)
-                        )
+                        Row(
+                            modifier = Modifier.padding(vertical = 14.dp, horizontal = 24.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(
+                                    id = if (uiState.isEditMode) R.drawable.ic_check else R.drawable.ic_add
+                                ),
+                                contentDescription = null,
+                                tint = if (uiState.canSave) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(20.dp)
+                            )
 
-                        Spacer(modifier = Modifier.width(10.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
 
-                        Text(
-                            text = if (uiState.isEditMode) "حفظ التعديلات" else "إنشاء البروفايل",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = if (uiState.canSave) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                        )
+                            Text(
+                                text = if (uiState.isEditMode) "حفظ التعديلات" else "إنشاء البروفايل",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                color = if (uiState.canSave) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                        }
                     }
                 }
             }
         },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         LazyColumn(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(top = padding.calculateTopPadding())
                 .imePadding()
                 .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(
+                top = 8.dp,
+                bottom = if (isImeVisible) 16.dp else padding.calculateBottomPadding() + 20.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item {
@@ -255,7 +272,7 @@ fun CreateEditProfileScreen(
                     ProfileType.PLAYERS -> {
                         CreatePlayerProfileSection(
                             currentInput = uiState.currentItemInput,
-                            currentItems = uiState.items,
+                            currentItems = uiState.itemLabels,
                             onInputChange = viewModel::onItemInputChange,
                             onAddItem = viewModel::onAddItem,
                             onAddSuggestion = viewModel::onAddSuggestion,
@@ -266,7 +283,7 @@ fun CreateEditProfileScreen(
                     ProfileType.CLUBS -> {
                         CreateClubProfileSection(
                             currentInput = uiState.currentItemInput,
-                            currentItems = uiState.items,
+                            currentItems = uiState.itemLabels,
                             onInputChange = viewModel::onItemInputChange,
                             onAddItem = viewModel::onAddItem,
                             onAddSuggestion = viewModel::onAddSuggestion,
@@ -276,7 +293,7 @@ fun CreateEditProfileScreen(
                     ProfileType.NATIONAL_TEAMS -> {
                         CreateNationalTeamProfileSection(
                             currentInput = uiState.currentItemInput,
-                            currentItems = uiState.items,
+                            currentItems = uiState.itemLabels,
                             onInputChange = viewModel::onItemInputChange,
                             onAddItem = viewModel::onAddItem,
                             onAddSuggestion = viewModel::onAddSuggestion,
@@ -359,41 +376,41 @@ fun CreateEditProfileScreen(
             } else {
                 itemsIndexed(
                     items = uiState.items,
-                    key = { index, item -> "$index-$item" }
+                    key = { _, item -> item.id }
                 ) { index, item ->
                     ProfileItemRow(
                         index = index,
-                        label = item,
+                        label = item.label,
                         profileType = uiState.type,
                         onEdit = {
-                            editingItemIndex = index
+                            editingItem = item
                         },
-                        onRemove = { viewModel.onRemoveItem(index) },
+                        onRemove = { viewModel.onRemoveItem(item.id) },
                         modifier = Modifier.animateItem()
                     )
                 }
             }
 
             item {
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
 
         // Edit Profile Item Dialog
-        if (editingItemIndex != null) {
-            val index = editingItemIndex!!
-            val currentLabel = uiState.items.getOrNull(index) ?: ""
+        if (editingItem != null) {
+            val item = editingItem!!
             EditProfileItemDialog(
-                initialLabel = currentLabel,
+                initialLabel = item.label,
                 profileType = uiState.type,
                 onConfirm = { newLabel ->
-                    viewModel.onEditItem(index, newLabel)
-                    editingItemIndex = null
+                    viewModel.onEditItem(item.id, newLabel)
+                    editingItem = null
                 },
                 onDismiss = {
-                    editingItemIndex = null
+                    editingItem = null
                 }
             )
         }
     }
 }
+

@@ -12,12 +12,18 @@ import com.rndm.app.domain.usecase.profile.CreateProfileUseCase
 import com.rndm.app.domain.usecase.profile.GetProfileByIdUseCase
 import com.rndm.app.domain.usecase.profile.UpdateProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+sealed interface CreateEditProfileEvent {
+    data class ScrollToItem(val index: Int) : CreateEditProfileEvent
+}
 
 @HiltViewModel
 class CreateEditProfileViewModel @Inject constructor(
@@ -29,6 +35,9 @@ class CreateEditProfileViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(CreateEditProfileUiState())
     val uiState: StateFlow<CreateEditProfileUiState> = _uiState.asStateFlow()
+
+    private val _events = Channel<CreateEditProfileEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
 
     init {
         val profileId = savedStateHandle.get<Long>("profileId") ?: 0L
@@ -75,7 +84,12 @@ class CreateEditProfileViewModel @Inject constructor(
                         isLoading = false,
                         name = profile.name,
                         type = profile.type,
-                        items = profile.items.map { item -> item.label }
+                        items = profile.items.map { item ->
+                            ProfileEditableItem(
+                                id = "profile_item_${item.id}_${item.order}",
+                                label = item.label
+                            )
+                        }
                     )
                 }
             } else {
@@ -101,29 +115,43 @@ class CreateEditProfileViewModel @Inject constructor(
     }
 
     fun onAddItem() {
-        val item = _uiState.value.currentItemInput.trim()
-        if (item.isNotBlank() && item !in _uiState.value.items) {
+        val itemLabel = _uiState.value.currentItemInput.trim()
+        if (itemLabel.isNotBlank() && _uiState.value.items.none { it.label.equals(itemLabel, ignoreCase = true) }) {
+            val newItem = ProfileEditableItem(label = itemLabel)
+            val newItems = _uiState.value.items + newItem
             _uiState.update {
                 it.copy(
-                    items = it.items + item,
+                    items = newItems,
                     currentItemInput = ""
                 )
+            }
+            viewModelScope.launch {
+                _events.send(CreateEditProfileEvent.ScrollToItem(newItems.lastIndex))
             }
         }
     }
 
     fun onAddSuggestion(suggestion: String) {
         val trimmed = suggestion.trim()
-        if (trimmed.isNotBlank() && trimmed !in _uiState.value.items) {
+        if (trimmed.isNotBlank() && _uiState.value.items.none { it.label.equals(trimmed, ignoreCase = true) }) {
+            val newItem = ProfileEditableItem(label = trimmed)
+            val newItems = _uiState.value.items + newItem
             _uiState.update {
-                it.copy(items = it.items + trimmed)
+                it.copy(items = newItems)
+            }
+            viewModelScope.launch {
+                _events.send(CreateEditProfileEvent.ScrollToItem(newItems.lastIndex))
             }
         }
     }
 
     fun onAddDefaultTopClubs() {
         _uiState.update { current ->
-            val newItems = (current.items + ProfilePresets.DEFAULT_TOP_CLUBS).distinct()
+            val existingLabels = current.items.map { it.label.trim().lowercase() }.toSet()
+            val newPresets = ProfilePresets.DEFAULT_TOP_CLUBS
+                .filter { it.trim().lowercase() !in existingLabels }
+                .map { ProfileEditableItem(label = it) }
+            val newItems = current.items + newPresets
             val newName = if (current.name.isBlank()) "أقوى الأندية الأوروبية" else current.name
             current.copy(
                 items = newItems,
@@ -134,7 +162,11 @@ class CreateEditProfileViewModel @Inject constructor(
 
     fun onAddDefaultTopTeams() {
         _uiState.update { current ->
-            val newItems = (current.items + ProfilePresets.DEFAULT_TOP_NATIONAL_TEAMS).distinct()
+            val existingLabels = current.items.map { it.label.trim().lowercase() }.toSet()
+            val newPresets = ProfilePresets.DEFAULT_TOP_NATIONAL_TEAMS
+                .filter { it.trim().lowercase() !in existingLabels }
+                .map { ProfileEditableItem(label = it) }
+            val newItems = current.items + newPresets
             val newName = if (current.name.isBlank()) "أقوى 10 منتخبات عالمية" else current.name
             current.copy(
                 items = newItems,
@@ -145,7 +177,11 @@ class CreateEditProfileViewModel @Inject constructor(
 
     fun onAddDefaultTopPlayers() {
         _uiState.update { current ->
-            val newItems = (current.items + ProfilePresets.DEFAULT_PLAYERS).distinct()
+            val existingLabels = current.items.map { it.label.trim().lowercase() }.toSet()
+            val newPresets = ProfilePresets.DEFAULT_PLAYERS
+                .filter { it.trim().lowercase() !in existingLabels }
+                .map { ProfileEditableItem(label = it) }
+            val newItems = current.items + newPresets
             val newName = if (current.name.isBlank()) "دوري الأصدقاء" else current.name
             current.copy(
                 items = newItems,
@@ -155,7 +191,7 @@ class CreateEditProfileViewModel @Inject constructor(
     }
 
     fun onGenerateSamplePlayers(count: Int) {
-        val sampleList = ProfilePresets.generateSamplePlayers(count)
+        val sampleList = ProfilePresets.generateSamplePlayers(count).map { ProfileEditableItem(label = it) }
         _uiState.update { current ->
             val newName = if (current.name.isBlank()) "دوري الأصدقاء" else current.name
             current.copy(
@@ -169,25 +205,21 @@ class CreateEditProfileViewModel @Inject constructor(
         _uiState.update { it.copy(items = emptyList()) }
     }
 
-    fun onRemoveItem(index: Int) {
-        _uiState.update {
-            val updated = it.items.toMutableList()
-            if (index in updated.indices) {
-                updated.removeAt(index)
-            }
-            it.copy(items = updated)
+    fun onRemoveItem(id: String) {
+        _uiState.update { current ->
+            current.copy(items = current.items.filter { it.id != id })
         }
     }
 
-    fun onEditItem(index: Int, newLabel: String) {
+    fun onEditItem(id: String, newLabel: String) {
         val trimmed = newLabel.trim()
         if (trimmed.isNotBlank() && trimmed.length <= Constants.MAX_ITEM_LABEL_LENGTH) {
-            _uiState.update {
-                val updated = it.items.toMutableList()
-                if (index in updated.indices) {
-                    updated[index] = trimmed
-                }
-                it.copy(items = updated)
+            _uiState.update { current ->
+                current.copy(
+                    items = current.items.map { item ->
+                        if (item.id == id) item.copy(label = trimmed) else item
+                    }
+                )
             }
         }
     }
@@ -199,11 +231,11 @@ class CreateEditProfileViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true) }
-                val profileItems = state.items.mapIndexed { index, label ->
+                val profileItems = state.items.mapIndexed { index, item ->
                     ProfileItem(
                         id = 0L,
                         profileId = state.profileId,
-                        label = label,
+                        label = item.label,
                         order = index
                     )
                 }
@@ -228,3 +260,4 @@ class CreateEditProfileViewModel @Inject constructor(
         }
     }
 }
+
