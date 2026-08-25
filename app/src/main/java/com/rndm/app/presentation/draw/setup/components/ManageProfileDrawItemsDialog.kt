@@ -58,15 +58,21 @@ import androidx.compose.ui.unit.sp
 import com.rndm.app.R
 import com.rndm.app.domain.model.Profile
 import com.rndm.app.domain.model.ProfileItem
+import com.rndm.app.domain.model.ProfilePresets
 import com.rndm.app.domain.model.ProfileType
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ManageProfileDrawItemsDialog(
     profile: Profile,
+    isAdmin: Boolean = false,
     onDismiss: () -> Unit,
     onSaveProfile: (Profile) -> Unit
 ) {
+    val isDefaultProfile = remember(profile.name) { ProfilePresets.isDefaultProfile(profile.name) }
+    val canDeleteItems = !isDefaultProfile || isAdmin
+    var adminNoticeMessage by remember { mutableStateOf<String?>(null) }
+
     val itemsList = remember { mutableStateListOf<ProfileItem>().apply { addAll(profile.items) } }
     var newItemText by remember { mutableStateOf("") }
     var editingItemIndex by remember { mutableStateOf<Int?>(null) }
@@ -182,6 +188,69 @@ fun ManageProfileDrawItemsDialog(
                     .fillMaxWidth()
                     .heightIn(min = 280.dp, max = 460.dp)
             ) {
+                // Admin Notice for Default Profiles
+                if (isDefaultProfile && !isAdmin) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_lock),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = "بروفايل افتراضي: يمكنك استبعاد وتفعيل اللاعبين للقرعة بحرية. الحذف الكلي متاح للمسؤولين فقط.",
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                if (adminNoticeMessage != null) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = adminNoticeMessage!!,
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(
+                                onClick = { adminNoticeMessage = null },
+                                modifier = Modifier.size(20.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_close),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
                 // 1. Quick Add Field
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -415,19 +484,36 @@ fun ManageProfileDrawItemsDialog(
                                             )
                                         }
 
-                                        // Delete trash
-                                        IconButton(
-                                            onClick = {
-                                                itemsList.removeAt(index)
-                                            },
-                                            modifier = Modifier.size(28.dp)
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(id = R.drawable.ic_delete),
-                                                contentDescription = "حذف",
-                                                tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-                                                modifier = Modifier.size(14.dp)
-                                            )
+                                        // Delete trash (or lock icon if default profile & non-admin)
+                                        if (canDeleteItems) {
+                                            IconButton(
+                                                onClick = {
+                                                    itemsList.removeAt(index)
+                                                },
+                                                modifier = Modifier.size(28.dp)
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.ic_delete),
+                                                    contentDescription = "حذف",
+                                                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                            }
+                                        } else {
+                                            IconButton(
+                                                onClick = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    adminNoticeMessage = "حذف العناصر نهائياً من هذا البروفايل مقيد بالمسؤولين. يمكنك استبعاد اللاعب من القرعة بالضغط على زر (مشارك / مستبعد)."
+                                                },
+                                                modifier = Modifier.size(28.dp)
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.ic_lock),
+                                                    contentDescription = "مقيد بالمسؤولين",
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                            }
                                         }
                                     }
                                 }

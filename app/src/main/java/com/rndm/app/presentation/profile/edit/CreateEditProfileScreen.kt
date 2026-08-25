@@ -36,6 +36,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -55,6 +57,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rndm.app.R
@@ -81,6 +84,7 @@ fun CreateEditProfileScreen(
     val spacing = RndmThemeTokens.spacing
     val listState = rememberLazyListState()
     val isImeVisible = WindowInsets.isImeVisible
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var editingItem by remember { mutableStateOf<ProfileEditableItem?>(null) }
 
@@ -94,7 +98,7 @@ fun CreateEditProfileScreen(
         }
     }
 
-    // Smooth auto-scroll only when user explicitly adds a new item
+    // Events collector (scroll and toast messages)
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
@@ -102,6 +106,9 @@ fun CreateEditProfileScreen(
                     // Target index = header items (4) + added item index
                     val targetIndex = 4 + event.index
                     listState.animateScrollToItem(targetIndex)
+                }
+                is CreateEditProfileEvent.ShowToast -> {
+                    snackbarHostState.showSnackbar(event.message)
                 }
             }
         }
@@ -130,6 +137,7 @@ fun CreateEditProfileScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             RndmTopAppBar(
                 title = screenTitle,
@@ -305,48 +313,86 @@ fun CreateEditProfileScreen(
 
             // Items List Header & Controls
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "العناصر المضافة حالياً",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                    // Admin Info Notice for Default Profiles
+                    if (uiState.isDefaultProfile && !uiState.isAdmin) {
                         Surface(
-                            color = typeColor.copy(alpha = 0.15f),
-                            shape = CircleShape
-                        ) {
-                            Text(
-                                text = "${uiState.items.size}",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = typeColor
-                                ),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                             )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_lock),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "هذا بروفايل أساسي للتطبيق. يمكنك استبعاد وتفعيل اللاعبين أثناء القرعة، بينما الحذف الكلي متاح للمسؤولين فقط.",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
 
-                    if (uiState.items.isNotEmpty()) {
-                        Text(
-                            text = "مسح الكل",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    viewModel.onClearAllItems()
-                                }
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "العناصر المضافة حالياً",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Surface(
+                                color = typeColor.copy(alpha = 0.15f),
+                                shape = CircleShape
+                            ) {
+                                Text(
+                                    text = "${uiState.items.size}",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = typeColor
+                                    ),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
+                        if (uiState.items.isNotEmpty()) {
+                            if (uiState.canDeleteItems) {
+                                Text(
+                                    text = "مسح الكل",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .clickable {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            viewModel.onClearAllItems()
+                                        }
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -382,6 +428,7 @@ fun CreateEditProfileScreen(
                         index = index,
                         label = item.label,
                         profileType = uiState.type,
+                        canDelete = uiState.canDeleteItems,
                         onEdit = {
                             editingItem = item
                         },

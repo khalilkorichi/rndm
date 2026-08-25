@@ -10,7 +10,9 @@ import com.rndm.app.domain.model.ProfileGroup
 import com.rndm.app.domain.model.ProfileItem
 import com.rndm.app.domain.model.ProfilePresets
 import com.rndm.app.domain.model.ProfileType
+import com.rndm.app.domain.model.UserRole
 import com.rndm.app.domain.repository.DrawFixtureRepository
+import com.rndm.app.domain.usecase.auth.GetCurrentUserRoleUseCase
 import com.rndm.app.domain.usecase.profile.CreateProfileGroupUseCase
 import com.rndm.app.domain.usecase.profile.CreateProfileUseCase
 import com.rndm.app.domain.usecase.profile.GetAllProfilesUseCase
@@ -31,6 +33,7 @@ import javax.inject.Inject
 data class DrawSetupUiState(
     val currentStep: DrawSetupStep = DrawSetupStep.SELECT_PARTICIPANTS,
     val isLoading: Boolean = true,
+    val isAdmin: Boolean = false,
     val profiles: List<Profile> = emptyList(),
     val groups: List<ProfileGroup> = emptyList(),
     val selectedGroupId: Long? = null,
@@ -65,6 +68,7 @@ class DrawSetupViewModel @Inject constructor(
     private val createProfileGroupUseCase: CreateProfileGroupUseCase,
     private val createProfileUseCase: CreateProfileUseCase,
     private val updateProfileUseCase: UpdateProfileUseCase,
+    private val getCurrentUserRoleUseCase: GetCurrentUserRoleUseCase,
     private val drawFixtureRepository: DrawFixtureRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -73,12 +77,21 @@ class DrawSetupViewModel @Inject constructor(
     val uiState: StateFlow<DrawSetupUiState> = _uiState.asStateFlow()
 
     init {
+        observeUserRole()
         val initialProfileId = savedStateHandle.get<Long>("profileId") ?: 0L
         if (initialProfileId > 0L) {
             _uiState.update { it.copy(selectedProfileId = initialProfileId) }
         }
         loadProfiles()
         loadGroups()
+    }
+
+    private fun observeUserRole() {
+        getCurrentUserRoleUseCase()
+            .onEach { role ->
+                _uiState.update { it.copy(isAdmin = role == UserRole.ADMIN) }
+            }
+            .launchIn(viewModelScope)
     }
 
     fun initializeWithProfileId(profileId: Long) {

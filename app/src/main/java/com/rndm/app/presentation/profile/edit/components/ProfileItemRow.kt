@@ -39,6 +39,7 @@ fun ProfileItemRow(
     label: String,
     onEdit: () -> Unit,
     onRemove: () -> Unit,
+    canDelete: Boolean = true,
     profileType: ProfileType = ProfileType.PLAYERS,
     modifier: Modifier = Modifier
 ) {
@@ -129,7 +130,7 @@ fun ProfileItemRow(
                     }
                 }
 
-                // Delete Button
+                // Delete Button (or Lock Icon if default profile & non-admin)
                 IconButton(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -139,15 +140,19 @@ fun ProfileItemRow(
                 ) {
                     Surface(
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.10f),
+                        color = if (canDelete) MaterialTheme.colorScheme.error.copy(alpha = 0.10f)
+                               else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                         modifier = Modifier.size(30.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                painter = painterResource(id = R.drawable.ic_close),
-                                contentDescription = "حذف",
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(15.dp)
+                                painter = painterResource(
+                                    id = if (canDelete) R.drawable.ic_close else R.drawable.ic_lock
+                                ),
+                                contentDescription = if (canDelete) "حذف" else "مقيد بالمسؤولين",
+                                tint = if (canDelete) MaterialTheme.colorScheme.error
+                                       else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.size(if (canDelete) 15.dp else 14.dp)
                             )
                         }
                     }

@@ -394,6 +394,7 @@ fun DrawSetupScreen(
         uiState.editingProfile?.let { prof ->
             ManageProfileDrawItemsDialog(
                 profile = prof,
+                isAdmin = uiState.isAdmin,
                 onDismiss = viewModel::onDismissManageProfileItems,
                 onSaveProfile = viewModel::onSaveEditedProfile
             )

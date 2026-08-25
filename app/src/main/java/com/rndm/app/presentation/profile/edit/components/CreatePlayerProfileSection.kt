@@ -153,7 +153,7 @@ fun CreatePlayerProfileSection(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "إضافة 10 أصدقاء (خليل، عبدو، ديدو، عزيز...)",
+                            text = "إضافة ${ProfilePresets.DEFAULT_PLAYERS.size} أصدقاء (خليل، عبدو، محمد، ديدو...)",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -95,6 +95,7 @@ object ProfilePresets {
     val DEFAULT_PLAYERS = listOf(
         "خليل",
         "عبدو",
+        "محمد",
         "ديدو",
         "عزيز",
         "قويدر",
@@ -152,6 +153,20 @@ object ProfilePresets {
     }
 
     /**
+     * التحقق مما إذا كان البروفايل هو أحد البروفايلات الافتراضية للتطبيق
+     */
+    fun isDefaultProfile(profileName: String): Boolean {
+        val trimmed = profileName.trim()
+        return trimmed.equals(DEFAULT_PLAYERS_PROFILE_NAME, ignoreCase = true) ||
+                trimmed.equals(DEFAULT_CLUBS_PROFILE_NAME, ignoreCase = true) ||
+                trimmed.equals(DEFAULT_NATIONAL_TEAMS_PROFILE_NAME, ignoreCase = true) ||
+                trimmed.equals("دوري الأصدقاء", ignoreCase = true) ||
+                trimmed.equals("دوري الأصدقاء (أشخاص)", ignoreCase = true) ||
+                trimmed.equals("أقوى الأندية الأوروبية", ignoreCase = true) ||
+                trimmed.equals("أقوى 10 منتخبات عالمية", ignoreCase = true)
+    }
+
+    /**
      * إرجاع البروفايلات الافتراضية الناقصة فقط غير الموجودة في قائمة البروفايلات الحالية
      */
     fun getMissingDefaultProfiles(existingProfiles: List<Profile>): List<Profile> {
@@ -163,4 +178,5 @@ object ProfilePresets {
         }
     }
 }
+
 

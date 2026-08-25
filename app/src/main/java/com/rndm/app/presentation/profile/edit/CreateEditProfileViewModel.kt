@@ -8,6 +8,8 @@ import com.rndm.app.domain.model.Profile
 import com.rndm.app.domain.model.ProfileItem
 import com.rndm.app.domain.model.ProfilePresets
 import com.rndm.app.domain.model.ProfileType
+import com.rndm.app.domain.model.UserRole
+import com.rndm.app.domain.usecase.auth.GetCurrentUserRoleUseCase
 import com.rndm.app.domain.usecase.profile.CreateProfileUseCase
 import com.rndm.app.domain.usecase.profile.GetProfileByIdUseCase
 import com.rndm.app.domain.usecase.profile.UpdateProfileUseCase
@@ -16,6 +18,8 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -23,6 +27,7 @@ import javax.inject.Inject
 
 sealed interface CreateEditProfileEvent {
     data class ScrollToItem(val index: Int) : CreateEditProfileEvent
+    data class ShowToast(val message: String) : CreateEditProfileEvent
 }
 
 @HiltViewModel
@@ -30,6 +35,7 @@ class CreateEditProfileViewModel @Inject constructor(
     private val getProfileByIdUseCase: GetProfileByIdUseCase,
     private val createProfileUseCase: CreateProfileUseCase,
     private val updateProfileUseCase: UpdateProfileUseCase,
+    private val getCurrentUserRoleUseCase: GetCurrentUserRoleUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -40,6 +46,7 @@ class CreateEditProfileViewModel @Inject constructor(
     val events = _events.receiveAsFlow()
 
     init {
+        observeUserRole()
         val profileId = savedStateHandle.get<Long>("profileId") ?: 0L
         val typeName = savedStateHandle.get<String>("typeName")
         val initialType = typeName?.let {
@@ -55,6 +62,14 @@ class CreateEditProfileViewModel @Inject constructor(
         } else {
             _uiState.update { it.copy(type = initialType) }
         }
+    }
+
+    private fun observeUserRole() {
+        getCurrentUserRoleUseCase()
+            .onEach { role ->
+                _uiState.update { it.copy(isAdmin = role == UserRole.ADMIN) }
+            }
+            .launchIn(viewModelScope)
     }
 
     fun initialize(profileId: Long, typeName: String? = null) {
@@ -202,10 +217,24 @@ class CreateEditProfileViewModel @Inject constructor(
     }
 
     fun onClearAllItems() {
+        val state = _uiState.value
+        if (state.isDefaultProfile && !state.isAdmin) {
+            viewModelScope.launch {
+                _events.send(CreateEditProfileEvent.ShowToast("مسح عناصر البروفايل الافتراضي متاح للمسؤولين (Admins) فقط."))
+            }
+            return
+        }
         _uiState.update { it.copy(items = emptyList()) }
     }
 
     fun onRemoveItem(id: String) {
+        val state = _uiState.value
+        if (state.isDefaultProfile && !state.isAdmin) {
+            viewModelScope.launch {
+                _events.send(CreateEditProfileEvent.ShowToast("حذف اللاعبين كلياً من البروفايل الافتراضي متاح للمسؤولين (Admins) فقط. يمكنك استبعادهم أثناء إعداد القرعة."))
+            }
+            return
+        }
         _uiState.update { current ->
             current.copy(items = current.items.filter { it.id != id })
         }
