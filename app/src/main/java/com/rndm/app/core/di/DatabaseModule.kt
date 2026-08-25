@@ -11,10 +11,12 @@ import com.rndm.app.data.local.MIGRATION_5_6
 import com.rndm.app.data.local.MIGRATION_6_7
 import com.rndm.app.data.local.MIGRATION_7_8
 import com.rndm.app.data.local.MIGRATION_8_9
+import com.rndm.app.data.local.MIGRATION_9_10
 import com.rndm.app.data.local.RndmDatabase
 import com.rndm.app.data.local.dao.MatchDao
 import com.rndm.app.data.local.dao.PlayerProfileDao
 import com.rndm.app.data.local.dao.ProfileDao
+import com.rndm.app.data.local.dao.ProfileGroupDao
 import com.rndm.app.data.local.dao.ProfileItemDao
 import com.rndm.app.data.local.dao.TournamentDao
 import dagger.Module
@@ -45,7 +47,8 @@ object DatabaseModule {
             MIGRATION_5_6,
             MIGRATION_6_7,
             MIGRATION_7_8,
-            MIGRATION_8_9
+            MIGRATION_8_9,
+            MIGRATION_9_10
         ).fallbackToDestructiveMigration()
          .build()
     }
@@ -58,6 +61,11 @@ object DatabaseModule {
     @Provides
     fun provideProfileItemDao(database: RndmDatabase): ProfileItemDao {
         return database.profileItemDao()
+    }
+
+    @Provides
+    fun provideProfileGroupDao(database: RndmDatabase): ProfileGroupDao {
+        return database.profileGroupDao()
     }
 
     @Provides
@@ -75,3 +83,4 @@ object DatabaseModule {
         return database.playerProfileDao()
     }
 }
+

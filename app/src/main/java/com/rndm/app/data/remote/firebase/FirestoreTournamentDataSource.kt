@@ -7,6 +7,7 @@ import com.rndm.app.data.remote.firebase.dto.FirestoreCodeDto
 import com.rndm.app.data.remote.firebase.dto.FirestoreMatchDto
 import com.rndm.app.data.remote.firebase.dto.FirestoreParticipantDto
 import com.rndm.app.data.remote.firebase.dto.FirestoreTournamentDto
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -85,6 +86,7 @@ class FirestoreTournamentDataSource @Inject constructor(
             Log.d("SYNC_RNDM", "Published tournament successfully: $tournamentId with code $dashedCode")
             Result.success(finalTournament)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e("SYNC_RNDM", "Failed to publish tournament", e)
             Result.failure(e)
         }
@@ -105,6 +107,7 @@ class FirestoreTournamentDataSource @Inject constructor(
                         if (!tId.isNullOrBlank()) return Result.success(tId)
                     }
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     Log.w("SYNC_RNDM", "Clean code doc check: ${e.message}")
                 }
             }
@@ -118,6 +121,7 @@ class FirestoreTournamentDataSource @Inject constructor(
                         if (!tId.isNullOrBlank()) return Result.success(tId)
                     }
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     Log.w("SYNC_RNDM", "Dashed code doc check: ${e.message}")
                 }
             }
@@ -140,6 +144,7 @@ class FirestoreTournamentDataSource @Inject constructor(
                     if (!tId.isNullOrBlank()) return Result.success(tId)
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 Log.w("SYNC_RNDM", "Query tournament_codes: ${e.message}")
             }
 
@@ -164,11 +169,13 @@ class FirestoreTournamentDataSource @Inject constructor(
                     return Result.success(docById.id)
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 Log.w("SYNC_RNDM", "Tournaments query check: ${e.message}")
             }
 
             Result.failure(IllegalArgumentException("كود البطولة غير موجود على السحابة، يرجى التأكد من قيام المنظم بنشر البطولة أولاً"))
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e("SYNC_RNDM", "Failed lookup by code: $code", e)
             Result.failure(e)
         }
@@ -188,17 +195,20 @@ class FirestoreTournamentDataSource @Inject constructor(
             val participants = try {
                 tournamentRef.collection("participants").get().await().toObjects(FirestoreParticipantDto::class.java)
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 emptyList()
             }
 
             val matches = try {
                 tournamentRef.collection("matches").get().await().toObjects(FirestoreMatchDto::class.java)
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 emptyList()
             }
 
             Result.success(Triple(tournamentDto, participants, matches))
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e("SYNC_RNDM", "Failed to fetch tournament snapshot", e)
             Result.failure(e)
         }
@@ -210,6 +220,7 @@ class FirestoreTournamentDataSource @Inject constructor(
             tournamentRef.update("memberIds", FieldValue.arrayUnion(userUid)).await()
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.w("SYNC_RNDM", "Failed to join member", e)
             Result.failure(e)
         }
@@ -237,6 +248,7 @@ class FirestoreTournamentDataSource @Inject constructor(
             matchRef.set(match).await()
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e("SYNC_RNDM", "Failed update match score", e)
             Result.failure(e)
         }
@@ -248,6 +260,7 @@ class FirestoreTournamentDataSource @Inject constructor(
                 .update("status", status, "updatedAt", System.currentTimeMillis()).await()
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e("SYNC_RNDM", "Failed update tournament status", e)
             Result.failure(e)
         }
@@ -269,6 +282,7 @@ class FirestoreTournamentDataSource @Inject constructor(
             batch.commit().await()
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e("SYNC_RNDM", "Failed delete tournament", e)
             Result.failure(e)
         }

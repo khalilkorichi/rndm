@@ -36,13 +36,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Icon
+import androidx.compose.ui.res.painterResource
+import com.rndm.app.core.ui.components.AvatarPreset
 import com.rndm.app.core.ui.components.RndmButton
 import com.rndm.app.core.ui.components.RndmButtonType
 import com.rndm.app.domain.model.PlayerCareerStats
-
-private val AVATAR_PRESETS = listOf(
-    "👑", "⚽", "⚡", "🦁", "🎯", "🚀", "💎", "🔥", "🏆", "🌟", "🎩", "🛡️", "🦅", "🎮"
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,7 +52,7 @@ fun EditPlayerProfileBottomSheet(
     onSave: (nickname: String?, avatarIcon: String?, favoriteClub: String?, notes: String?) -> Unit
 ) {
     var nickname by remember { mutableStateOf(stats.nickname ?: "") }
-    var selectedAvatar by remember { mutableStateOf(stats.avatarIcon ?: "⚽") }
+    var selectedAvatar by remember { mutableStateOf(stats.avatarIcon ?: AvatarPreset.FOOTBALL.id) }
     var favoriteClub by remember { mutableStateOf(stats.favoriteClub ?: "") }
     var notes by remember { mutableStateOf(stats.notes ?: "") }
 
@@ -85,10 +84,10 @@ fun EditPlayerProfileBottomSheet(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            // 1. Choose Avatar Emoji
+            // 1. Choose Avatar Icon
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "اختر رمز أو أيقونة اللاعب",
+                    text = "اختر أيقونة البروفايل",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -98,13 +97,14 @@ fun EditPlayerProfileBottomSheet(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(
-                        items = AVATAR_PRESETS,
-                        key = { it }
-                    ) { emoji ->
-                        val isSelected = selectedAvatar == emoji
+                        items = AvatarPreset.entries,
+                        key = { it.id }
+                    ) { preset ->
+                        val isSelected = selectedAvatar.equals(preset.id, ignoreCase = true) ||
+                                (stats.avatarIcon != null && AvatarPreset.resolveIconRes(selectedAvatar) == preset.iconRes)
                         Box(
                             modifier = Modifier
-                                .size(44.dp)
+                                .size(48.dp)
                                 .clip(CircleShape)
                                 .background(
                                     if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
@@ -114,10 +114,15 @@ fun EditPlayerProfileBottomSheet(
                                     if (isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
                                     else Modifier
                                 )
-                                .clickable { selectedAvatar = emoji },
+                                .clickable { selectedAvatar = preset.id },
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(text = emoji, fontSize = 22.sp)
+                            Icon(
+                                painter = painterResource(id = preset.iconRes),
+                                contentDescription = preset.title,
+                                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
                     }
                 }

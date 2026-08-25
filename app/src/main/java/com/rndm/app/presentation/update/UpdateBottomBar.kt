@@ -93,7 +93,7 @@ fun UpdateBottomBar(
                         Text("تم إيقاف التحميل مؤقتاً (${uiState.progress}%)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                     is UpdateUiState.ReadyToInstall -> {
-                        Text("اكتمل التحميل! ⚡", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text("اكتمل التحميل بنجاح!", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         Text("اضغط لتثبيت الإصدار الجديد الآن.", color = Color.White.copy(0.85f), fontSize = 11.sp)
                     }
                     is UpdateUiState.DownloadFailed -> {

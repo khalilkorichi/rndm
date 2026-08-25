@@ -19,6 +19,7 @@ data class SettingsUiState(
     val currentUserProfile: UserProfile? = null,
     val isAdminLoginDialogOpen: Boolean = false,
     val isUserManagementDialogOpen: Boolean = false,
+    val isRoleInfoDialogOpen: Boolean = false,
     val usersList: List<UserProfile> = emptyList(),
     val isUserActionLoading: Boolean = false,
     val userActionMessage: String? = null,

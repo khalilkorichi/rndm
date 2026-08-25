@@ -15,6 +15,7 @@ fun ProfileWithItems.toDomain(): Profile {
         id = profile.id,
         name = profile.name,
         type = profileType,
+        groupId = profile.groupId,
         items = items.sortedBy { it.order }.map { it.toDomain() },
         createdAt = profile.createdAt,
         lastUsedAt = profile.lastUsedAt
@@ -26,7 +27,9 @@ fun Profile.toEntity(): ProfileEntity {
         id = id,
         name = name,
         type = type.name,
+        groupId = groupId,
         createdAt = createdAt,
         lastUsedAt = lastUsedAt
     )
 }
+

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -32,6 +33,10 @@ import androidx.compose.ui.unit.sp
 import com.rndm.app.R
 import com.rndm.app.core.ui.components.BentoCard
 import com.rndm.app.domain.model.PlayerCareerStats
+
+import androidx.annotation.DrawableRes
+import com.rndm.app.core.ui.components.AvatarPreset
+import com.rndm.app.core.ui.components.PlayerAvatar
 
 @Composable
 fun PlayerHeroHeader(
@@ -120,59 +125,14 @@ fun PlayerHeroHeader(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // Avatar with Crown if Champion
-                Box(
-                    modifier = Modifier.size(80.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(72.dp)
-                            .clip(CircleShape)
-                            .background(Brush.linearGradient(avatarGradient))
-                            .padding(3.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surface),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (!stats.avatarIcon.isNullOrBlank()) {
-                                Text(
-                                    text = stats.avatarIcon,
-                                    fontSize = 28.sp
-                                )
-                            } else {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_person),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(36.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    if (isChampion) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .size(26.dp)
-                                .clip(CircleShape)
-                                .background(com.rndm.app.core.theme.GoldMedalColor)
-                                .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_crown),
-                                contentDescription = "بطل",
-                                tint = Color.Black,
-                                modifier = Modifier.size(15.dp)
-                            )
-                        }
-                    }
-                }
+                PlayerAvatar(
+                    avatarIcon = stats.avatarIcon,
+                    size = 72.dp,
+                    iconSize = 36.dp,
+                    borderGradient = avatarGradient,
+                    isChampion = isChampion,
+                    showCrownBadge = true
+                )
 
                 Spacer(modifier = Modifier.height(10.dp))
 
@@ -238,25 +198,29 @@ fun PlayerHeroHeader(
         ) {
             QuickMetricCard(
                 modifier = Modifier.weight(1f),
-                title = "الألقاب 🏆",
+                title = "الألقاب",
+                iconRes = R.drawable.ic_trophy,
                 value = "${stats.titlesCount}",
                 color = if (stats.titlesCount > 0) com.rndm.app.core.theme.GoldMedalColor else MaterialTheme.colorScheme.onSurface
             )
             QuickMetricCard(
                 modifier = Modifier.weight(1f),
-                title = "الأهداف ⚽",
+                title = "الأهداف",
+                iconRes = R.drawable.ic_football,
                 value = "${stats.goalsScored}",
                 color = MaterialTheme.colorScheme.primary
             )
             QuickMetricCard(
                 modifier = Modifier.weight(1f),
-                title = "المباريات 🎮",
+                title = "المباريات",
+                iconRes = R.drawable.ic_swords,
                 value = "${stats.totalMatches}",
                 color = MaterialTheme.colorScheme.tertiary
             )
             QuickMetricCard(
                 modifier = Modifier.weight(1f),
-                title = "نسبة الفوز 📈",
+                title = "نسبة الفوز",
+                iconRes = R.drawable.ic_chart,
                 value = "${stats.winRatePercentage.toInt()}%",
                 color = MaterialTheme.colorScheme.secondary
             )
@@ -267,6 +231,7 @@ fun PlayerHeroHeader(
 @Composable
 private fun QuickMetricCard(
     title: String,
+    @DrawableRes iconRes: Int,
     value: String,
     color: Color,
     modifier: Modifier = Modifier
@@ -275,7 +240,7 @@ private fun QuickMetricCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 6.dp),
+                .padding(vertical = 12.dp, horizontal = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -286,12 +251,23 @@ private fun QuickMetricCard(
                 color = color
             )
             Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Icon(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(12.dp)
+                )
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
         }
     }
 }

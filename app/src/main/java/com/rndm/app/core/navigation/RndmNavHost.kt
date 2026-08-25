@@ -499,7 +499,6 @@ fun RndmNavHost(
 
                 composable<Destination.PlayersLeaderboard> {
                     PlayersLeaderboardScreen(
-                        onNavigateBack = { navController.popBackStack() },
                         onNavigateToPlayer = { playerName ->
                             navController.navigate(Destination.PlayerProfile(playerName))
                         }

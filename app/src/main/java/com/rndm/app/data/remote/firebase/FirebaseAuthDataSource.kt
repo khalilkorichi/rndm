@@ -10,6 +10,7 @@ import com.google.firebase.firestore.Query
 import com.rndm.app.data.remote.firebase.dto.FirestoreUserDto
 import com.rndm.app.domain.model.UserProfile
 import com.rndm.app.domain.model.UserRole
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -61,6 +62,7 @@ class FirebaseAuthDataSource @Inject constructor(
                 Result.success(uid)
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Result.failure(e)
         }
     }
@@ -107,6 +109,7 @@ class FirebaseAuthDataSource @Inject constructor(
             Log.d("AUTH_RNDM", "Signed up successfully with email: ${user.uid} ($cleanEmail, role=$role)")
             Result.success(user.uid)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e("AUTH_RNDM", "Failed to sign up", e)
             Result.failure(e)
         }
@@ -145,6 +148,7 @@ class FirebaseAuthDataSource @Inject constructor(
             Log.d("AUTH_RNDM", "Signed in successfully: ${user.uid} ($cleanEmail)")
             Result.success(user.uid)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e("AUTH_RNDM", "Failed to sign in", e)
             Result.failure(e)
         }
@@ -156,6 +160,7 @@ class FirebaseAuthDataSource @Inject constructor(
             signInAnonymously()
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Result.failure(e)
         }
     }
@@ -191,6 +196,7 @@ class FirebaseAuthDataSource @Inject constructor(
                 if (email.isNotBlank()) UserRole.USER else UserRole.GUEST
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             if (isMasterAdminEmail(email)) UserRole.ADMIN else if (email.isNotBlank()) UserRole.USER else UserRole.GUEST
         }
     }
@@ -231,6 +237,7 @@ class FirebaseAuthDataSource @Inject constructor(
                 createdAt = user.metadata?.creationTimestamp ?: System.currentTimeMillis()
             )
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             UserProfile(
                 uid = user.uid,
                 email = user.email.orEmpty(),
@@ -265,6 +272,7 @@ class FirebaseAuthDataSource @Inject constructor(
             Log.d("AUTH_RNDM", "Updated role for $targetUid to $newRole")
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e("AUTH_RNDM", "Failed to update role for $targetUid", e)
             Result.failure(e)
         }
@@ -303,6 +311,7 @@ class FirebaseAuthDataSource @Inject constructor(
                 Result.success(Unit)
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e("AUTH_RNDM", "Failed to promote user by email $cleanEmail", e)
             Result.failure(e)
         }

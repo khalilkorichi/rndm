@@ -31,6 +31,13 @@ sealed class BottomNavItem(
         outlinedIcon = R.drawable.ic_tournament_outlined
     )
 
+    data object Stats : BottomNavItem(
+        destination = Destination.PlayersLeaderboard,
+        title = "الإحصائيات",
+        filledIcon = R.drawable.ic_stats_filled,
+        outlinedIcon = R.drawable.ic_stats_outlined
+    )
+
     data object Settings : BottomNavItem(
         destination = Destination.Settings,
         title = "الإعدادات",
@@ -39,6 +46,6 @@ sealed class BottomNavItem(
     )
 
     companion object {
-        val items = listOf(Home, Profiles, Tournaments, Settings)
+        val items = listOf(Home, Profiles, Tournaments, Stats, Settings)
     }
 }

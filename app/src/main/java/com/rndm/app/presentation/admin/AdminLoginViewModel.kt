@@ -3,6 +3,8 @@ package com.rndm.app.presentation.admin
 import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rndm.app.domain.usecase.auth.GetCurrentUserProfileUseCase
+import com.rndm.app.domain.usecase.auth.GetCurrentUserRoleUseCase
 import com.rndm.app.domain.usecase.auth.LoginUseCase
 import com.rndm.app.domain.usecase.auth.SignUpUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,7 +18,9 @@ import javax.inject.Inject
 @HiltViewModel
 class AdminLoginViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
-    private val signUpUseCase: SignUpUseCase
+    private val signUpUseCase: SignUpUseCase,
+    private val getCurrentUserRoleUseCase: GetCurrentUserRoleUseCase,
+    private val getCurrentUserProfileUseCase: GetCurrentUserProfileUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AdminLoginUiState())
@@ -50,7 +54,7 @@ class AdminLoginViewModel @Inject constructor(
         _uiState.update { it.copy(isConfirmPasswordVisible = !it.isConfirmPasswordVisible) }
     }
 
-    fun submit(onSuccess: () -> Unit) {
+    fun submit() {
         val state = _uiState.value
         val cleanEmail = state.email.trim().lowercase()
 
@@ -87,8 +91,16 @@ class AdminLoginViewModel @Inject constructor(
                     displayName = state.displayName
                 )
                 if (result.isSuccess) {
-                    _uiState.update { it.copy(isLoading = false, isSuccess = true) }
-                    onSuccess()
+                    val role = getCurrentUserRoleUseCase.getSyncRole()
+                    val profile = getCurrentUserProfileUseCase.getSync()
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isSuccess = true,
+                            loggedInRole = role,
+                            loggedInProfile = profile
+                        )
+                    }
                 } else {
                     val msg = result.exceptionOrNull()?.localizedMessage ?: "فشل إنشاء الحساب، يرجى التحقق من البيانات"
                     _uiState.update { it.copy(isLoading = false, errorMessage = msg) }
@@ -99,8 +111,16 @@ class AdminLoginViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = true, errorMessage = null) }
                 val result = loginUseCase(cleanEmail, state.password)
                 if (result.isSuccess) {
-                    _uiState.update { it.copy(isLoading = false, isSuccess = true) }
-                    onSuccess()
+                    val role = getCurrentUserRoleUseCase.getSyncRole()
+                    val profile = getCurrentUserProfileUseCase.getSync()
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isSuccess = true,
+                            loggedInRole = role,
+                            loggedInProfile = profile
+                        )
+                    }
                 } else {
                     _uiState.update {
                         it.copy(

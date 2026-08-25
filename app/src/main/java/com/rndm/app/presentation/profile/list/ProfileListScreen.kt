@@ -165,7 +165,7 @@ fun ProfileListScreen(
                                         )
                                         Column {
                                             Text(
-                                                text = "لوحة صدارة وترتيب اللاعبين الشاملة 👑",
+                                                text = "لوحة صدارة وترتيب اللاعبين الشاملة",
                                                 style = MaterialTheme.typography.labelLarge,
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.primary

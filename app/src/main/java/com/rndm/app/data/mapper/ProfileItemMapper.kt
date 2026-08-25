@@ -8,7 +8,8 @@ fun ProfileItemEntity.toDomain(): ProfileItem {
         id = id,
         profileId = profileId,
         label = label,
-        order = order
+        order = order,
+        isActive = isActive
     )
 }
 
@@ -17,6 +18,8 @@ fun ProfileItem.toEntity(profileId: Long = this.profileId): ProfileItemEntity {
         id = id,
         profileId = profileId,
         label = label,
-        order = order
+        order = order,
+        isActive = isActive
     )
 }
+

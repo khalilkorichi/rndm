@@ -3,6 +3,7 @@ package com.rndm.app.data.remote.firebase
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.rndm.app.data.remote.firebase.dto.FirestoreAuditLogDto
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -24,6 +25,7 @@ class FirestoreAuditDataSource @Inject constructor(
                 .collection("auditLogs").document(logId).set(finalDto).await()
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Result.failure(e)
         }
     }

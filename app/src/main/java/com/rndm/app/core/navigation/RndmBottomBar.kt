@@ -66,7 +66,7 @@ fun RndmBottomBar(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         // Floating Outer Pill Container (Glassmorphic in Light & Dark Mode)
@@ -111,14 +111,14 @@ fun RndmBottomBar(
                     ),
                     shape = CircleShape
                 )
-                .padding(horizontal = 6.dp, vertical = 6.dp)
+                .padding(horizontal = 5.dp, vertical = 5.dp)
                 .animateContentSize(
                     animationSpec = spring(
                         dampingRatio = Spring.DampingRatioLowBouncy,
                         stiffness = Spring.StiffnessMediumLow
                     )
                 ),
-            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
             BottomNavItem.items.forEach { item ->
@@ -211,8 +211,8 @@ private fun RndmBottomNavItem(
                 )
             )
             .padding(
-                horizontal = if (isSelected) 16.dp else 12.dp,
-                vertical = 10.dp
+                horizontal = if (isSelected) 14.dp else 10.dp,
+                vertical = 9.dp
             ),
         contentAlignment = Alignment.Center
     ) {
@@ -227,7 +227,7 @@ private fun RndmBottomNavItem(
                 contentDescription = item.title,
                 tint = if (isSelected) Color.White else (if (isDark) BottomBarUnselectedIconDark else BottomBarUnselectedIconLight),
                 modifier = Modifier
-                    .size(22.dp)
+                    .size(20.dp)
                     .scale(iconScale)
             )
 
@@ -251,7 +251,7 @@ private fun RndmBottomNavItem(
                         )
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = item.title,
                         color = Color.White,

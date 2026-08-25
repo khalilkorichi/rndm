@@ -1,5 +1,6 @@
 package com.rndm.app.presentation.tournament.bracket
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,8 +11,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,6 +32,14 @@ fun TournamentBracketScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val tournament = uiState.tournament
+    val context = LocalContext.current
+
+    LaunchedEffect(uiState.requestFeedbackMessage) {
+        uiState.requestFeedbackMessage?.let { msg ->
+            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+            viewModel.clearFeedbackMessage()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -63,9 +74,13 @@ fun TournamentBracketScreen(
         uiState.selectedMatchForScore?.let { match ->
             ScoreInputDialog(
                 match = match,
+                isRequestMode = uiState.isRequestMode,
                 onDismiss = viewModel::onDismissScoreDialog,
                 onConfirm = { s1, s2, p1, p2 ->
                     viewModel.onSaveScore(s1, s2, p1, p2)
+                },
+                onConfirmRequest = { s1, s2, p1, p2, note ->
+                    viewModel.onSaveScore(s1, s2, p1, p2, note)
                 }
             )
         }

@@ -344,7 +344,12 @@ fun TournamentStandingsTab(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text("🥇", style = MaterialTheme.typography.titleMedium)
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_trophy),
+                                    contentDescription = null,
+                                    tint = com.rndm.app.core.theme.GoldMedalColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
                                 Text(
                                     text = "البطل",
                                     style = MaterialTheme.typography.labelMedium,
@@ -382,7 +387,12 @@ fun TournamentStandingsTab(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text("🥈", style = MaterialTheme.typography.titleMedium)
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_medal),
+                                    contentDescription = null,
+                                    tint = com.rndm.app.core.theme.SilverMedalColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
                                 Text(
                                     text = "الوصيف",
                                     style = MaterialTheme.typography.labelMedium,
@@ -420,7 +430,12 @@ fun TournamentStandingsTab(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text("🥉", style = MaterialTheme.typography.titleMedium)
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_medal),
+                                    contentDescription = null,
+                                    tint = com.rndm.app.core.theme.BronzeMedalColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
                                 Text(
                                     text = "المركز الثالث",
                                     style = MaterialTheme.typography.labelMedium,

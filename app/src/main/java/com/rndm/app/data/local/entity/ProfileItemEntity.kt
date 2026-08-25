@@ -22,5 +22,7 @@ data class ProfileItemEntity(
     val id: Long = 0,
     val profileId: Long,
     val label: String,
-    val order: Int
+    val order: Int,
+    val isActive: Boolean = true
 )
+

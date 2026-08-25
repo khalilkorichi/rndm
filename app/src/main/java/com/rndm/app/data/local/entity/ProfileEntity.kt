@@ -7,7 +7,8 @@ import androidx.room.PrimaryKey
 @Entity(
     tableName = "profiles",
     indices = [
-        Index(value = ["lastUsedAt", "createdAt"])
+        Index(value = ["lastUsedAt", "createdAt"]),
+        Index(value = ["groupId"])
     ]
 )
 data class ProfileEntity(
@@ -15,6 +16,8 @@ data class ProfileEntity(
     val id: Long = 0,
     val name: String,
     val type: String,
+    val groupId: Long? = null,
     val createdAt: Long,
     val lastUsedAt: Long?
 )
+

@@ -73,7 +73,7 @@ fun AdminRequestsTabContent(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(RequestFilter.values()) { filter ->
+                    items(RequestFilter.entries, key = { it.name }) { filter ->
                         val isSelected = uiState.selectedFilter == filter
                         val count = when (filter) {
                             RequestFilter.ALL -> uiState.requests.size
@@ -188,7 +188,7 @@ private fun AdminRequestsSummaryCard(
                 MetricItem(
                     label = "قيد الانتظار",
                     count = pendingCount,
-                    color = Color(0xFFF59E0B),
+                    color = com.rndm.app.core.theme.UpdateWarningAmber,
                     icon = Icons.Default.HourglassTop,
                     modifier = Modifier.weight(1f)
                 )
@@ -470,7 +470,7 @@ private fun AdminRequestCard(
 @Composable
 private fun RequestStatusBadge(status: RequestStatus) {
     val (bgColor, textColor, text) = when (status) {
-        RequestStatus.PENDING -> Triple(Color(0xFFF59E0B).copy(alpha = 0.15f), Color(0xFFF59E0B), "قيد الانتظار")
+        RequestStatus.PENDING -> Triple(com.rndm.app.core.theme.UpdateWarningAmber.copy(alpha = 0.15f), com.rndm.app.core.theme.UpdateWarningAmber, "قيد الانتظار")
         RequestStatus.APPROVED -> Triple(UpdateSuccessGreen.copy(alpha = 0.15f), UpdateSuccessGreen, "تمت الموافقة")
         RequestStatus.REJECTED -> Triple(MaterialTheme.colorScheme.error.copy(alpha = 0.15f), MaterialTheme.colorScheme.error, "مرفوض")
     }

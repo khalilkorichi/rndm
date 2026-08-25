@@ -74,21 +74,21 @@ fun PlayerOverviewTab(
                     TrophyPodiumItem(
                         modifier = Modifier.weight(1f),
                         icon = R.drawable.ic_trophy,
-                        label = "البطل 🏆",
+                        label = "البطل",
                         count = stats.titlesCount,
                         color = com.rndm.app.core.theme.GoldMedalColor
                     )
                     TrophyPodiumItem(
                         modifier = Modifier.weight(1f),
                         icon = R.drawable.ic_medal,
-                        label = "الوصيف 🥈",
+                        label = "الوصيف",
                         count = stats.runnerUpCount,
                         color = com.rndm.app.core.theme.SilverMedalColor
                     )
                     TrophyPodiumItem(
                         modifier = Modifier.weight(1f),
                         icon = R.drawable.ic_medal,
-                        label = "المركز 3 🥉",
+                        label = "المركز الثالث",
                         count = stats.thirdPlaceCount,
                         color = com.rndm.app.core.theme.BronzeMedalColor
                     )
@@ -177,14 +177,16 @@ fun PlayerOverviewTab(
         ) {
             StatMetricBox(
                 modifier = Modifier.weight(1f),
-                title = "أهداف له ⚽",
+                title = "أهداف له",
+                iconRes = R.drawable.ic_football,
                 value = "${stats.goalsScored}",
                 subtitle = "معدل ${stats.averageGoalsPerMatch} / مباراة",
                 color = MaterialTheme.colorScheme.primary
             )
             StatMetricBox(
                 modifier = Modifier.weight(1f),
-                title = "أهداف عليه 🥅",
+                title = "أهداف عليه",
+                iconRes = R.drawable.ic_shield,
                 value = "${stats.goalsConceded}",
                 subtitle = if (stats.goalDifference >= 0) "فارق +${stats.goalDifference}" else "فارق ${stats.goalDifference}",
                 color = if (stats.goalDifference >= 0) com.rndm.app.core.theme.StatsSuccessGreen else com.rndm.app.core.theme.StatsErrorRed
@@ -375,6 +377,7 @@ private fun StatSummaryText(
 @Composable
 private fun StatMetricBox(
     title: String,
+    @androidx.annotation.DrawableRes iconRes: Int,
     value: String,
     subtitle: String,
     color: Color,
@@ -386,11 +389,22 @@ private fun StatMetricBox(
                 .fillMaxWidth()
                 .padding(14.dp)
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(14.dp)
+                )
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = value,

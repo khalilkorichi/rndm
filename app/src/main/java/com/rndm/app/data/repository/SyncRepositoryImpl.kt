@@ -16,6 +16,7 @@ import com.rndm.app.domain.model.SyncStatus
 import com.rndm.app.domain.model.Tournament
 import com.rndm.app.domain.model.TournamentStatus
 import com.rndm.app.domain.repository.SyncRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -76,6 +77,7 @@ class SyncRepositoryImpl @Inject constructor(
                 Result.failure(publishResult.exceptionOrNull() ?: Exception("فشل نشر البطولة"))
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Result.failure(e)
         }
     }
@@ -131,6 +133,7 @@ class SyncRepositoryImpl @Inject constructor(
 
             Result.success(localId)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Result.failure(e)
         }
     }
@@ -196,6 +199,7 @@ class SyncRepositoryImpl @Inject constructor(
             }
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Result.failure(e)
         }
     }
@@ -213,6 +217,7 @@ class SyncRepositoryImpl @Inject constructor(
             }
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Result.failure(e)
         }
     }

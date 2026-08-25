@@ -32,6 +32,7 @@ import com.rndm.app.domain.model.UserRole
 import com.rndm.app.presentation.admin.AdminLoginDialog
 import com.rndm.app.presentation.admin.AdminRequestsTabContent
 import com.rndm.app.presentation.admin.AdminRequestsViewModel
+import com.rndm.app.presentation.admin.components.LoginSuccessDialog
 import com.rndm.app.presentation.settings.components.NotificationSettingCard
 import com.rndm.app.presentation.settings.components.RoleManagementCard
 import com.rndm.app.presentation.settings.components.SoundSettingCard
@@ -146,6 +147,14 @@ fun SettingsScreen(
         )
     }
 
+    if (uiState.isRoleInfoDialogOpen) {
+        LoginSuccessDialog(
+            userRole = uiState.userRole,
+            userProfile = uiState.currentUserProfile,
+            onContinue = viewModel::onDismissRoleInfoDialog
+        )
+    }
+
     if (uiState.isUserManagementDialogOpen) {
         com.rndm.app.presentation.settings.components.UserManagementDialog(
             users = uiState.usersList,
@@ -221,7 +230,7 @@ private fun SettingsTabSelector(
                         if (tab == SettingsTab.ADMIN_REQUESTS && pendingRequestsCount > 0) {
                             Spacer(modifier = Modifier.width(6.dp))
                             Surface(
-                                color = if (isSelected) Color.White else Color(0xFFF59E0B),
+                                color = if (isSelected) Color.White else com.rndm.app.core.theme.UpdateWarningAmber,
                                 shape = CircleShape
                             ) {
                                 Text(
@@ -268,6 +277,7 @@ private fun GeneralSettingsContent(
                 currentUserProfile = uiState.currentUserProfile,
                 onOpenAdminLogin = viewModel::onOpenAdminLoginDialog,
                 onOpenUserManagement = viewModel::onOpenUserManagementDialog,
+                onViewRoleInfo = viewModel::onOpenRoleInfoDialog,
                 onLogoutAdmin = viewModel::onLogoutAdmin
             )
         }

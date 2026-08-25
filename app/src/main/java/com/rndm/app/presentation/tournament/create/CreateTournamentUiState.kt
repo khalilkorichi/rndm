@@ -47,10 +47,10 @@ data class CreateTournamentUiState(
 
     val knockoutStageName: String
         get() = when {
-            totalQualifiers <= 2 -> "المباراة النهائية 🏆"
-            totalQualifiers <= 4 -> "نصف النهائي ⚔️"
-            totalQualifiers <= 8 -> "ربع النهائي 🛡️"
-            totalQualifiers <= 16 -> "دور الـ 16 🎯"
+            totalQualifiers <= 2 -> "المباراة النهائية"
+            totalQualifiers <= 4 -> "نصف النهائي"
+            totalQualifiers <= 8 -> "ربع النهائي"
+            totalQualifiers <= 16 -> "دور الـ 16"
             else -> "الأدوار الإقصائية ($totalQualifiers متأهل)"
         }
 

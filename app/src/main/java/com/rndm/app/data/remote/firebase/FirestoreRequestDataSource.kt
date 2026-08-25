@@ -6,6 +6,7 @@ import com.google.firebase.firestore.Query
 import com.rndm.app.data.remote.firebase.dto.FirestoreAdminRequestDto
 import com.rndm.app.data.remote.firebase.dto.FirestoreAuditLogDto
 import com.rndm.app.data.remote.firebase.dto.FirestoreMatchDto
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -32,6 +33,7 @@ class FirestoreRequestDataSource @Inject constructor(
             Log.d("REQUEST_RNDM", "Submitted request: $requestId (${request.type})")
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e("REQUEST_RNDM", "Failed to submit request", e)
             Result.failure(e)
         }
@@ -273,6 +275,7 @@ class FirestoreRequestDataSource @Inject constructor(
             Log.d("REQUEST_RNDM", "Approved request: $requestId")
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e("REQUEST_RNDM", "Failed to approve request", e)
             Result.failure(e)
         }
@@ -314,6 +317,7 @@ class FirestoreRequestDataSource @Inject constructor(
             Log.d("REQUEST_RNDM", "Rejected request: $requestId")
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.e("REQUEST_RNDM", "Failed to reject request", e)
             Result.failure(e)
         }

@@ -267,7 +267,7 @@ fun TournamentOverviewTab(
                     }
                     Column {
                         Text(
-                            text = "بطل البطولة 🏆",
+                            text = "بطل البطولة",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary

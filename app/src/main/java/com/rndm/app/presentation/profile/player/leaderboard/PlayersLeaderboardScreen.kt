@@ -2,6 +2,7 @@ package com.rndm.app.presentation.profile.player.leaderboard
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -47,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rndm.app.R
 import com.rndm.app.core.ui.components.BentoCard
 import com.rndm.app.core.ui.components.EmptyState
+import com.rndm.app.core.ui.components.PlayerAvatar
 import com.rndm.app.core.ui.components.RndmTopAppBar
 import com.rndm.app.core.util.Constants
 import com.rndm.app.domain.model.PlayerLeaderboardItem
@@ -54,8 +56,8 @@ import com.rndm.app.domain.model.PlayerLeaderboardItem
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayersLeaderboardScreen(
-    onNavigateBack: () -> Unit,
     onNavigateToPlayer: (String) -> Unit,
+    onNavigateBack: (() -> Unit)? = null,
     viewModel: PlayersLeaderboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -64,7 +66,7 @@ fun PlayersLeaderboardScreen(
         topBar = {
             RndmTopAppBar(
                 title = "لوحة صدارة اللاعبين",
-                titleIcon = painterResource(id = R.drawable.ic_trophy),
+                titleIcon = painterResource(id = R.drawable.ic_stats_filled),
                 onNavigateBack = onNavigateBack
             )
         },
@@ -86,7 +88,7 @@ fun PlayersLeaderboardScreen(
                 }
             } else if (uiState.players.isEmpty()) {
                 EmptyState(
-                    icon = painterResource(id = R.drawable.ic_trophy),
+                    icon = painterResource(id = R.drawable.ic_stats_outlined),
                     title = "لا توجد إحصائيات بعد",
                     description = "ابدأ بطولات جديدة وأجرِ المباريات لتظهر إحصائيات اللاعبين وترتيبهم هنا تلقائياً!",
                     modifier = Modifier.padding(padding)
@@ -99,8 +101,8 @@ fun PlayersLeaderboardScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(top = 8.dp, bottom = 40.dp, start = 16.dp, end = 16.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(top = 6.dp, bottom = 100.dp, start = 16.dp, end = 16.dp)
                 ) {
                     // Sorting Filter Chips
                     item {
@@ -115,10 +117,18 @@ fun PlayersLeaderboardScreen(
                                 FilterChip(
                                     selected = uiState.sortBy == sort,
                                     onClick = { viewModel.onSortChange(sort) },
+                                    leadingIcon = {
+                                        Icon(
+                                            painter = painterResource(id = sort.iconRes),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    },
                                     label = { Text(sort.title, style = MaterialTheme.typography.labelSmall) },
                                     colors = FilterChipDefaults.filterChipColors(
                                         selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
                                     )
                                 )
                             }
@@ -176,12 +186,23 @@ private fun PodiumSection(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "منصة التتويج 👑",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_trophy),
+                    contentDescription = null,
+                    tint = com.rndm.app.core.theme.GoldMedalColor,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = "منصة التتويج",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
 
             Spacer(modifier = Modifier.height(14.dp))
 
@@ -246,24 +267,13 @@ private fun PodiumColumn(
             .clickable(onClick = onClick)
     ) {
         // Avatar
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(color.copy(alpha = 0.2f)),
-            contentAlignment = Alignment.Center
-        ) {
-            if (!player.avatarIcon.isNullOrBlank()) {
-                Text(text = player.avatarIcon, fontSize = 22.sp)
-            } else {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_person),
-                    contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
+        PlayerAvatar(
+            avatarIcon = player.avatarIcon,
+            size = 48.dp,
+            iconSize = 24.dp,
+            tint = color,
+            backgroundColor = color.copy(alpha = 0.2f)
+        )
 
         Spacer(modifier = Modifier.height(4.dp))
 
@@ -276,19 +286,30 @@ private fun PodiumColumn(
             textAlign = TextAlign.Center
         )
 
-        val metricText = when (sortBy) {
-            LeaderboardSortBy.TITLES -> "🏆 ${player.titlesCount}"
-            LeaderboardSortBy.GOALS -> "⚽ ${player.goalsScored}"
+        val metricValue = when (sortBy) {
+            LeaderboardSortBy.TITLES -> "${player.titlesCount}"
+            LeaderboardSortBy.GOALS -> "${player.goalsScored}"
             LeaderboardSortBy.WIN_RATE -> "${player.winRate.toInt()}%"
-            LeaderboardSortBy.MATCHES -> "🎮 ${player.totalMatches}"
+            LeaderboardSortBy.MATCHES -> "${player.totalMatches}"
         }
 
-        Text(
-            text = metricText,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Black,
-            color = color
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Icon(
+                painter = painterResource(id = sortBy.iconRes),
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(12.dp)
+            )
+            Text(
+                text = metricValue,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Black,
+                color = color
+            )
+        }
 
         Spacer(modifier = Modifier.height(6.dp))
 
@@ -321,89 +342,97 @@ private fun LeaderboardPlayerCard(
     sortBy: LeaderboardSortBy,
     onClick: () -> Unit
 ) {
-    BentoCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.7f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(horizontal = 12.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.weight(1f)
             ) {
                 // Rank number
                 Text(
                     text = "${player.rank}",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.width(24.dp)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.width(22.dp)
                 )
 
                 // Avatar
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (!player.avatarIcon.isNullOrBlank()) {
-                        Text(text = player.avatarIcon, fontSize = 18.sp)
-                    } else {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_person),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
+                PlayerAvatar(
+                    avatarIcon = player.avatarIcon,
+                    size = 32.dp,
+                    iconSize = 17.dp
+                )
 
-                Column {
+                Column(
+                    verticalArrangement = Arrangement.Center
+                ) {
                     Text(
                         text = player.playerName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.5.sp
+                        ),
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "🏆 ${player.titlesCount} • ⚽ ${player.goalsScored} • 🎮 ${player.totalMatches} • 📈 ${player.winRate.toInt()}%",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "${player.titlesCount} ألقاب • ${player.goalsScored} أهداف • ${player.totalMatches} مباريات",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
 
             // Highlight Metric
-            val primaryMetric = when (sortBy) {
-                LeaderboardSortBy.TITLES -> Pair("${player.titlesCount}", "ألقاب 🏆")
-                LeaderboardSortBy.GOALS -> Pair("${player.goalsScored}", "أهداف ⚽")
-                LeaderboardSortBy.WIN_RATE -> Pair("${player.winRate.toInt()}%", "فوز 📈")
-                LeaderboardSortBy.MATCHES -> Pair("${player.totalMatches}", "مباريات 🎮")
+            val (metricValue, metricTitle, metricIcon) = when (sortBy) {
+                LeaderboardSortBy.TITLES -> Triple("${player.titlesCount}", "ألقاب", R.drawable.ic_trophy)
+                LeaderboardSortBy.GOALS -> Triple("${player.goalsScored}", "أهداف", R.drawable.ic_football)
+                LeaderboardSortBy.WIN_RATE -> Triple("${player.winRate.toInt()}%", "فوز", R.drawable.ic_chart)
+                LeaderboardSortBy.MATCHES -> Triple("${player.totalMatches}", "مباريات", R.drawable.ic_swords)
             }
 
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = primaryMetric.first,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Black,
+                    text = metricValue,
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 14.sp
+                    ),
                     color = MaterialTheme.colorScheme.primary
                 )
-                Text(
-                    text = primaryMetric.second,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = metricIcon),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(10.dp)
+                    )
+                    Text(
+                        text = metricTitle,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

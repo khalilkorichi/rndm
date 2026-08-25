@@ -118,6 +118,10 @@ val UpdateWarningAmber = Color(0xFFF59E0B)
 val UpdateErrorRed = Color(0xFFEF4444)
 val UpdateErrorRedDark = Color(0xFFDC2626)
 
+// Sync Status Tokens
+val SyncPendingColor = Color(0xFFFF8A5B)
+val SyncPendingBgColor = Color(0xFFFFB088)
+
 // Extended Colors for Wheel & Draw segments
 @Immutable
 data class ExtendedColors(

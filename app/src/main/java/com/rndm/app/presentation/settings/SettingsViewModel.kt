@@ -117,6 +117,14 @@ class SettingsViewModel @Inject constructor(
         _uiState.update { it.copy(isAdminLoginDialogOpen = false) }
     }
 
+    fun onOpenRoleInfoDialog() {
+        _uiState.update { it.copy(isRoleInfoDialogOpen = true) }
+    }
+
+    fun onDismissRoleInfoDialog() {
+        _uiState.update { it.copy(isRoleInfoDialogOpen = false) }
+    }
+
     fun onOpenUserManagementDialog() {
         _uiState.update { it.copy(isUserManagementDialogOpen = true, userActionMessage = null) }
         observeUsersList()
@@ -131,7 +139,7 @@ class SettingsViewModel @Inject constructor(
             _uiState.update { it.copy(isUserActionLoading = true, userActionMessage = null) }
             val result = updateUserRoleUseCase(targetUid, UserRole.ADMIN)
             if (result.isSuccess) {
-                _uiState.update { it.copy(isUserActionLoading = false, userActionMessage = "تمت ترقية المستخدم إلى مدير بنجاح 👑") }
+                _uiState.update { it.copy(isUserActionLoading = false, userActionMessage = "تمت ترقية المستخدم إلى مدير بنجاح") }
             } else {
                 _uiState.update { it.copy(isUserActionLoading = false, userActionMessage = "فشل تحديث الصلاحية: ${result.exceptionOrNull()?.message}") }
             }
@@ -155,7 +163,7 @@ class SettingsViewModel @Inject constructor(
             _uiState.update { it.copy(isUserActionLoading = true, userActionMessage = null) }
             val result = promoteUserByEmailUseCase(email)
             if (result.isSuccess) {
-                _uiState.update { it.copy(isUserActionLoading = false, userActionMessage = "تمت ترقية الحساب ($email) كمدير بنجاح 👑") }
+                _uiState.update { it.copy(isUserActionLoading = false, userActionMessage = "تمت ترقية الحساب ($email) كمدير بنجاح") }
             } else {
                 _uiState.update { it.copy(isUserActionLoading = false, userActionMessage = "فشلت الترقية: ${result.exceptionOrNull()?.message}") }
             }

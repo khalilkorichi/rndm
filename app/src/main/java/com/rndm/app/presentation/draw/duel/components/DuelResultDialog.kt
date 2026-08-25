@@ -114,12 +114,23 @@ fun DuelResultDialog(
                             .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = "👑 $winnerName",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Black,
-                            color = ProfilePlayersColor
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_crown),
+                                contentDescription = null,
+                                tint = ProfilePlayersColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = winnerName,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Black,
+                                color = ProfilePlayersColor
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(6.dp))
 

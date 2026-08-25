@@ -481,11 +481,13 @@ fun WheelDrawScreen(
         if (uiState.isAddPlayersDialogOpen) {
             com.rndm.app.core.ui.components.AddPlayersToDrawDialog(
                 existingPlayerNames = uiState.existingPlayerNames,
+                excludedPlayerNames = uiState.excludedPlayers.map { it.label },
                 availableProfiles = uiState.playersProfiles,
                 onDismiss = viewModel::onDismissAddPlayersDialog,
                 onConfirm = viewModel::onAddNewPlayers
             )
         }
+
 
         if (uiState.isExcludeDialogOpen) {
             ExcludeFromDrawDialog(
@@ -495,6 +497,8 @@ fun WheelDrawScreen(
                 excludedItems = uiState.currentExcludedItems,
                 onExcludeItem = { item -> viewModel.excludeItem(uiState.selectedCategory, item) },
                 onRestoreItem = { item -> viewModel.restoreExcludedItem(uiState.selectedCategory, item) },
+                onExcludeAll = { viewModel.excludeAll(uiState.selectedCategory) },
+                onRestoreAll = { viewModel.restoreAll(uiState.selectedCategory) },
                 onDismiss = viewModel::onDismissExcludeDialog
             )
         }

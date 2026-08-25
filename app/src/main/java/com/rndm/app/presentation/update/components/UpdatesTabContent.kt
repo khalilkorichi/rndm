@@ -206,11 +206,11 @@ private fun MainUpdateHubCard(
                 ) {
                     Text(
                         text = when (uiState) {
-                            is UpdateUiState.UpdateAvailable -> "تحديث متوفر! 🎉"
-                            is UpdateUiState.NoUpdate -> "محدث ✓"
+                            is UpdateUiState.UpdateAvailable -> "تحديث متوفر"
+                            is UpdateUiState.NoUpdate -> "الإصدار الأحدث"
                             is UpdateUiState.Downloading -> "%${uiState.progress} جاري التحميل"
-                            is UpdateUiState.Paused -> "متوقف مؤقتاً ⏸"
-                            is UpdateUiState.ReadyToInstall -> "جاهز للتثبيت ⚡"
+                            is UpdateUiState.Paused -> "متوقف مؤقتاً"
+                            is UpdateUiState.ReadyToInstall -> "جاهز للتثبيت"
                             is UpdateUiState.DownloadFailed, is UpdateUiState.Error -> "تنبيه خطأ"
                             else -> "v${BuildConfig.VERSION_NAME}"
                         },
@@ -572,7 +572,7 @@ private fun MainUpdateHubCard(
                                     )
                                     Column {
                                         Text(
-                                            text = "تم تحميل التحديث بنجاح! ⚡",
+                                            text = "تم تحميل التحديث بنجاح!",
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.onSurface

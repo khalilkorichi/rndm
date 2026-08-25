@@ -40,8 +40,8 @@ fun SyncStatusBadge(
             if (isHost) "سحابية (مباشر)" else "مشاهدة (مباشر)"
         )
         SyncStatus.PENDING_UPLOAD -> Quad(
-            Color(0xFFFFB088).copy(alpha = 0.2f),
-            Color(0xFFFF8A5B),
+            com.rndm.app.core.theme.SyncPendingBgColor.copy(alpha = 0.2f),
+            com.rndm.app.core.theme.SyncPendingColor,
             Icons.Default.CloudQueue,
             "تحديثات معلقة"
         )

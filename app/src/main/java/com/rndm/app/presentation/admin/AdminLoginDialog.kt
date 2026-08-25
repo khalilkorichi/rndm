@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rndm.app.presentation.admin.components.LoginSuccessContent
 
 @Composable
 fun AdminLoginDialog(
@@ -46,159 +47,175 @@ fun AdminLoginDialog(
         viewModel.resetState()
     }
 
-    Dialog(onDismissRequest = onDismissRequest) {
+    val handleDismiss = {
+        if (uiState.isSuccess && uiState.loggedInRole != null) {
+            onLoginSuccess()
+        }
+        onDismissRequest()
+    }
+
+    Dialog(onDismissRequest = handleDismiss) {
         Surface(
             shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(12.dp)
         ) {
-            Column(
+            AnimatedContent(
+                targetState = uiState.isSuccess && uiState.loggedInRole != null,
+                transitionSpec = {
+                    (fadeIn() + slideInVertically { it / 2 }) togetherWith (fadeOut() + slideOutVertically { -it / 2 })
+                },
+                label = "login_dialog_content_animation"
+            ) { isSuccessView ->
+                if (isSuccessView && uiState.loggedInRole != null) {
+                    LoginSuccessContent(
+                        userRole = uiState.loggedInRole!!,
+                        userProfile = uiState.loggedInProfile,
+                        onContinue = {
+                            onLoginSuccess()
+                            onDismissRequest()
+                        },
+                        modifier = Modifier.padding(20.dp)
+                    )
+                } else {
+                    LoginFormContent(
+                        uiState = uiState,
+                        viewModel = viewModel,
+                        focusManager = focusManager,
+                        onDismissRequest = onDismissRequest
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoginFormContent(
+    uiState: AdminLoginUiState,
+    viewModel: AdminLoginViewModel,
+    focusManager: androidx.compose.ui.focus.FocusManager,
+    onDismissRequest: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(22.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Header Icon
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+            modifier = Modifier.size(54.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = if (uiState.isSignUpMode) Icons.Default.PersonAdd else Icons.Default.Shield,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(30.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Text(
+            text = if (uiState.isSignUpMode) "إنشاء حساب جديد" else "تسجيل الدخول",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Text(
+            text = if (uiState.isSignUpMode) {
+                "أدخل بريدك الإلكتروني لإنشاء حسابك وإدارة بطولاتك"
+            } else {
+                "سجل دخولك بالبريد الإلكتروني للوصول إلى كافة الصلاحيات"
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Mode Switcher (Tab Selector)
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(22.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Header Icon
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                    modifier = Modifier.size(54.dp)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (!uiState.isSignUpMode) MaterialTheme.colorScheme.primary else Color.Transparent)
+                        .clickable { viewModel.toggleMode(false) }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = if (uiState.isSignUpMode) Icons.Default.PersonAdd else Icons.Default.Shield,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(30.dp)
-                        )
-                    }
+                    Text(
+                        text = "تسجيل الدخول",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (!uiState.isSignUpMode) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Text(
-                    text = if (uiState.isSignUpMode) "إنشاء حساب جديد" else "تسجيل الدخول",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Text(
-                    text = if (uiState.isSignUpMode) {
-                        "أدخل بريدك الإلكتروني لإنشاء حسابك وإدارة بطولاتك"
-                    } else {
-                        "سجل دخولك بالبريد الإلكتروني للوصول إلى كافة الصلاحيات"
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Mode Switcher (Tab Selector)
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (uiState.isSignUpMode) MaterialTheme.colorScheme.primary else Color.Transparent)
+                        .clickable { viewModel.toggleMode(true) }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (!uiState.isSignUpMode) MaterialTheme.colorScheme.primary else Color.Transparent)
-                                .clickable { viewModel.toggleMode(false) }
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "تسجيل الدخول",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = if (!uiState.isSignUpMode) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (uiState.isSignUpMode) MaterialTheme.colorScheme.primary else Color.Transparent)
-                                .clickable { viewModel.toggleMode(true) }
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "إنشاء حساب",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = if (uiState.isSignUpMode) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    Text(
+                        text = "إنشاء حساب",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (uiState.isSignUpMode) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
+            }
+        }
 
-                Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-                // If Sign Up -> Display Name Field (Optional)
-                AnimatedVisibility(
-                    visible = uiState.isSignUpMode,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
-                ) {
-                    Column {
-                        OutlinedTextField(
-                            value = uiState.displayName,
-                            onValueChange = viewModel::onDisplayNameChanged,
-                            label = { Text("الاسم الظاهر (اختياري)") },
-                            placeholder = { Text("الاسم المستعار أو اسمك") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Badge,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Text,
-                                imeAction = ImeAction.Next
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                    }
-                }
-
-                // Email Input (Strict email format)
+        // If Sign Up -> Display Name Field (Optional)
+        AnimatedVisibility(
+            visible = uiState.isSignUpMode,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column {
                 OutlinedTextField(
-                    value = uiState.email,
-                    onValueChange = viewModel::onEmailChanged,
-                    label = { Text("البريد الإلكتروني") },
-                    placeholder = { Text("example@domain.com") },
+                    value = uiState.displayName,
+                    onValueChange = viewModel::onDisplayNameChanged,
+                    label = { Text("الاسم الظاهر (اختياري)") },
+                    placeholder = { Text("الاسم المستعار أو اسمك") },
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Default.Email,
+                            imageVector = Icons.Default.Badge,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
+                        keyboardType = KeyboardType.Text,
                         imeAction = ImeAction.Next
                     ),
                     keyboardActions = KeyboardActions(
@@ -207,14 +224,86 @@ fun AdminLoginDialog(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
-
                 Spacer(modifier = Modifier.height(10.dp))
+            }
+        }
 
-                // Password Input
+        // Email Input (Strict email format)
+        OutlinedTextField(
+            value = uiState.email,
+            onValueChange = viewModel::onEmailChanged,
+            label = { Text("البريد الإلكتروني") },
+            placeholder = { Text("example@domain.com") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Email,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+            ),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Password Input
+        OutlinedTextField(
+            value = uiState.password,
+            onValueChange = viewModel::onPasswordChanged,
+            label = { Text("كلمة المرور") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            trailingIcon = {
+                IconButton(onClick = viewModel::onTogglePasswordVisibility) {
+                    Icon(
+                        imageVector = if (uiState.isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = null
+                    )
+                }
+            },
+            visualTransformation = if (uiState.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = if (uiState.isSignUpMode) ImeAction.Next else ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                onDone = {
+                    focusManager.clearFocus()
+                    viewModel.submit()
+                }
+            ),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // If Sign Up -> Confirm Password Input
+        AnimatedVisibility(
+            visible = uiState.isSignUpMode,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column {
+                Spacer(modifier = Modifier.height(10.dp))
                 OutlinedTextField(
-                    value = uiState.password,
-                    onValueChange = viewModel::onPasswordChanged,
-                    label = { Text("كلمة المرور") },
+                    value = uiState.confirmPassword,
+                    onValueChange = viewModel::onConfirmPasswordChanged,
+                    label = { Text("تأكيد كلمة المرور") },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Lock,
@@ -223,134 +312,80 @@ fun AdminLoginDialog(
                         )
                     },
                     trailingIcon = {
-                        IconButton(onClick = viewModel::onTogglePasswordVisibility) {
+                        IconButton(onClick = viewModel::onToggleConfirmPasswordVisibility) {
                             Icon(
-                                imageVector = if (uiState.isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                imageVector = if (uiState.isConfirmPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                                 contentDescription = null
                             )
                         }
                     },
-                    visualTransformation = if (uiState.isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    visualTransformation = if (uiState.isConfirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password,
-                        imeAction = if (uiState.isSignUpMode) ImeAction.Next else ImeAction.Done
+                        imeAction = ImeAction.Done
                     ),
                     keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) },
                         onDone = {
                             focusManager.clearFocus()
-                            viewModel.submit {
-                                onLoginSuccess()
-                                onDismissRequest()
-                            }
+                            viewModel.submit()
                         }
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+        }
 
-                // If Sign Up -> Confirm Password Input
-                AnimatedVisibility(
-                    visible = uiState.isSignUpMode,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
-                ) {
-                    Column {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        OutlinedTextField(
-                            value = uiState.confirmPassword,
-                            onValueChange = viewModel::onConfirmPasswordChanged,
-                            label = { Text("تأكيد كلمة المرور") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Lock,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            trailingIcon = {
-                                IconButton(onClick = viewModel::onToggleConfirmPasswordVisibility) {
-                                    Icon(
-                                        imageVector = if (uiState.isConfirmPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                        contentDescription = null
-                                    )
-                                }
-                            },
-                            visualTransformation = if (uiState.isConfirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Password,
-                                imeAction = ImeAction.Done
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onDone = {
-                                    focusManager.clearFocus()
-                                    viewModel.submit {
-                                        onLoginSuccess()
-                                        onDismissRequest()
-                                    }
-                                }
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
+        // Error Message
+        if (uiState.errorMessage != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = uiState.errorMessage ?: "",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
 
-                // Error Message
-                if (uiState.errorMessage != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = uiState.errorMessage ?: "",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Action Buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            OutlinedButton(
+                onClick = onDismissRequest,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.weight(1f),
+                enabled = !uiState.isLoading
+            ) {
+                Text("إلغاء")
+            }
+
+            Button(
+                onClick = {
+                    focusManager.clearFocus()
+                    viewModel.submit()
+                },
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.weight(1.3f),
+                enabled = !uiState.isLoading
+            ) {
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
                     )
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Action Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismissRequest,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f),
-                        enabled = !uiState.isLoading
-                    ) {
-                        Text("إلغاء")
-                    }
-
-                    Button(
-                        onClick = {
-                            focusManager.clearFocus()
-                            viewModel.submit {
-                                onLoginSuccess()
-                                onDismissRequest()
-                            }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1.3f),
-                        enabled = !uiState.isLoading
-                    ) {
-                        if (uiState.isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text(
-                                text = if (uiState.isSignUpMode) "تسجيل حساب" else "دخول",
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+                } else {
+                    Text(
+                        text = if (uiState.isSignUpMode) "تسجيل حساب" else "دخول",
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
     }
 }
+

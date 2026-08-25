@@ -1,7 +1,6 @@
 package com.rndm.app.presentation.home.components
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,14 +30,13 @@ fun HomeContent(
     modifier: Modifier = Modifier
 ) {
     val spacing = RndmThemeTokens.spacing
-    val activeProfileId = uiState.recentProfile?.id ?: 0L
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(spacing.md),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. Active Tournament Live Matches Box (if an active tournament exists)
+        // 1. Active Tournament Live Matches Box (Only when an active tournament exists)
         if (uiState.activeTournament != null && uiState.activeTournamentMatches.isNotEmpty()) {
             item(key = "active_tournament_matches") {
                 ActiveTournamentMatchesCard(
@@ -51,54 +49,28 @@ fun HomeContent(
             }
         }
 
-        // 2. Quick Action Hub (5 Primary Actions)
-        item(key = "quick_actions") {
-            HomeQuickActionHub(
-                onNavigateToQuickDraw = { onNavigateToDrawSetup(activeProfileId) },
-                onNavigateToClubDuelDraw = onNavigateToClubDuelDraw,
-                onNavigateToCreateTournament = onNavigateToCreateTournament,
-                onNavigateToCreateProfile = onNavigateToCreateProfile,
-                onNavigateToArchive = onNavigateToArchive
-            )
-        }
-
-        // 3. Quick Draw Banner Card
-        item(key = "quick_draw") {
-            QuickDrawCard(
+        // 2. Unified Hero Draw Hub (Active Profile + Instant Draw CTA + Quick Direct Modes)
+        item(key = "unified_draw_hub") {
+            UnifiedDrawHubCard(
                 profile = uiState.recentProfile,
                 onStartDrawClick = onNavigateToDrawSetup,
-                onCreateProfileClick = onNavigateToCreateProfile
+                onNavigateToDrawMode = onNavigateToDrawMode,
+                onNavigateToClubDuelDraw = onNavigateToClubDuelDraw,
+                onCreateProfileClick = onNavigateToCreateProfile,
+                onNavigateToProfiles = onNavigateToProfiles
             )
         }
 
-        // 4. Draw Modes Interactive Grid (4 Modes)
-        item(key = "draw_modes") {
-            HomeDrawModesGrid(
-                onSelectDrawMode = { drawType ->
-                    onNavigateToDrawMode(activeProfileId, drawType)
-                }
-            )
-        }
-
-        // 5. Recent Profiles Carousel
-        if (uiState.topProfiles.isNotEmpty()) {
-            item(key = "recent_profiles") {
-                RecentProfilesSection(
-                    profiles = uiState.topProfiles,
-                    onProfileClick = onNavigateToDrawSetup,
-                    onViewAllProfilesClick = onNavigateToProfiles
-                )
-            }
-        }
-
-        // 6. Stats & Activity Overview
-        item(key = "stats_overview") {
+        // 3. Consolidated Tournaments & Stats Hub (Create tournament, Archive, Counts, Champion)
+        item(key = "tournaments_stats_hub") {
             HomeStatsOverviewCard(
                 totalProfilesCount = uiState.totalProfilesCount,
                 activeTournamentsCount = uiState.activeTournamentsCount,
                 completedTournamentsCount = uiState.completedTournamentsCount,
                 recentChampionTournament = uiState.recentChampionTournament,
                 onNavigateToTournaments = onNavigateToTournaments,
+                onNavigateToCreateTournament = onNavigateToCreateTournament,
+                onNavigateToArchive = onNavigateToArchive,
                 onNavigateToProfiles = onNavigateToProfiles
             )
         }

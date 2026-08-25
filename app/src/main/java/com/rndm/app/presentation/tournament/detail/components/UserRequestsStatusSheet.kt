@@ -111,9 +111,9 @@ fun UserRequestsStatusSheet(
 @Composable
 private fun UserRequestCard(request: AdminRequest) {
     val statusColor = when (request.status) {
-        RequestStatus.APPROVED -> Color(0xFF10B981)
+        RequestStatus.APPROVED -> com.rndm.app.core.theme.UpdateSuccessGreen
         RequestStatus.REJECTED -> MaterialTheme.colorScheme.error
-        RequestStatus.PENDING -> Color(0xFFF59E0B)
+        RequestStatus.PENDING -> com.rndm.app.core.theme.UpdateWarningAmber
     }
 
     val statusText = when (request.status) {

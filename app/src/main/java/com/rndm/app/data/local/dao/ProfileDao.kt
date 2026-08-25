@@ -50,4 +50,12 @@ interface ProfileDao {
 
     @Query("UPDATE profiles SET lastUsedAt = :timestamp WHERE id = :id")
     suspend fun updateLastUsed(id: Long, timestamp: Long)
+
+    @Transaction
+    @Query("SELECT * FROM profiles WHERE groupId = :groupId ORDER BY lastUsedAt DESC, createdAt DESC")
+    fun getProfilesByGroupId(groupId: Long): Flow<List<ProfileWithItems>>
+
+    @Query("UPDATE profiles SET groupId = :groupId WHERE id = :profileId")
+    suspend fun updateProfileGroup(profileId: Long, groupId: Long?)
 }
+

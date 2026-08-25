@@ -7,14 +7,17 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.rndm.app.data.local.dao.MatchDao
 import com.rndm.app.data.local.dao.PlayerProfileDao
 import com.rndm.app.data.local.dao.ProfileDao
+import com.rndm.app.data.local.dao.ProfileGroupDao
 import com.rndm.app.data.local.dao.ProfileItemDao
 import com.rndm.app.data.local.dao.TournamentDao
 import com.rndm.app.data.local.entity.MatchEntity
 import com.rndm.app.data.local.entity.PlayerProfileEntity
 import com.rndm.app.data.local.entity.ProfileEntity
+import com.rndm.app.data.local.entity.ProfileGroupEntity
 import com.rndm.app.data.local.entity.ProfileItemEntity
 import com.rndm.app.data.local.entity.TournamentEntity
 import com.rndm.app.data.local.entity.TournamentParticipantEntity
+
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -146,23 +149,44 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
     }
 }
 
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `profile_groups` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `name` TEXT NOT NULL,
+                `icon` TEXT NOT NULL DEFAULT 'ic_folder',
+                `colorHex` TEXT,
+                `createdAt` INTEGER NOT NULL
+            )
+        """.trimIndent())
+        db.execSQL("ALTER TABLE profiles ADD COLUMN groupId INTEGER DEFAULT NULL")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_profiles_groupId` ON `profiles` (`groupId`)")
+        db.execSQL("ALTER TABLE profile_items ADD COLUMN isActive INTEGER NOT NULL DEFAULT 1")
+    }
+}
+
 @Database(
     entities = [
         ProfileEntity::class,
         ProfileItemEntity::class,
+        ProfileGroupEntity::class,
         TournamentEntity::class,
         TournamentParticipantEntity::class,
         MatchEntity::class,
         PlayerProfileEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
 abstract class RndmDatabase : RoomDatabase() {
     abstract fun profileDao(): ProfileDao
     abstract fun profileItemDao(): ProfileItemDao
+    abstract fun profileGroupDao(): ProfileGroupDao
     abstract fun tournamentDao(): TournamentDao
+
     abstract fun matchDao(): MatchDao
     abstract fun playerProfileDao(): PlayerProfileDao
 }
+
 

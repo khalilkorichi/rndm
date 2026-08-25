@@ -13,6 +13,7 @@ import com.rndm.app.domain.model.ProfileType
 import com.rndm.app.domain.repository.DrawFixtureRepository
 import com.rndm.app.domain.usecase.profile.GetAllProfilesUseCase
 import com.rndm.app.domain.usecase.profile.GetProfileByIdUseCase
+import com.rndm.app.domain.usecase.profile.UpdateItemActiveStateUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +28,7 @@ import javax.inject.Inject
 class WheelDrawViewModel @Inject constructor(
     private val getAllProfilesUseCase: GetAllProfilesUseCase,
     private val getProfileByIdUseCase: GetProfileByIdUseCase,
+    private val updateItemActiveStateUseCase: UpdateItemActiveStateUseCase,
     private val drawFixtureRepository: DrawFixtureRepository,
     private val randomProvider: RandomProvider,
     savedStateHandle: SavedStateHandle
@@ -48,13 +50,17 @@ class WheelDrawViewModel @Inject constructor(
         viewModelScope.launch {
             val profile = getProfileByIdUseCase(profileId)
             if (profile != null) {
+                val activeItems = profile.activeItems.ifEmpty { profile.items }
+                val excludedItems = if (profile.activeItems.isEmpty()) emptyList() else profile.excludedItems
+
                 when (profile.type) {
                     ProfileType.PLAYERS -> {
                         _uiState.update {
                             it.copy(
                                 selectedCategory = DrawCategory.PLAYERS,
                                 selectedPlayersProfile = profile,
-                                remainingPlayers = profile.items,
+                                remainingPlayers = activeItems,
+                                excludedPlayers = excludedItems,
                                 isSpinning = false,
                                 targetRotation = 0f
                             )
@@ -65,7 +71,8 @@ class WheelDrawViewModel @Inject constructor(
                             it.copy(
                                 selectedCategory = DrawCategory.CLUBS,
                                 selectedClubsProfile = profile,
-                                remainingClubs = profile.items,
+                                remainingClubs = activeItems,
+                                excludedClubs = excludedItems,
                                 isSpinning = false,
                                 targetRotation = 0f
                             )
@@ -76,7 +83,8 @@ class WheelDrawViewModel @Inject constructor(
                             it.copy(
                                 selectedCategory = DrawCategory.NATIONAL_TEAMS,
                                 selectedNationalTeamsProfile = profile,
-                                remainingNationalTeams = profile.items,
+                                remainingNationalTeams = activeItems,
+                                excludedNationalTeams = excludedItems,
                                 isSpinning = false,
                                 targetRotation = 0f
                             )
@@ -100,9 +108,21 @@ class WheelDrawViewModel @Inject constructor(
                     val selClub = current.selectedClubsProfile ?: clubs.firstOrNull { it.id == initialProfileId } ?: clubs.firstOrNull()
                     val selTeam = current.selectedNationalTeamsProfile ?: teams.firstOrNull { it.id == initialProfileId } ?: teams.firstOrNull()
 
-                    val remPlayers = if (current.remainingPlayers.isEmpty() && selPlayer != null) selPlayer.items else current.remainingPlayers
-                    val remClubs = if (current.remainingClubs.isEmpty() && selClub != null) selClub.items else current.remainingClubs
-                    val remTeams = if (current.remainingNationalTeams.isEmpty() && selTeam != null) selTeam.items else current.remainingNationalTeams
+                    val remPlayers = if (current.remainingPlayers.isEmpty() && selPlayer != null) {
+                        selPlayer.activeItems.ifEmpty { selPlayer.items }
+                    } else current.remainingPlayers
+
+                    val remClubs = if (current.remainingClubs.isEmpty() && selClub != null) {
+                        selClub.activeItems.ifEmpty { selClub.items }
+                    } else current.remainingClubs
+
+                    val remTeams = if (current.remainingNationalTeams.isEmpty() && selTeam != null) {
+                        selTeam.activeItems.ifEmpty { selTeam.items }
+                    } else current.remainingNationalTeams
+
+                    val exclPlayers = if (current.excludedPlayers.isEmpty() && selPlayer != null) selPlayer.excludedItems else current.excludedPlayers
+                    val exclClubs = if (current.excludedClubs.isEmpty() && selClub != null) selClub.excludedItems else current.excludedClubs
+                    val exclTeams = if (current.excludedNationalTeams.isEmpty() && selTeam != null) selTeam.excludedItems else current.excludedNationalTeams
 
                     current.copy(
                         isLoading = false,
@@ -115,6 +135,9 @@ class WheelDrawViewModel @Inject constructor(
                         remainingPlayers = remPlayers,
                         remainingClubs = remClubs,
                         remainingNationalTeams = remTeams,
+                        excludedPlayers = exclPlayers,
+                        excludedClubs = exclClubs,
+                        excludedNationalTeams = exclTeams,
                         isSpinning = false
                     )
                 }
@@ -156,22 +179,25 @@ class WheelDrawViewModel @Inject constructor(
     }
 
     fun onSelectProfileForCategory(category: DrawCategory, profile: Profile) {
+        val activeItems = profile.activeItems.ifEmpty { profile.items }
+        val excludedItems = if (profile.activeItems.isEmpty()) emptyList() else profile.excludedItems
+
         _uiState.update { current ->
             when (category) {
                 DrawCategory.PLAYERS -> current.copy(
                     selectedPlayersProfile = profile,
-                    remainingPlayers = profile.items,
-                    excludedPlayers = emptyList()
+                    remainingPlayers = activeItems,
+                    excludedPlayers = excludedItems
                 )
                 DrawCategory.CLUBS -> current.copy(
                     selectedClubsProfile = profile,
-                    remainingClubs = profile.items,
-                    excludedClubs = emptyList()
+                    remainingClubs = activeItems,
+                    excludedClubs = excludedItems
                 )
                 DrawCategory.NATIONAL_TEAMS -> current.copy(
                     selectedNationalTeamsProfile = profile,
-                    remainingNationalTeams = profile.items,
-                    excludedNationalTeams = emptyList()
+                    remainingNationalTeams = activeItems,
+                    excludedNationalTeams = excludedItems
                 )
             }
         }
@@ -265,7 +291,6 @@ class WheelDrawViewModel @Inject constructor(
         val items = state.currentWheelItems
         if (state.isSpinning || items.isEmpty()) return
 
-        // إذا كان هناك اسم واحد متبقي فقط، يتم اختياره مباشرة كفائز بدون تدوير العجلة
         if (items.size == 1) {
             applyDrawnItem(items.first())
             return
@@ -339,7 +364,6 @@ class WheelDrawViewModel @Inject constructor(
                     state.remainingNationalTeams.filter { it.id != drawnItem.id }
                 }
 
-                // Assign team to next unassigned player in fixtures
                 var assigned = false
                 for (i in fixtures.indices) {
                     val f = fixtures[i]
@@ -394,23 +418,39 @@ class WheelDrawViewModel @Inject constructor(
     }
 
     fun excludeItem(category: DrawCategory, item: ProfileItem) {
+        val state = _uiState.value
+        val profileId = when (category) {
+            DrawCategory.PLAYERS -> state.selectedPlayersProfile?.id ?: 0L
+            DrawCategory.CLUBS -> state.selectedClubsProfile?.id ?: 0L
+            DrawCategory.NATIONAL_TEAMS -> state.selectedNationalTeamsProfile?.id ?: 0L
+        }
+
+        // Persist exclusion automatically in database
+        viewModelScope.launch {
+            if (item.id > 0L) {
+                updateItemActiveStateUseCase.setItemActive(item.id, false)
+            } else if (profileId > 0L) {
+                updateItemActiveStateUseCase.setItemActiveByLabel(profileId, item.label, false)
+            }
+        }
+
         _uiState.update { current ->
             when (category) {
                 DrawCategory.PLAYERS -> current.copy(
                     remainingPlayers = current.remainingPlayers.filter { it.id != item.id || it.label != item.label },
-                    excludedPlayers = (current.excludedPlayers + item).distinctBy { it.label },
+                    excludedPlayers = (current.excludedPlayers + item.copy(isActive = false)).distinctBy { it.label },
                     selectedIndex = -1,
                     targetRotation = 0f
                 )
                 DrawCategory.CLUBS -> current.copy(
                     remainingClubs = current.remainingClubs.filter { it.id != item.id || it.label != item.label },
-                    excludedClubs = (current.excludedClubs + item).distinctBy { it.label },
+                    excludedClubs = (current.excludedClubs + item.copy(isActive = false)).distinctBy { it.label },
                     selectedIndex = -1,
                     targetRotation = 0f
                 )
                 DrawCategory.NATIONAL_TEAMS -> current.copy(
                     remainingNationalTeams = current.remainingNationalTeams.filter { it.id != item.id || it.label != item.label },
-                    excludedNationalTeams = (current.excludedNationalTeams + item).distinctBy { it.label },
+                    excludedNationalTeams = (current.excludedNationalTeams + item.copy(isActive = false)).distinctBy { it.label },
                     selectedIndex = -1,
                     targetRotation = 0f
                 )
@@ -420,23 +460,39 @@ class WheelDrawViewModel @Inject constructor(
     }
 
     fun restoreExcludedItem(category: DrawCategory, item: ProfileItem) {
+        val state = _uiState.value
+        val profileId = when (category) {
+            DrawCategory.PLAYERS -> state.selectedPlayersProfile?.id ?: 0L
+            DrawCategory.CLUBS -> state.selectedClubsProfile?.id ?: 0L
+            DrawCategory.NATIONAL_TEAMS -> state.selectedNationalTeamsProfile?.id ?: 0L
+        }
+
+        // Persist restoration automatically in database
+        viewModelScope.launch {
+            if (item.id > 0L) {
+                updateItemActiveStateUseCase.setItemActive(item.id, true)
+            } else if (profileId > 0L) {
+                updateItemActiveStateUseCase.setItemActiveByLabel(profileId, item.label, true)
+            }
+        }
+
         _uiState.update { current ->
             when (category) {
                 DrawCategory.PLAYERS -> current.copy(
-                    remainingPlayers = (current.remainingPlayers + item).distinctBy { it.label },
-                    excludedPlayers = current.excludedPlayers.filter { it.id != item.id || it.label != item.label },
+                    remainingPlayers = (current.remainingPlayers + item.copy(isActive = true)).distinctBy { it.label },
+                    excludedPlayers = current.excludedPlayers.filter { it.id != item.id && it.label != item.label },
                     selectedIndex = -1,
                     targetRotation = 0f
                 )
                 DrawCategory.CLUBS -> current.copy(
-                    remainingClubs = (current.remainingClubs + item).distinctBy { it.label },
-                    excludedClubs = current.excludedClubs.filter { it.id != item.id || it.label != item.label },
+                    remainingClubs = (current.remainingClubs + item.copy(isActive = true)).distinctBy { it.label },
+                    excludedClubs = current.excludedClubs.filter { it.id != item.id && it.label != item.label },
                     selectedIndex = -1,
                     targetRotation = 0f
                 )
                 DrawCategory.NATIONAL_TEAMS -> current.copy(
-                    remainingNationalTeams = (current.remainingNationalTeams + item).distinctBy { it.label },
-                    excludedNationalTeams = current.excludedNationalTeams.filter { it.id != item.id || it.label != item.label },
+                    remainingNationalTeams = (current.remainingNationalTeams + item.copy(isActive = true)).distinctBy { it.label },
+                    excludedNationalTeams = current.excludedNationalTeams.filter { it.id != item.id && it.label != item.label },
                     selectedIndex = -1,
                     targetRotation = 0f
                 )
@@ -445,7 +501,93 @@ class WheelDrawViewModel @Inject constructor(
         updatePrompt()
     }
 
+    fun excludeAll(category: DrawCategory) {
+        val state = _uiState.value
+        val profileId = when (category) {
+            DrawCategory.PLAYERS -> state.selectedPlayersProfile?.id ?: 0L
+            DrawCategory.CLUBS -> state.selectedClubsProfile?.id ?: 0L
+            DrawCategory.NATIONAL_TEAMS -> state.selectedNationalTeamsProfile?.id ?: 0L
+        }
 
+        val itemsToExclude = when (category) {
+            DrawCategory.PLAYERS -> state.remainingPlayers
+            DrawCategory.CLUBS -> state.remainingClubs
+            DrawCategory.NATIONAL_TEAMS -> state.remainingNationalTeams
+        }
+
+        viewModelScope.launch {
+            itemsToExclude.forEach { item ->
+                if (item.id > 0L) {
+                    updateItemActiveStateUseCase.setItemActive(item.id, false)
+                } else if (profileId > 0L) {
+                    updateItemActiveStateUseCase.setItemActiveByLabel(profileId, item.label, false)
+                }
+            }
+        }
+
+        _uiState.update { current ->
+            when (category) {
+                DrawCategory.PLAYERS -> current.copy(
+                    remainingPlayers = emptyList(),
+                    excludedPlayers = (current.excludedPlayers + current.remainingPlayers.map { it.copy(isActive = false) }).distinctBy { it.label },
+                    selectedIndex = -1,
+                    targetRotation = 0f
+                )
+                DrawCategory.CLUBS -> current.copy(
+                    remainingClubs = emptyList(),
+                    excludedClubs = (current.excludedClubs + current.remainingClubs.map { it.copy(isActive = false) }).distinctBy { it.label },
+                    selectedIndex = -1,
+                    targetRotation = 0f
+                )
+                DrawCategory.NATIONAL_TEAMS -> current.copy(
+                    remainingNationalTeams = emptyList(),
+                    excludedNationalTeams = (current.excludedNationalTeams + current.remainingNationalTeams.map { it.copy(isActive = false) }).distinctBy { it.label },
+                    selectedIndex = -1,
+                    targetRotation = 0f
+                )
+            }
+        }
+        updatePrompt()
+    }
+
+    fun restoreAll(category: DrawCategory) {
+        val state = _uiState.value
+        val profileId = when (category) {
+            DrawCategory.PLAYERS -> state.selectedPlayersProfile?.id ?: 0L
+            DrawCategory.CLUBS -> state.selectedClubsProfile?.id ?: 0L
+            DrawCategory.NATIONAL_TEAMS -> state.selectedNationalTeamsProfile?.id ?: 0L
+        }
+
+        viewModelScope.launch {
+            if (profileId > 0L) {
+                updateItemActiveStateUseCase.resetAllActive(profileId)
+            }
+        }
+
+        _uiState.update { current ->
+            when (category) {
+                DrawCategory.PLAYERS -> current.copy(
+                    remainingPlayers = (current.remainingPlayers + current.excludedPlayers.map { it.copy(isActive = true) }).distinctBy { it.label },
+                    excludedPlayers = emptyList(),
+                    selectedIndex = -1,
+                    targetRotation = 0f
+                )
+                DrawCategory.CLUBS -> current.copy(
+                    remainingClubs = (current.remainingClubs + current.excludedClubs.map { it.copy(isActive = true) }).distinctBy { it.label },
+                    excludedClubs = emptyList(),
+                    selectedIndex = -1,
+                    targetRotation = 0f
+                )
+                DrawCategory.NATIONAL_TEAMS -> current.copy(
+                    remainingNationalTeams = (current.remainingNationalTeams + current.excludedNationalTeams.map { it.copy(isActive = true) }).distinctBy { it.label },
+                    excludedNationalTeams = emptyList(),
+                    selectedIndex = -1,
+                    targetRotation = 0f
+                )
+            }
+        }
+        updatePrompt()
+    }
 
     fun onOpenAddPlayersDialog() {
         _uiState.update { it.copy(isAddPlayersDialogOpen = true) }
@@ -459,18 +601,33 @@ class WheelDrawViewModel @Inject constructor(
         if (names.isEmpty()) return
 
         val state = _uiState.value
+        val profileId = state.selectedPlayersProfile?.id ?: 0L
+
+        // Check if any added name was previously excluded, restore it in DB
+        viewModelScope.launch {
+            if (profileId > 0L) {
+                names.forEach { name ->
+                    updateItemActiveStateUseCase.setItemActiveByLabel(profileId, name, true)
+                }
+            }
+        }
+
         val newPlayerItems = names.mapIndexed { idx, name ->
             ProfileItem(
                 id = System.currentTimeMillis() + idx,
-                label = name
+                label = name,
+                isActive = true
             )
         }
 
-        val updatedRemainingPlayers = state.remainingPlayers + newPlayerItems
+        val updatedRemainingPlayers = (state.remainingPlayers + newPlayerItems).distinctBy { it.label }
+        val updatedExcludedPlayers = state.excludedPlayers.filter { excl ->
+            names.none { it.equals(excl.label, ignoreCase = true) }
+        }
 
         // Refresh remaining unassigned clubs from selected clubs profile
         val assignedClubs = state.fixtures.flatMap { listOfNotNull(it.playerOneTeam, it.playerTwoTeam) }.toSet()
-        val unassignedClubs = (state.selectedClubsProfile?.items ?: emptyList()).filter { it.label !in assignedClubs }
+        val unassignedClubs = (state.selectedClubsProfile?.activeItems ?: emptyList()).filter { it.label !in assignedClubs }
         val updatedRemainingClubs = if (state.remainingClubs.isNotEmpty()) {
             (state.remainingClubs + unassignedClubs).distinctBy { it.label }
         } else {
@@ -479,7 +636,7 @@ class WheelDrawViewModel @Inject constructor(
 
         // Refresh remaining unassigned national teams from selected national teams profile
         val assignedTeams = state.fixtures.flatMap { listOfNotNull(it.playerOneTeam, it.playerTwoTeam) }.toSet()
-        val unassignedTeams = (state.selectedNationalTeamsProfile?.items ?: emptyList()).filter { it.label !in assignedTeams }
+        val unassignedTeams = (state.selectedNationalTeamsProfile?.activeItems ?: emptyList()).filter { it.label !in assignedTeams }
         val updatedRemainingTeams = if (state.remainingNationalTeams.isNotEmpty()) {
             (state.remainingNationalTeams + unassignedTeams).distinctBy { it.label }
         } else {
@@ -490,6 +647,7 @@ class WheelDrawViewModel @Inject constructor(
             it.copy(
                 isAddPlayersDialogOpen = false,
                 remainingPlayers = updatedRemainingPlayers,
+                excludedPlayers = updatedExcludedPlayers,
                 remainingClubs = updatedRemainingClubs,
                 remainingNationalTeams = updatedRemainingTeams,
                 selectedCategory = DrawCategory.PLAYERS,
@@ -559,14 +717,14 @@ class WheelDrawViewModel @Inject constructor(
 
     fun resetDraw() {
         val state = _uiState.value
-        val defaultPlayers = state.selectedPlayersProfile?.items
-            ?: state.playersProfiles.firstOrNull()?.items
+        val defaultPlayers = state.selectedPlayersProfile?.activeItems
+            ?: state.playersProfiles.firstOrNull()?.activeItems
             ?: emptyList()
-        val defaultClubs = state.selectedClubsProfile?.items
-            ?: state.clubsProfiles.firstOrNull()?.items
+        val defaultClubs = state.selectedClubsProfile?.activeItems
+            ?: state.clubsProfiles.firstOrNull()?.activeItems
             ?: emptyList()
-        val defaultTeams = state.selectedNationalTeamsProfile?.items
-            ?: state.nationalTeamsProfiles.firstOrNull()?.items
+        val defaultTeams = state.selectedNationalTeamsProfile?.activeItems
+            ?: state.nationalTeamsProfiles.firstOrNull()?.activeItems
             ?: emptyList()
 
         drawFixtureRepository.clearFixtures()
@@ -581,10 +739,7 @@ class WheelDrawViewModel @Inject constructor(
                 selectedIndex = -1,
                 drawResult = null,
                 isAddPlayersDialogOpen = false,
-                isExcludeDialogOpen = false,
-                excludedPlayers = emptyList(),
-                excludedClubs = emptyList(),
-                excludedNationalTeams = emptyList()
+                isExcludeDialogOpen = false
             )
         }
         updatePrompt()

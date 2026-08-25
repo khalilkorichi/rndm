@@ -38,12 +38,12 @@ import com.rndm.app.core.ui.components.BentoCard
 private val ARABIC_TEXT_REGEX = Regex("[^\u0600-\u06FF\\s]")
 
 private val QUICK_NAME_PRESETS = listOf(
-    "دوري الأبطال 🏆",
-    "كأس التحدي ⚡",
-    "بطولة النخبة 🌟",
-    "كأس السوبر 🔥",
-    "دوري الرمضان 🌙",
-    "بطولة الأصدقاء ⚽"
+    "دوري الأبطال",
+    "كأس التحدي",
+    "بطولة النخبة",
+    "كأس السوبر",
+    "دوري الرمضان",
+    "بطولة الأصدقاء"
 )
 
 @Composable

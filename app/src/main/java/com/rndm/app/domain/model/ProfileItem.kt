@@ -9,5 +9,7 @@ data class ProfileItem(
     val id: Long = 0,
     val profileId: Long = 0,
     val label: String,
-    val order: Int = 0
+    val order: Int = 0,
+    val isActive: Boolean = true
 )
+

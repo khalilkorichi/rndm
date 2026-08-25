@@ -22,6 +22,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.remember
 import com.rndm.app.core.ui.components.LtrForcedText
 
 @Composable
@@ -31,14 +32,18 @@ fun ShareCodeInputBox(
     onDone: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    BasicTextField(
-        value = value,
-        onValueChange = { input ->
+    val handleValueChange = remember(onValueChange) {
+        { input: String ->
             val clean = input.filter { it.isLetterOrDigit() || it == '-' }.uppercase()
             if (clean.length <= 8) {
                 onValueChange(clean)
             }
-        },
+        }
+    }
+
+    BasicTextField(
+        value = value,
+        onValueChange = handleValueChange,
         keyboardOptions = KeyboardOptions(
             capitalization = KeyboardCapitalization.Characters,
             imeAction = ImeAction.Done

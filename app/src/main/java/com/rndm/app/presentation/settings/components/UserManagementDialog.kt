@@ -117,7 +117,7 @@ fun UserManagementDialog(
                 ) {
                     actionMessage?.let { msg ->
                         Surface(
-                            color = if (msg.contains("بنجاح")) Color(0xFF10B981).copy(alpha = 0.15f) else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                            color = if (msg.contains("بنجاح")) com.rndm.app.core.theme.UpdateSuccessGreen.copy(alpha = 0.15f) else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -130,7 +130,7 @@ fun UserManagementDialog(
                                 Icon(
                                     imageVector = if (msg.contains("بنجاح")) Icons.Default.CheckCircle else Icons.Default.Shield,
                                     contentDescription = null,
-                                    tint = if (msg.contains("بنجاح")) Color(0xFF10B981) else MaterialTheme.colorScheme.error,
+                                    tint = if (msg.contains("بنجاح")) com.rndm.app.core.theme.UpdateSuccessGreen else MaterialTheme.colorScheme.error,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -138,7 +138,7 @@ fun UserManagementDialog(
                                     text = msg,
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Medium,
-                                    color = if (msg.contains("بنجاح")) Color(0xFF065F46) else MaterialTheme.colorScheme.onErrorContainer
+                                    color = if (msg.contains("بنجاح")) com.rndm.app.core.theme.UpdateSuccessGreenDark else MaterialTheme.colorScheme.onErrorContainer
                                 )
                             }
                         }

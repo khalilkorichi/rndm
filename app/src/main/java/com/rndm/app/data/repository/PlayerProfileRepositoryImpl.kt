@@ -276,9 +276,9 @@ class PlayerProfileRepositoryImpl @Inject constructor(
         }
 
         val bestAchievement = when {
-            titlesCount > 0 -> "🏆 بطل $titlesCount بطولة"
-            runnerUpCount > 0 -> "🥈 وصيف $runnerUpCount بطولة"
-            thirdPlaceCount > 0 -> "🥉 المركز الثالث في $thirdPlaceCount بطولة"
+            titlesCount > 0 -> "بطل $titlesCount بطولة"
+            runnerUpCount > 0 -> "وصيف $runnerUpCount بطولة"
+            thirdPlaceCount > 0 -> "المركز الثالث في $thirdPlaceCount بطولة"
             totalTournaments > 0 -> "مشارك في $totalTournaments بطولة"
             else -> "لا توجد مشاركات سابقة"
         }
@@ -366,9 +366,9 @@ class PlayerProfileRepositoryImpl @Inject constructor(
             val r32Match = allTMatches.firstOrNull { it.stage == MatchStage.ROUND_OF_32 && (it.playerOneName == playerName || it.playerTwoName == playerName) }
 
             val (stageTitle, stageType) = when {
-                finalMatch != null && finalMatch.winnerName == playerName -> Pair("🏆 بطل البطولة", StageReachedType.CHAMPION)
-                finalMatch != null -> Pair("🥈 وصيف البطولة", StageReachedType.RUNNER_UP)
-                thirdMatch != null && thirdMatch.winnerName == playerName -> Pair("🥉 المركز الثالث", StageReachedType.THIRD_PLACE)
+                finalMatch != null && finalMatch.winnerName == playerName -> Pair("بطل البطولة", StageReachedType.CHAMPION)
+                finalMatch != null -> Pair("وصيف البطولة", StageReachedType.RUNNER_UP)
+                thirdMatch != null && thirdMatch.winnerName == playerName -> Pair("المركز الثالث", StageReachedType.THIRD_PLACE)
                 semiMatch != null -> Pair("نصف النهائي", StageReachedType.SEMI_FINALS)
                 qfMatch != null -> Pair("ربع النهائي", StageReachedType.QUARTER_FINALS)
                 r16Match != null -> Pair("دور الـ 16", StageReachedType.ROUND_OF_16)

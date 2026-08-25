@@ -1,5 +1,6 @@
 package com.rndm.app.core.di
 
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
@@ -23,7 +24,16 @@ object FirebaseModule {
     @Provides
     @Singleton
     fun provideFirebaseFirestore(): FirebaseFirestore {
-        val firestore = FirebaseFirestore.getInstance()
+        val firestore = try {
+            val app = FirebaseApp.getInstance()
+            FirebaseFirestore.getInstance(app, "default")
+        } catch (e: Throwable) {
+            try {
+                FirebaseFirestore.getInstance("default")
+            } catch (e2: Throwable) {
+                FirebaseFirestore.getInstance()
+            }
+        }
         try {
             val settings = FirebaseFirestoreSettings.Builder()
                 .setLocalCacheSettings(PersistentCacheSettings.newBuilder().build())
@@ -35,4 +45,3 @@ object FirebaseModule {
         return firestore
     }
 }
-

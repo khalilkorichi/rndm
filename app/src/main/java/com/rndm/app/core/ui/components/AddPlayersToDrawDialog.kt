@@ -56,13 +56,13 @@ import com.rndm.app.domain.model.Profile
 @Composable
 fun AddPlayersToDrawDialog(
     existingPlayerNames: List<String> = emptyList(),
+    excludedPlayerNames: List<String> = emptyList(),
     availableProfiles: List<Profile> = emptyList(),
     onDismiss: () -> Unit,
     onConfirm: (List<String>) -> Unit
 ) {
     var currentInputText by remember { mutableStateOf("") }
     val newPlayersList = remember { mutableStateListOf<String>() }
-    var selectedProfileForImport by remember { mutableStateOf<Profile?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val spacing = RndmThemeTokens.spacing
 
@@ -82,7 +82,7 @@ fun AddPlayersToDrawDialog(
         var addedCount = 0
         for (name in namesToAdd) {
             if (existingPlayerNames.any { it.equals(name, ignoreCase = true) }) {
-                errorMessage = "اللاعب [$name] موجود بالفعل في القرعة"
+                errorMessage = "اللاعب [$name] موجود بالفعل في القرعة النشطة"
             } else if (newPlayersList.any { it.equals(name, ignoreCase = true) }) {
                 errorMessage = "تمت إضافة [$name] مسبقاً"
             } else {
@@ -130,7 +130,7 @@ fun AddPlayersToDrawDialog(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "إضافة لاعبين جدد وسحب مواجهاتهم وأنديتهم",
+                        text = "إضافة لاعبين جدد أو استعادة المستبعدين وسحب مواجهاتهم",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -143,7 +143,93 @@ fun AddPlayersToDrawDialog(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
-                // Existing Players Summary Bar
+                // 1. Excluded Players Quick Restore Section (if any)
+                val unaddedExcluded = remember(excludedPlayerNames, newPlayersList.size) {
+                    excludedPlayerNames.filter { name ->
+                        !newPlayersList.any { it.equals(name, ignoreCase = true) } &&
+                        !existingPlayerNames.any { it.equals(name, ignoreCase = true) }
+                    }
+                }
+
+                if (unaddedExcluded.isNotEmpty()) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_redo),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "اللاعبون المستبعدون سابقاً (${unaddedExcluded.size}):",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+
+                                TextButton(
+                                    onClick = {
+                                        unaddedExcluded.forEach { newPlayersList.add(it) }
+                                    },
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text("استعادة الكل", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                unaddedExcluded.forEach { name ->
+                                    Surface(
+                                        onClick = { newPlayersList.add(name) },
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = MaterialTheme.colorScheme.surface,
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f))
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(id = R.drawable.ic_add),
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                            Text(
+                                                text = name,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                // 2. Existing Active Players Summary Bar
                 if (existingPlayerNames.isNotEmpty()) {
                     Surface(
                         shape = RoundedCornerShape(10.dp),
@@ -174,7 +260,7 @@ fun AddPlayersToDrawDialog(
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
-                // Input field with Add (+) button
+                // 3. Input field with Add (+) button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -226,11 +312,11 @@ fun AddPlayersToDrawDialog(
                     )
                 }
 
-                // Quick Import from available Profiles
+                // 4. Quick Import from available Profiles
                 if (availableProfiles.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        text = "أو اختر من بروفايلات اللاعبين:",
+                        text = "أو اختر من بروفايلات أخرى:",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -287,9 +373,9 @@ fun AddPlayersToDrawDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // List of Added New Players (Chips)
+                // 5. List of Added New Players (Chips)
                 Text(
-                    text = "اللاعبون الجدد المراد إضافتهم (${newPlayersList.size}):",
+                    text = "اللاعبون المراد إضافتهم للقرعة (${newPlayersList.size}):",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -351,7 +437,7 @@ fun AddPlayersToDrawDialog(
                                     Box(
                                         modifier = Modifier
                                             .size(18.dp)
-                                            .clip(CircleShape)
+                                             .clip(CircleShape)
                                             .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f))
                                             .clickable { newPlayersList.removeAt(index) },
                                         contentAlignment = Alignment.Center

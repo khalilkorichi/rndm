@@ -22,12 +22,15 @@ class RequestRepositoryImpl @Inject constructor(
 ) : RequestRepository {
 
     override suspend fun submitRequest(request: AdminRequest): Result<Unit> = withContext(ioDispatcher) {
-        val currentUid = authDataSource.currentUid ?: "unknown"
+        var currentUid = authDataSource.currentUid
+        if (currentUid.isNullOrBlank()) {
+            currentUid = authDataSource.signInAnonymously().getOrNull() ?: "guest_${java.util.UUID.randomUUID().toString().take(8)}"
+        }
         val profile = authDataSource.getCurrentUserProfile()
         val finalRequest = request.copy(
             requesterUid = if (request.requesterUid.isNotBlank()) request.requesterUid else currentUid,
-            requesterName = if (request.requesterName.isNotBlank()) request.requesterName else (profile?.displayName ?: "مستخدم"),
-            requesterEmail = if (request.requesterEmail.isNotBlank()) request.requesterEmail else (profile?.email ?: "")
+            requesterName = if (request.requesterName.isNotBlank()) request.requesterName else (profile?.displayName ?: "ضيف (مجهول)"),
+            requesterEmail = if (request.requesterEmail.isNotBlank()) request.requesterEmail else (profile?.email ?: "guest@rndm.app")
         )
         requestDataSource.submitRequest(finalRequest.toFirestoreDto())
     }

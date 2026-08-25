@@ -197,6 +197,10 @@ class TournamentDetailViewModel @Inject constructor(
     }
 
     fun publishTournament() {
+        val existingCode = _uiState.value.activeShareCode ?: _uiState.value.tournament?.shareCode
+        if (!existingCode.isNullOrBlank()) {
+            _uiState.update { it.copy(activeShareCode = existingCode, isShareDialogOpen = true) }
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(isPublishing = true, publishErrorMessage = null) }
             val result = publishTournamentUseCase(tournamentId)
