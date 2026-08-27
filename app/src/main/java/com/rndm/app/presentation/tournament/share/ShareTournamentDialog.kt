@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.rndm.app.core.theme.UpdateSuccessGreen
 import com.rndm.app.core.ui.components.LtrForcedText
 
 @Composable
@@ -115,20 +116,20 @@ fun ShareTournamentDialog(
                         modifier = Modifier
                             .padding(top = 6.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF10B981).copy(alpha = 0.12f))
+                            .background(UpdateSuccessGreen.copy(alpha = 0.12f))
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.CloudDone,
                             contentDescription = null,
-                            tint = Color(0xFF10B981),
+                            tint = UpdateSuccessGreen,
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "تم الرفع للسحابة بنجاح",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF10B981),
+                            color = UpdateSuccessGreen,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -228,9 +229,9 @@ fun ShareTournamentDialog(
 
                     if (isBroadcasted) {
                         Surface(
-                            color = Color(0xFF10B981).copy(alpha = 0.1f),
+                            color = UpdateSuccessGreen.copy(alpha = 0.1f),
                             shape = RoundedCornerShape(14.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.4f)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, UpdateSuccessGreen.copy(alpha = 0.4f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -241,7 +242,7 @@ fun ShareTournamentDialog(
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,
                                     contentDescription = null,
-                                    tint = Color(0xFF10B981),
+                                    tint = UpdateSuccessGreen,
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -249,7 +250,7 @@ fun ShareTournamentDialog(
                                     text = "تم نشر البطولة",
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF10B981)
+                                    color = UpdateSuccessGreen
                                 )
                             }
                         }

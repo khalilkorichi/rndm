@@ -127,7 +127,7 @@ fun FreeDrawProfileItemsDialog(
 
     val workingItemsList = remember { mutableStateListOf<ProfileItem>() }
 
-    fun refreshWorkingList() {
+    LaunchedEffect(activeCategory, currentSelectedProfile) {
         workingItemsList.clear()
         val combined = (currentActive.map { it.copy(isActive = true) } +
                 currentExcluded.map { it.copy(isActive = false) })
@@ -137,10 +137,6 @@ fun FreeDrawProfileItemsDialog(
         } else if (currentSelectedProfile != null && currentSelectedProfile.items.isNotEmpty()) {
             workingItemsList.addAll(currentSelectedProfile.items)
         }
-    }
-
-    LaunchedEffect(activeCategory, currentSelectedProfile) {
-        refreshWorkingList()
     }
 
     var newItemText by remember { mutableStateOf("") }

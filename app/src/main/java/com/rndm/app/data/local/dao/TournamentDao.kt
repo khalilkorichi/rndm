@@ -77,9 +77,6 @@ interface TournamentDao {
     @Query("SELECT * FROM tournament_exclusions WHERE tournamentId = :tournamentId")
     fun getExclusionsByTournamentId(tournamentId: Long): Flow<List<TournamentExclusionEntity>>
 
-    @Query("SELECT * FROM tournament_exclusions WHERE tournamentId = :tournamentId")
-    suspend fun getExclusionsListByTournamentId(tournamentId: Long): List<TournamentExclusionEntity>
-
     @Query("DELETE FROM tournament_exclusions WHERE tournamentId = :tournamentId")
     suspend fun deleteExclusionsByTournamentId(tournamentId: Long)
 }

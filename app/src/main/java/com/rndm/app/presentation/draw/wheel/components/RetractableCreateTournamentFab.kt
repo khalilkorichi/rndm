@@ -1,4 +1,4 @@
-﻿package com.rndm.app.presentation.draw.wheel.components
+package com.rndm.app.presentation.draw.wheel.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -41,6 +41,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.rndm.app.R
+import com.rndm.app.core.theme.EmeraldMedium
+import com.rndm.app.core.theme.SecondaryDark
+import com.rndm.app.core.theme.SecondaryLight
+import com.rndm.app.core.theme.UpdateSuccessGreenDark
 import kotlinx.coroutines.delay
 
 @Composable
@@ -99,9 +103,9 @@ fun RetractableCreateTournamentFab(
     val totalShiftDp = 16f + (buttonSizeDp * 0.90f)
     val currentShiftDp = totalShiftDp * animatedOffsetFraction
 
-    val primaryGreen = Color(0xFF00C896)
-    val darkEmerald = Color(0xFF047857)
-    val mintHighlight = Color(0xFF5CE0BE)
+    val primaryGreen = SecondaryLight
+    val darkEmerald = UpdateSuccessGreenDark
+    val mintHighlight = SecondaryDark
 
     Box(
         modifier = modifier
@@ -128,7 +132,7 @@ fun RetractableCreateTournamentFab(
                                 mintHighlight.copy(alpha = pulseGlowAlpha * 0.15f),
                                 Color.Transparent
                             )
-                        )
+                         )
                     )
             )
         }
@@ -149,7 +153,7 @@ fun RetractableCreateTournamentFab(
                     Brush.linearGradient(
                         colors = listOf(
                             primaryGreen.copy(alpha = 0.92f),
-                            Color(0xFF0F9B73).copy(alpha = 0.95f),
+                            EmeraldMedium.copy(alpha = 0.95f),
                             darkEmerald.copy(alpha = 0.98f)
                         )
                     )

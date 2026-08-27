@@ -111,10 +111,15 @@ class ComposeAnalyzer:
                 in_composable = True
 
             if in_composable:
-                # Check if inside a remember or derivedStateOf block
+                # Check if inside a remember, derivedStateOf, effect, or event callback block
                 is_remembered = False
-                for lookback in range(max(0, idx - 4), idx):
-                    if any(k in lines[lookback] for k in ["remember", "derivedStateOf", "LaunchedEffect", "produceState"]):
+                for lookback in range(max(0, idx - 15), idx):
+                    prev_line = lines[lookback]
+                    if any(k in prev_line for k in [
+                        "remember", "derivedStateOf", "LaunchedEffect", "produceState",
+                        "DisposableEffect", "SideEffect", "onClick", "onValueChange",
+                        "onDismissRequest", "scope.launch"
+                    ]) or re.search(r'on[A-Z][a-zA-Z0-9_]*\s*=', prev_line) or re.search(r'on[A-Z][a-zA-Z0-9_]*\s*\{', prev_line):
                         is_remembered = True
                         break
 
