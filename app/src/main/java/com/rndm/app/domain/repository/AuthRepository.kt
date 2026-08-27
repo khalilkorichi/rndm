@@ -16,6 +16,8 @@ interface AuthRepository {
     suspend fun logoutAdmin(): Result<Unit>
     suspend fun getCurrentRole(): UserRole
     suspend fun getCurrentUserProfile(): UserProfile?
+    fun getFastRole(): UserRole
+    fun getFastUserProfile(): UserProfile?
     fun getAllUsers(): Flow<List<UserProfile>>
     suspend fun updateUserRole(targetUid: String, newRole: UserRole): Result<Unit>
     suspend fun promoteUserByEmail(email: String): Result<Unit>

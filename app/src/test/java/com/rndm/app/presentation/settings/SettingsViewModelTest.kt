@@ -44,12 +44,15 @@ class SettingsViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
+        every { repository.getInitialThemeMode() } returns ThemeMode.SYSTEM
         every { repository.themeMode } returns themeModeFlow
         every { repository.isSoundEnabled } returns isSoundFlow
         every { repository.isMatchReminderEnabled } returns isMatchReminderFlow
         every { repository.isDrawAlertsEnabled } returns isDrawAlertsFlow
         every { getCurrentUserRoleUseCase() } returns roleFlow
+        every { getCurrentUserRoleUseCase.getFastRole() } returns UserRole.GUEST
         every { getCurrentUserProfileUseCase() } returns profileFlow
+        every { getCurrentUserProfileUseCase.getFastProfile() } returns null
         every { getAllUsersUseCase() } returns flowOf(emptyList())
         coEvery { logoutAdminUseCase() } returns Result.success(Unit)
     }
@@ -57,6 +60,32 @@ class SettingsViewModelTest {
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun `initial state immediately has fast role and profile without delay`() = runTest {
+        val testProfile = UserProfile(
+            uid = "user_1",
+            email = "user@rndm.app",
+            username = "user",
+            displayName = "User One",
+            role = UserRole.USER
+        )
+        every { getCurrentUserRoleUseCase.getFastRole() } returns UserRole.USER
+        every { getCurrentUserProfileUseCase.getFastProfile() } returns testProfile
+
+        val viewModel = SettingsViewModel(
+            userPreferencesRepository = repository,
+            getCurrentUserRoleUseCase = getCurrentUserRoleUseCase,
+            getCurrentUserProfileUseCase = getCurrentUserProfileUseCase,
+            logoutAdminUseCase = logoutAdminUseCase,
+            getAllUsersUseCase = getAllUsersUseCase,
+            updateUserRoleUseCase = updateUserRoleUseCase,
+            promoteUserByEmailUseCase = promoteUserByEmailUseCase
+        )
+
+        assertEquals(UserRole.USER, viewModel.uiState.value.userRole)
+        assertEquals(testProfile, viewModel.uiState.value.currentUserProfile)
     }
 
     @Test
