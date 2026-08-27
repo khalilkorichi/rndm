@@ -21,8 +21,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -59,8 +61,10 @@ fun LiveTournamentPreviewSheet(
     modifier: Modifier = Modifier
 ) {
     val clipboardManager = LocalClipboardManager.current
+    val density = LocalDensity.current
     var selectedTab by remember { mutableStateOf(PreviewTab.MATCHES) }
     var copiedCode by remember { mutableStateOf(false) }
+    var matchesHeightDp by remember { mutableStateOf<androidx.compose.ui.unit.Dp?>(null) }
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
@@ -150,34 +154,14 @@ fun LiveTournamentPreviewSheet(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Text(
-                                        text = tournament.name,
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-
-                                    // Type badge
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
-                                        modifier = Modifier.padding(start = 2.dp)
-                                    ) {
-                                        Text(
-                                            text = if (tournament.type == TournamentType.GROUPS_KNOCKOUT) "مجموعات" else "إقصائيات",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                }
+                                Text(
+                                    text = tournament.name,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
 
                                 Spacer(modifier = Modifier.height(3.dp))
 
@@ -325,12 +309,23 @@ fun LiveTournamentPreviewSheet(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .padding(vertical = 24.dp)
+                                                .onGloballyPositioned { coords ->
+                                                    if (coords.size.height > 0) {
+                                                        matchesHeightDp = with(density) { coords.size.height.toDp() }
+                                                    }
+                                                }
                                         )
                                     } else {
                                         LazyColumn(
                                             verticalArrangement = Arrangement.spacedBy(8.dp),
                                             contentPadding = PaddingValues(vertical = 4.dp),
-                                            modifier = Modifier.fillMaxWidth()
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .onGloballyPositioned { coords ->
+                                                    if (coords.size.height > 0) {
+                                                        matchesHeightDp = with(density) { coords.size.height.toDp() }
+                                                    }
+                                                }
                                         ) {
                                             itemsIndexed(
                                                 items = matches,
@@ -345,21 +340,27 @@ fun LiveTournamentPreviewSheet(
                                     }
                                 }
                                 PreviewTab.PARTICIPANTS -> {
+                                    val participantModifier = if (matchesHeightDp != null) {
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .height(matchesHeightDp!!)
+                                    } else {
+                                        Modifier.fillMaxWidth()
+                                    }
+
                                     if (participants.isEmpty()) {
                                         EmptyState(
                                             icon = painterResource(id = R.drawable.ic_person),
                                             title = "لا يوجد مشاركون",
                                             description = "لم يتم إضافة أي لاعب لهذه البطولة",
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(vertical = 24.dp)
+                                            modifier = participantModifier.padding(vertical = 24.dp)
                                         )
                                     } else {
                                         val grouped = remember(participants) { participants.groupBy { it.groupIndex } }
                                         LazyColumn(
                                             verticalArrangement = Arrangement.spacedBy(8.dp),
                                             contentPadding = PaddingValues(vertical = 4.dp),
-                                            modifier = Modifier.fillMaxWidth()
+                                            modifier = participantModifier
                                         ) {
                                             if (grouped.size > 1 && tournament.type == TournamentType.GROUPS_KNOCKOUT) {
                                                 grouped.forEach { (groupIndex, groupMembers) ->
@@ -455,7 +456,7 @@ private fun PreviewMatchCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Player 1
@@ -467,13 +468,17 @@ private fun PreviewMatchCard(
                     text = match.playerOneName,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = if (match.winnerName == match.playerOneName) FontWeight.Bold else FontWeight.Medium,
-                    color = if (match.winnerName == match.playerOneName) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    color = if (match.winnerName == match.playerOneName) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 if (!match.playerOneClub.isNullOrBlank()) {
                     Text(
                         text = match.playerOneClub,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -482,7 +487,7 @@ private fun PreviewMatchCard(
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .padding(horizontal = 12.dp)
+                    .padding(horizontal = 10.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(
                         when {
@@ -527,14 +532,18 @@ private fun PreviewMatchCard(
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = if (match.winnerName == match.playerTwoName) FontWeight.Bold else FontWeight.Medium,
                     color = if (match.winnerName == match.playerTwoName) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.End
+                    textAlign = TextAlign.End,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 if (!match.playerTwoClub.isNullOrBlank()) {
                     Text(
                         text = match.playerTwoClub,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.End
+                        textAlign = TextAlign.End,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -558,23 +567,27 @@ private fun PreviewParticipantCard(
         ) {
             PlayerAvatar(
                 avatarIcon = null,
-                size = 36.dp
+                size = 32.dp
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = participant.playerName,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 if (!participant.clubName.isNullOrBlank()) {
                     Text(
                         text = participant.clubName,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
