@@ -179,6 +179,7 @@ class DrawSetupViewModel @Inject constructor(
     }
 
     fun onDrawTypeSelected(drawType: DrawType) {
+        if (drawType == DrawType.SPIN_LIST || drawType == DrawType.ROUND_ROBIN) return
         _uiState.update { it.copy(selectedDrawType = drawType) }
     }
 

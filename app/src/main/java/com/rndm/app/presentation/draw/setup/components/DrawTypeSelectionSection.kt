@@ -98,7 +98,7 @@ fun DrawTypeSelectionSection(
             description = "شريط سحب سريع يتباطأ تدريجياً",
             iconRes = R.drawable.ic_spinlist,
             isSelected = selectedDrawType == DrawType.SPIN_LIST,
-            isAvailable = true,
+            isAvailable = false,
             accentGradient = listOf(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.tertiaryContainer),
             onClick = { onDrawTypeSelected(DrawType.SPIN_LIST) }
         )
@@ -111,7 +111,7 @@ fun DrawTypeSelectionSection(
             description = "توزيع وتوليد جدول المباريات تلقائياً",
             iconRes = R.drawable.ic_roundrobin,
             isSelected = selectedDrawType == DrawType.ROUND_ROBIN,
-            isAvailable = true,
+            isAvailable = false,
             accentGradient = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primaryContainer),
             onClick = { onDrawTypeSelected(DrawType.ROUND_ROBIN) }
         )

@@ -1,7 +1,11 @@
 ﻿package com.rndm.app.presentation.draw.flipcards
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -15,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Badge
@@ -32,6 +37,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.LayoutDirection
@@ -51,6 +59,10 @@ import com.rndm.app.presentation.draw.wheel.components.DrawPromptBanner
 import com.rndm.app.presentation.draw.wheel.components.DrawnMatchesFeed
 import com.rndm.app.presentation.draw.wheel.components.ExcludeFromDrawDialog
 import com.rndm.app.presentation.draw.wheel.components.LiveMatchDrawSimulationCard
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.PI
+import kotlin.math.sin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,9 +75,41 @@ fun FlipCardDrawScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val spacing = RndmThemeTokens.spacing
+    val density = LocalDensity.current
+    val haptic = LocalHapticFeedback.current
+    val shuffleAnim = remember { Animatable(0f) }
+    val gridState = rememberLazyGridState()
 
     LaunchedEffect(profileId) {
         viewModel.initializeWithProfileId(profileId)
+    }
+
+    // 3D Deck Real Slot Swap & Riffle Haptics Orchestration
+    LaunchedEffect(uiState.shuffleTrigger) {
+        if (uiState.shuffleTrigger > 0L) {
+            launch {
+                // Ensure grid stays firmly anchored at the top
+                gridState.scrollToItem(0)
+                // Multi-pulse riffle haptics during card flight
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                delay(140)
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                delay(140)
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                delay(160)
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
+
+            shuffleAnim.snapTo(0f)
+            shuffleAnim.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = 650,
+                    easing = FastOutSlowInEasing
+                )
+            )
+            shuffleAnim.snapTo(0f)
+        }
     }
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
@@ -267,40 +311,80 @@ fun FlipCardDrawScreen(
                             excludedCount = uiState.currentExcludedItems.size,
                             remainingCount = items.size,
                             isRevealing = uiState.isRevealing,
+                            isShuffling = uiState.isShuffling,
                             onOpenExcludeDialog = { viewModel.onOpenExcludeDialog() },
                             onShuffleCards = { viewModel.onShuffleCards() }
                         )
 
-                        // 3-Column Responsive Flip Cards Grid
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(3),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 420.dp),
-                            contentPadding = PaddingValues(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        // 3-Column Responsive Flip Cards Grid with LazyVerticalGrid and Fixed Scroll State
+                        BoxWithConstraints(
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            items(
-                                count = items.size,
-                                key = { index -> "${items[index].id}_${items[index].label}" }
-                            ) { index ->
-                                val isFlipped = uiState.flippedCardIndex == index
-                                val item = items[index]
-                                val revealedLabel = if (isFlipped) {
-                                    uiState.drawResult?.selectedItem?.label ?: item.label
-                                } else {
-                                    item.label
-                                }
+                            val totalWidth = maxWidth
+                            val horizSpacing = 10.dp
+                            val vertSpacing = 10.dp
+                            val cardWidth = (totalWidth - (horizSpacing * 2)) / 3
+                            val cardHeight = cardWidth / 0.72f
 
-                                FlipCardItem(
-                                    cardNumber = index + 1,
-                                    itemLabel = revealedLabel,
-                                    isFlipped = isFlipped,
-                                    isEnabled = !uiState.isRevealing,
-                                    onClick = { viewModel.onCardClick(index) },
-                                    category = uiState.selectedCategory
-                                )
+                            val stepXPx = with(density) { (cardWidth + horizSpacing).toPx() }
+                            val stepYPx = with(density) { (cardHeight + vertSpacing).toPx() }
+
+                            val shuffleProgress = shuffleAnim.value
+                            val arcCurve = if (shuffleProgress > 0f) sin(shuffleProgress * PI).toFloat() else 0f
+
+                            LazyVerticalGrid(
+                                state = gridState,
+                                columns = GridCells.Fixed(3),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 420.dp),
+                                contentPadding = PaddingValues(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(horizSpacing),
+                                verticalArrangement = Arrangement.spacedBy(vertSpacing)
+                            ) {
+                                items(
+                                    count = items.size,
+                                    // Crucial: Use index key so Compose does NOT auto-scroll or jump when item order changes!
+                                    key = { index -> index }
+                                ) { index ->
+                                    val isFlipped = uiState.flippedCardIndex == index
+                                    val item = items[index]
+                                    val revealedLabel = if (isFlipped) {
+                                        uiState.drawResult?.selectedItem?.label ?: item.label
+                                    } else {
+                                        item.label
+                                    }
+
+                                    // Symmetrical Parabolic Arc Shuffle Movement
+                                    val col = index % 3
+                                    val row = index / 3
+                                    val dirX = when (col) {
+                                        0 -> -1f
+                                        2 -> 1f
+                                        else -> if (row % 2 == 0) 0.6f else -0.6f
+                                    }
+                                    val dirY = if (row % 2 == 0) -0.7f else 0.7f
+
+                                    val offsetX = stepXPx * dirX * 0.95f * arcCurve
+                                    val offsetY = stepYPx * dirY * 0.35f * arcCurve
+                                    val tiltZ = (dirX * -9f + dirY * 4f) * arcCurve
+                                    val scale = 1f + (0.07f * arcCurve)
+                                    val elevation = if ((row + col) % 2 == 0) 16f * arcCurve else 4f * arcCurve
+
+                                    FlipCardItem(
+                                        cardNumber = index + 1,
+                                        itemLabel = revealedLabel,
+                                        isFlipped = isFlipped,
+                                        isEnabled = !uiState.isRevealing && !uiState.isShuffling,
+                                        onClick = { viewModel.onCardClick(index) },
+                                        category = uiState.selectedCategory,
+                                        shuffleOffsetX = offsetX,
+                                        shuffleOffsetY = offsetY,
+                                        shuffleRotationZ = tiltZ,
+                                        shuffleScale = scale,
+                                        shuffleElevation = elevation
+                                    )
+                                }
                             }
                         }
                     }

@@ -26,6 +26,8 @@ data class FlipCardDrawUiState(
     val fixtures: List<DrawFixture> = emptyList(),
     val flippedCardIndex: Int = -1,
     val isRevealing: Boolean = false,
+    val isShuffling: Boolean = false,
+    val shuffleTrigger: Long = 0L,
     val drawResult: DrawResult? = null,
     val currentDrawingPrompt: String = "",
     val isAddPlayersDialogOpen: Boolean = false,

@@ -57,7 +57,12 @@ fun FlipCardItem(
     isEnabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    category: DrawCategory = DrawCategory.PLAYERS
+    category: DrawCategory = DrawCategory.PLAYERS,
+    shuffleOffsetX: Float = 0f,
+    shuffleOffsetY: Float = 0f,
+    shuffleRotationZ: Float = 0f,
+    shuffleScale: Float = 1f,
+    shuffleElevation: Float = 0f
 ) {
     val haptic = LocalHapticFeedback.current
 
@@ -86,21 +91,26 @@ fun FlipCardItem(
         DrawCategory.NATIONAL_TEAMS -> MaterialTheme.colorScheme.tertiary
     }
 
+    val totalElevation = (if (isFlipped) 14f else 3f) + shuffleElevation
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(0.72f)
             .graphicsLayer {
+                translationX = shuffleOffsetX
+                translationY = shuffleOffsetY
+                rotationZ = shuffleRotationZ
                 rotationY = rotation
                 cameraDistance = 16f * density
-                scaleX = scale
-                scaleY = scale
+                scaleX = scale * shuffleScale
+                scaleY = scale * shuffleScale
             }
             .shadow(
-                elevation = if (isFlipped) 14.dp else 3.dp,
+                elevation = totalElevation.dp,
                 shape = cardShape,
-                ambientColor = if (isFlipped) categoryColor.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.2f),
-                spotColor = if (isFlipped) categoryColor else Color.Black.copy(alpha = 0.3f)
+                ambientColor = if (isFlipped || shuffleElevation > 0f) categoryColor.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.2f),
+                spotColor = if (isFlipped || shuffleElevation > 0f) categoryColor else Color.Black.copy(alpha = 0.3f)
             )
             .clickable(enabled = isEnabled && !isFlipped) {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -115,8 +125,8 @@ fun FlipCardItem(
             }
         ),
         border = BorderStroke(
-            width = if (isFlipped) 2.dp else 1.2.dp,
-            brush = if (isFlipped) {
+            width = if (isFlipped || shuffleElevation > 0f) 2.dp else 1.2.dp,
+            brush = if (isFlipped || shuffleElevation > 0f) {
                 Brush.verticalGradient(
                     colors = listOf(
                         categoryColor,

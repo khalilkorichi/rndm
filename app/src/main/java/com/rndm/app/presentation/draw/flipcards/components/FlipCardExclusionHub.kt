@@ -1,5 +1,8 @@
-﻿package com.rndm.app.presentation.draw.flipcards.components
+package com.rndm.app.presentation.draw.flipcards.components
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,8 +19,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,6 +36,7 @@ fun FlipCardExclusionHub(
     excludedCount: Int,
     remainingCount: Int,
     isRevealing: Boolean,
+    isShuffling: Boolean,
     onOpenExcludeDialog: () -> Unit,
     onShuffleCards: () -> Unit,
     modifier: Modifier = Modifier
@@ -47,6 +53,12 @@ fun FlipCardExclusionHub(
         DrawCategory.NATIONAL_TEAMS -> R.drawable.ic_globe
     }
 
+    val shuffleIconRotation by animateFloatAsState(
+        targetValue = if (isShuffling) 360f else 0f,
+        animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+        label = "shuffle_icon_rotation"
+    )
+
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -55,7 +67,7 @@ fun FlipCardExclusionHub(
         // Main Exclusion Bar
         Surface(
             onClick = onOpenExcludeDialog,
-            enabled = !isRevealing,
+            enabled = !isRevealing && !isShuffling,
             shape = RoundedCornerShape(14.dp),
             color = if (excludedCount > 0) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
             else MaterialTheme.colorScheme.surfaceContainerLow,
@@ -141,10 +153,13 @@ fun FlipCardExclusionHub(
         // Quick Shuffle Action Button
         Surface(
             onClick = onShuffleCards,
-            enabled = !isRevealing && remainingCount > 1,
+            enabled = !isRevealing && !isShuffling && remainingCount > 1,
             shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+            color = if (isShuffling) categoryColor.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceContainerLow,
+            border = BorderStroke(
+                1.dp,
+                if (isShuffling) categoryColor.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+            )
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
@@ -155,10 +170,14 @@ fun FlipCardExclusionHub(
                     painter = painterResource(id = R.drawable.ic_swap),
                     contentDescription = "خلط البطاقات",
                     tint = if (remainingCount > 1) categoryColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier
+                        .size(16.dp)
+                        .graphicsLayer {
+                            rotationZ = shuffleIconRotation
+                        }
                 )
                 Text(
-                    text = "خلط",
+                    text = if (isShuffling) "جاري الخلط..." else "خلط",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = if (remainingCount > 1) categoryColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
