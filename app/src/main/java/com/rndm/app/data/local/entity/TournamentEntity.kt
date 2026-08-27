@@ -34,6 +34,7 @@ data class TournamentEntity(
     val shareCode: String? = null,
     val isRemote: Boolean = false,
     val isHost: Boolean = true,
+    val isPublic: Boolean = false,
     val hostUid: String? = null,
     val syncStatus: SyncStatus = SyncStatus.LOCAL_ONLY,
     val lastSyncedAt: Long? = null,

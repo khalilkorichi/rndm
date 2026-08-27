@@ -28,6 +28,9 @@ interface TournamentDao {
     @Query("UPDATE tournaments SET isArchived = 0, updatedAt = :timestamp WHERE id = :id")
     suspend fun unarchiveTournament(id: Long, timestamp: Long = System.currentTimeMillis())
 
+    @Query("UPDATE tournaments SET isPublic = :isPublic, updatedAt = :timestamp WHERE id = :id")
+    suspend fun setTournamentPublic(id: Long, isPublic: Boolean, timestamp: Long = System.currentTimeMillis())
+
     @Query("SELECT * FROM tournaments WHERE id = :id")
     suspend fun getTournamentById(id: Long): TournamentEntity?
 

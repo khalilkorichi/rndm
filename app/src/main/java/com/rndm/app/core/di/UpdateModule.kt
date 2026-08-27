@@ -1,7 +1,15 @@
 package com.rndm.app.core.di
 
+import com.rndm.app.data.update.GitHubAsset
+import com.rndm.app.data.update.GitHubAssetAdapter
 import com.rndm.app.data.update.GitHubReleaseClient
+import com.rndm.app.data.update.GitHubReleaseResponse
+import com.rndm.app.data.update.GitHubReleaseResponseAdapter
+import com.rndm.app.data.update.UpdateInfoAdapter
+import com.rndm.app.data.update.UpdateManifest
+import com.rndm.app.data.update.UpdateManifestAdapter
 import com.rndm.app.data.update.UpdateRepositoryImpl
+import com.rndm.app.domain.model.UpdateInfo
 import com.rndm.app.domain.repository.UpdateRepository
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -41,7 +49,12 @@ object UpdateNetworkModule {
     @Provides
     @Singleton
     fun provideMoshi(): Moshi {
+        val assetAdapter = GitHubAssetAdapter()
         return Moshi.Builder()
+            .add(UpdateManifest::class.java, UpdateManifestAdapter())
+            .add(GitHubAsset::class.java, assetAdapter)
+            .add(GitHubReleaseResponse::class.java, GitHubReleaseResponseAdapter(assetAdapter))
+            .add(UpdateInfo::class.java, UpdateInfoAdapter())
             .addLast(KotlinJsonAdapterFactory())
             .build()
     }

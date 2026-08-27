@@ -47,7 +47,11 @@ class UpdateRepositoryImpl @Inject constructor(
         _downloadState.value = state
     }
 
-    private val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+    private val moshi = Moshi.Builder()
+        .add(UpdateInfo::class.java, UpdateInfoAdapter())
+        .add(UpdateManifest::class.java, UpdateManifestAdapter())
+        .addLast(KotlinJsonAdapterFactory())
+        .build()
 
     init {
         try {
@@ -214,6 +218,9 @@ class UpdateRepositoryImpl @Inject constructor(
                 }
             } catch (e: java.io.IOException) {
                 throw Exception("تعذر الاتصال بخوادم GitHub، يرجى التحقق من اتصال الإنترنت.")
+            } catch (e: Exception) {
+                if (e is kotlin.coroutines.cancellation.CancellationException) throw e
+                throw Exception("تعذر الاتصال بخوادم التحديثات (${e.localizedMessage ?: "خطأ غير متوقع"})")
             }
 
             val apkAsset = release.assets.firstOrNull { it.name.endsWith(".apk") }

@@ -425,7 +425,10 @@ class UpdateDownloadWorker(
         apkSha256: String, versionName: String
     ): UpdateInfo {
         return try {
-            val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+            val moshi = Moshi.Builder()
+                .add(UpdateInfo::class.java, UpdateInfoAdapter())
+                .addLast(KotlinJsonAdapterFactory())
+                .build()
             moshi.adapter(UpdateInfo::class.java).fromJson(infoJson)
                 ?: createFallback(apkUrl, apkSize, apkSha256, versionName)
         } catch (e: Exception) {

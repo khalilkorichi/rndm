@@ -332,13 +332,15 @@ class FirestoreTournamentDataSource @Inject constructor(
 
     suspend fun setTournamentPublicBroadcast(tournamentId: String, isPublic: Boolean = true): Result<Unit> {
         return try {
+            val now = System.currentTimeMillis()
             firestore.collection("tournaments").document(tournamentId)
-                .update(
+                .set(
                     mapOf(
                         "isPublic" to isPublic,
                         "public" to isPublic,
-                        "updatedAt" to System.currentTimeMillis()
-                    )
+                        "updatedAt" to now
+                    ),
+                    com.google.firebase.firestore.SetOptions.merge()
                 ).await()
             Log.d("SYNC_RNDM", "Tournament $tournamentId public broadcast set to $isPublic")
             Result.success(Unit)
@@ -349,7 +351,7 @@ class FirestoreTournamentDataSource @Inject constructor(
         }
     }
 
-    fun observeLivePublicTournaments(limit: Long = 10): Flow<List<FirestoreTournamentDto>> = callbackFlow {
+    fun observeLivePublicTournaments(limit: Long = 20): Flow<List<FirestoreTournamentDto>> = callbackFlow {
         val query = firestore.collection("tournaments")
             .limit(limit)
 
@@ -361,15 +363,33 @@ class FirestoreTournamentDataSource @Inject constructor(
             }
             if (snapshot != null) {
                 val oneHourAgo = System.currentTimeMillis() - (60 * 60 * 1000L)
-                val list = snapshot.toObjects(FirestoreTournamentDto::class.java)
-                    .filter {
-                        !it.isArchived &&
-                        it.isPublic &&
-                        it.status == "ACTIVE" &&
-                        it.stage != "COMPLETED" &&
-                        it.createdAt >= oneHourAgo
+                val list = snapshot.documents.mapNotNull { doc ->
+                    val dto = doc.toObject(FirestoreTournamentDto::class.java)
+                    val id = doc.id
+                    val isDocPublic = doc.getBoolean("isPublic") == true || doc.getBoolean("public") == true || (dto?.isPublic == true)
+                    val isDocArchived = doc.getBoolean("isArchived") == true || doc.getBoolean("archived") == true || (dto?.isArchived == true)
+                    val status = doc.getString("status") ?: dto?.status ?: "ACTIVE"
+                    val stage = doc.getString("stage") ?: dto?.stage ?: "GROUPS"
+                    val createdAt = doc.getLong("createdAt") ?: dto?.createdAt ?: 0L
+
+                    if (isDocPublic && !isDocArchived && status == "ACTIVE" && stage != "COMPLETED" && createdAt >= oneHourAgo) {
+                        (dto ?: FirestoreTournamentDto()).copy(
+                            id = id,
+                            name = doc.getString("name") ?: dto?.name ?: "",
+                            type = doc.getString("type") ?: dto?.type ?: "GROUPS_KNOCKOUT",
+                            stage = stage,
+                            status = status,
+                            hostUid = doc.getString("hostUid") ?: dto?.hostUid ?: "",
+                            shareCode = doc.getString("shareCode") ?: dto?.shareCode ?: "",
+                            isArchived = isDocArchived,
+                            isPublic = true,
+                            createdAt = createdAt,
+                            updatedAt = doc.getLong("updatedAt") ?: dto?.updatedAt ?: createdAt
+                        )
+                    } else {
+                        null
                     }
-                    .sortedByDescending { it.updatedAt.coerceAtLeast(it.createdAt) }
+                }.sortedByDescending { it.updatedAt.coerceAtLeast(it.createdAt) }
                 trySend(list)
             }
         }

@@ -253,7 +253,6 @@ class SyncRepositoryImpl @Inject constructor(
             val currentUid = authDataSource.currentUid
             val localRemoteIds = localEntities.mapNotNull { it.remoteId?.trim() }.filter { it.isNotBlank() }.toSet()
             val localShareCodes = localEntities.mapNotNull { it.shareCode?.replace("-", "")?.replace(" ", "")?.uppercase() }.filter { it.isNotBlank() }.toSet()
-            val localNames = localEntities.map { it.name.trim().lowercase() }.toSet()
 
             val oneHourAgo = System.currentTimeMillis() - (60 * 60 * 1000L)
 
@@ -264,9 +263,8 @@ class SyncRepositoryImpl @Inject constructor(
                 val cleanRemoteCode = remoteDto.shareCode.replace("-", "").replace(" ", "").uppercase()
                 val matchesLocalRemoteId = remoteDto.id in localRemoteIds
                 val matchesLocalCode = cleanRemoteCode.isNotBlank() && cleanRemoteCode in localShareCodes
-                val matchesLocalName = remoteDto.name.trim().lowercase() in localNames
 
-                val isOwnerOrAlreadyPresent = isLocallyPublished || isHost || matchesLocalRemoteId || matchesLocalCode || matchesLocalName
+                val isOwnerOrAlreadyPresent = isLocallyPublished || isHost || matchesLocalRemoteId || matchesLocalCode
                 isFresh && !isOwnerOrAlreadyPresent
             }.map { it.toDomain() }
         }.flowOn(ioDispatcher)
@@ -295,14 +293,28 @@ class SyncRepositoryImpl @Inject constructor(
 
     override suspend fun broadcastTournamentToPublic(tournamentId: Long): Result<Unit> = withContext(ioDispatcher) {
         try {
-            val tournamentEntity = tournamentDao.getTournamentById(tournamentId)
+            var tournamentEntity = tournamentDao.getTournamentById(tournamentId)
                 ?: return@withContext Result.failure(IllegalArgumentException("البطولة غير موجودة محلياً"))
 
-            val remoteId = tournamentEntity.remoteId
-                ?: return@withContext Result.failure(IllegalStateException("لم يتم رفع البطولة بعد إلى السحابة"))
+            var remoteId = tournamentEntity.remoteId
+            if (remoteId.isNullOrBlank()) {
+                val publishResult = publishTournament(tournamentId)
+                if (publishResult.isFailure) {
+                    return@withContext Result.failure(publishResult.exceptionOrNull() ?: Exception("فشل رفع البطولة إلى السحابة"))
+                }
+                tournamentEntity = tournamentDao.getTournamentById(tournamentId)
+                    ?: return@withContext Result.failure(IllegalArgumentException("البطولة غير موجودة محلياً"))
+                remoteId = tournamentEntity.remoteId
+            }
+
+            if (remoteId.isNullOrBlank()) {
+                return@withContext Result.failure(IllegalStateException("تعذر الحصول على المعرف السحابي للبطولة"))
+            }
 
             val result = remoteTournamentDataSource.setTournamentPublicBroadcast(remoteId, true)
             if (result.isSuccess) {
+                tournamentDao.setTournamentPublic(tournamentId, true)
+                locallyPublishedRemoteIds.add(remoteId)
                 Result.success(Unit)
             } else {
                 Result.failure(result.exceptionOrNull() ?: Exception("فشل نشر البطولة للعامة"))

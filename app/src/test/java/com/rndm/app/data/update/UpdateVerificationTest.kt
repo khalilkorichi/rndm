@@ -65,4 +65,61 @@ class UpdateVerificationTest {
         assertTrue(fakeZip.length() >= 500_000L)
         assertFalse(repository.verifyApkSha256(fakeZip, ""))
     }
+
+    @Test
+    fun `UpdateManifestAdapter parses json correctly without reflection`() {
+        val json = """
+            {
+                "versionCode": 8,
+                "versionName": "1.0.7",
+                "updateIdentity": 107,
+                "publishedAt": "2026-08-27T10:00:00Z",
+                "apkUrl": "https://example.com/app.apk",
+                "apkSize": 15000000,
+                "apkSha256": "abc123sha",
+                "mandatory": true,
+                "releaseNotes": "ميزات جديدة وإصلاحات"
+            }
+        """.trimIndent()
+
+        val adapter = UpdateManifestAdapter()
+        val manifest = adapter.fromJson(json)
+
+        org.junit.Assert.assertNotNull(manifest)
+        assertEquals(8, manifest?.versionCode)
+        assertEquals("1.0.7", manifest?.versionName)
+        assertEquals(107L, manifest?.updateIdentity)
+        assertEquals(15000000L, manifest?.apkSize)
+        assertEquals("abc123sha", manifest?.apkSha256)
+        assertEquals(true, manifest?.mandatory)
+        assertEquals("ميزات جديدة وإصلاحات", manifest?.releaseNotes)
+    }
+
+    @Test
+    fun `GitHubReleaseResponseAdapter parses GitHub release payload correctly`() {
+        val json = """
+            {
+                "tag_name": "v1.0.7",
+                "name": "Release 1.0.7",
+                "published_at": "2026-08-27T10:00:00Z",
+                "body": "Fix update system",
+                "assets": [
+                    {
+                        "name": "rndm-v1.0.7.apk",
+                        "size": 18000000,
+                        "browser_download_url": "https://github.com/downloads/rndm.apk"
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val adapter = GitHubReleaseResponseAdapter()
+        val response = adapter.fromJson(json)
+
+        org.junit.Assert.assertNotNull(response)
+        assertEquals("v1.0.7", response?.tagName)
+        assertEquals(1, response?.assets?.size)
+        assertEquals("rndm-v1.0.7.apk", response?.assets?.get(0)?.name)
+        assertEquals(18000000L, response?.assets?.get(0)?.size)
+    }
 }

@@ -120,7 +120,8 @@ class TournamentDetailViewModel @Inject constructor(
                             isPromotionReady = isPromotionOrKnockout.first,
                             isKnockoutReady = isPromotionOrKnockout.second,
                             bestLosers = bestLosers,
-                            activeShareCode = if (tournament.shareCode != null) tournament.shareCode else it.activeShareCode
+                            activeShareCode = if (tournament.shareCode != null) tournament.shareCode else it.activeShareCode,
+                            isBroadcasted = tournament.isPublic || it.isBroadcasted
                         )
                     }
                 } else {

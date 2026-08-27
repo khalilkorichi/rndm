@@ -19,6 +19,7 @@ fun FirestoreTournamentDto.toDomain(): Tournament {
         groupsCount = groupsCount,
         qualifiersPerGroup = qualifiersPerGroup,
         isArchived = isArchived,
+        isPublic = isPublic,
         createdAt = createdAt,
         updatedAt = updatedAt,
         remoteId = id,
@@ -46,6 +47,7 @@ fun Tournament.toFirestoreDto(hostUid: String, memberIds: List<String> = listOf(
         groupsCount = groupsCount,
         qualifiersPerGroup = qualifiersPerGroup,
         isArchived = isArchived,
+        isPublic = isPublic,
         createdAt = createdAt,
         updatedAt = updatedAt,
         version = remoteVersion

@@ -22,6 +22,8 @@
 -keep class com.rndm.app.data.local.entity.** { *; }
 -keep class com.rndm.app.data.remote.model.** { *; }
 -keep class com.rndm.app.data.local.dto.** { *; }
+-keep class com.rndm.app.data.update.** { *; }
+-keep interface com.rndm.app.data.update.** { *; }
 
 # Moshi & JSON serialization
 -keep class com.squareup.moshi.** { *; }
@@ -31,6 +33,9 @@
 -keepclassmembers class * {
     @com.squareup.moshi.Json *;
 }
+-keep class kotlin.Metadata { *; }
+-keep class kotlin.reflect.jvm.internal.** { *; }
+-dontwarn kotlin.reflect.**
 
 # KotlinX Serialization
 -keepattributes *Serializable*
