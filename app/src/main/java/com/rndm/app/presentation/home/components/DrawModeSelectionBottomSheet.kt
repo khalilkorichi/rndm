@@ -108,10 +108,10 @@ fun DrawModeSelectionBottomSheet(
             // Option 2: Tournament Interactive Draw
             DrawModeOptionCard(
                 title = "قرعة البطولة التفاعلية",
-                description = "إجراء وتوليد جدول المباريات وتعيين الفرق وإدارة مواجهات البطولة كاملة",
+                description = "تجهيز واختيار العناصر، وتوليد جدول المباريات وإدارة مواجهات البطولة كاملة",
                 icon = painterResource(id = R.drawable.ic_trophy),
                 accentColor = MaterialTheme.colorScheme.tertiary,
-                badgeText = "نظام المباريات",
+                badgeText = "تجهيز وبطولات",
                 onClick = {
                     onDismiss()
                     onSelectTournamentDraw()

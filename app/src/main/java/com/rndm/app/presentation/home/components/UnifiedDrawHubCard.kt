@@ -305,11 +305,7 @@ fun UnifiedDrawHubCard(
                 onNavigateToFreeWheelDraw(profile?.id ?: 0L)
             },
             onSelectTournamentDraw = {
-                if (profile != null) {
-                    onNavigateToDrawMode(profile.id, com.rndm.app.domain.model.DrawType.WHEEL)
-                } else {
-                    onStartDrawClick(0L)
-                }
+                onStartDrawClick(profile?.id ?: 0L)
             }
         )
     }
