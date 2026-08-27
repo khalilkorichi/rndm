@@ -1,4 +1,4 @@
-﻿package com.rndm.app.presentation.draw.flipcards
+package com.rndm.app.presentation.draw.flipcards
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -64,7 +64,8 @@ class FlipCardDrawViewModel @Inject constructor(
                                 remainingPlayers = activeItems,
                                 excludedPlayers = excludedItems,
                                 flippedCardIndex = -1,
-                                isRevealing = false
+                                isRevealing = false,
+                                isShuffling = false
                             )
                         }
                     }
@@ -76,7 +77,8 @@ class FlipCardDrawViewModel @Inject constructor(
                                 remainingClubs = activeItems,
                                 excludedClubs = excludedItems,
                                 flippedCardIndex = -1,
-                                isRevealing = false
+                                isRevealing = false,
+                                isShuffling = false
                             )
                         }
                     }
@@ -88,7 +90,8 @@ class FlipCardDrawViewModel @Inject constructor(
                                 remainingNationalTeams = activeItems,
                                 excludedNationalTeams = excludedItems,
                                 flippedCardIndex = -1,
-                                isRevealing = false
+                                isRevealing = false,
+                                isShuffling = false
                             )
                         }
                     }
@@ -126,8 +129,19 @@ class FlipCardDrawViewModel @Inject constructor(
                     val exclClubs = if (current.excludedClubs.isEmpty() && selClub != null) selClub.excludedItems else current.excludedClubs
                     val exclTeams = if (current.excludedNationalTeams.isEmpty() && selTeam != null) selTeam.excludedItems else current.excludedNationalTeams
 
+                    val initialCategory = if (current.selectedPlayersProfile == null && current.selectedClubsProfile == null && current.selectedNationalTeamsProfile == null) {
+                        profiles.firstOrNull { it.id == initialProfileId }?.type?.let {
+                            when (it) {
+                                ProfileType.PLAYERS -> DrawCategory.PLAYERS
+                                ProfileType.CLUBS -> DrawCategory.CLUBS
+                                ProfileType.NATIONAL_TEAMS -> DrawCategory.NATIONAL_TEAMS
+                            }
+                        } ?: current.selectedCategory
+                    } else current.selectedCategory
+
                     current.copy(
                         isLoading = false,
+                        selectedCategory = initialCategory,
                         playersProfiles = players,
                         clubsProfiles = clubs,
                         nationalTeamsProfiles = teams,
@@ -172,7 +186,8 @@ class FlipCardDrawViewModel @Inject constructor(
             it.copy(
                 selectedCategory = category,
                 flippedCardIndex = -1,
-                isRevealing = false
+                isRevealing = false,
+                isShuffling = false
             )
         }
         updatePrompt()
@@ -180,22 +195,37 @@ class FlipCardDrawViewModel @Inject constructor(
 
     fun onShuffleCards() {
         val state = _uiState.value
-        if (state.isRevealing) return
+        if (state.isRevealing || state.isShuffling) return
 
-        _uiState.update { current ->
-            when (current.selectedCategory) {
-                DrawCategory.PLAYERS -> current.copy(
-                    remainingPlayers = randomProvider.shuffle(current.remainingPlayers),
-                    flippedCardIndex = -1
-                )
-                DrawCategory.CLUBS -> current.copy(
-                    remainingClubs = randomProvider.shuffle(current.remainingClubs),
-                    flippedCardIndex = -1
-                )
-                DrawCategory.NATIONAL_TEAMS -> current.copy(
-                    remainingNationalTeams = randomProvider.shuffle(current.remainingNationalTeams),
-                    flippedCardIndex = -1
-                )
+        val shuffledPlayers = randomProvider.shuffle(state.remainingPlayers)
+        val shuffledClubs = randomProvider.shuffle(state.remainingClubs)
+        val shuffledTeams = randomProvider.shuffle(state.remainingNationalTeams)
+
+        _uiState.update {
+            it.copy(
+                isShuffling = true,
+                shuffleTrigger = it.shuffleTrigger + 1,
+                flippedCardIndex = -1
+            )
+        }
+
+        viewModelScope.launch {
+            delay(650)
+            _uiState.update { current ->
+                when (current.selectedCategory) {
+                    DrawCategory.PLAYERS -> current.copy(
+                        remainingPlayers = shuffledPlayers,
+                        isShuffling = false
+                    )
+                    DrawCategory.CLUBS -> current.copy(
+                        remainingClubs = shuffledClubs,
+                        isShuffling = false
+                    )
+                    DrawCategory.NATIONAL_TEAMS -> current.copy(
+                        remainingNationalTeams = shuffledTeams,
+                        isShuffling = false
+                    )
+                }
             }
         }
     }
@@ -203,33 +233,26 @@ class FlipCardDrawViewModel @Inject constructor(
     fun onCardClick(cardIndex: Int) {
         val state = _uiState.value
         val items = state.currentCardsItems
-        if (state.isRevealing || items.isEmpty() || cardIndex !in items.indices) return
+        if (state.isRevealing || state.isShuffling || items.isEmpty() || cardIndex !in items.indices) return
 
         // Pick item for this card slot
         val drawnItem = items[cardIndex]
 
-        viewModelScope.launch {
-            // 1. Reveal card
-            _uiState.update {
-                it.copy(
-                    flippedCardIndex = cardIndex,
-                    isRevealing = true,
-                    drawResult = DrawResult(drawType = DrawType.FLIP_CARDS, selectedItem = drawnItem)
-                )
-            }
+        // 1. Reveal card immediately
+        _uiState.update {
+            it.copy(
+                flippedCardIndex = cardIndex,
+                isRevealing = true,
+                drawResult = DrawResult(drawType = DrawType.FLIP_CARDS, selectedItem = drawnItem)
+            )
+        }
 
+        viewModelScope.launch {
             // 2. 1.2s celebration delay
             delay(1200)
 
-            // 3. Apply to fixtures & consume card
+            // 3. Atomically apply to fixtures, consume card, and reset flippedCardIndex
             applyDrawnItem(drawnItem)
-
-            _uiState.update {
-                it.copy(
-                    flippedCardIndex = -1,
-                    isRevealing = false
-                )
-            }
 
             // 4. If only 1 item remains in the category, auto-assign it seamlessly
             checkAutoAssignSingleRemaining()
@@ -252,12 +275,6 @@ class FlipCardDrawViewModel @Inject constructor(
                 }
                 delay(1200)
                 applyDrawnItem(lastItem)
-                _uiState.update {
-                    it.copy(
-                        flippedCardIndex = -1,
-                        isRevealing = false
-                    )
-                }
             }
         }
     }
@@ -288,6 +305,8 @@ class FlipCardDrawViewModel @Inject constructor(
                     it.copy(
                         remainingPlayers = remPlayers,
                         fixtures = fixtures,
+                        flippedCardIndex = -1,
+                        isRevealing = false,
                         drawResult = DrawResult(drawType = DrawType.FLIP_CARDS, selectedItem = drawnItem)
                     )
                 }
@@ -324,12 +343,16 @@ class FlipCardDrawViewModel @Inject constructor(
                         current.copy(
                             remainingClubs = remItems,
                             fixtures = fixtures,
+                            flippedCardIndex = -1,
+                            isRevealing = false,
                             drawResult = DrawResult(drawType = DrawType.FLIP_CARDS, selectedItem = drawnItem)
                         )
                     } else {
                         current.copy(
                             remainingNationalTeams = remItems,
                             fixtures = fixtures,
+                            flippedCardIndex = -1,
+                            isRevealing = false,
                             drawResult = DrawResult(drawType = DrawType.FLIP_CARDS, selectedItem = drawnItem)
                         )
                     }
@@ -647,7 +670,8 @@ class FlipCardDrawViewModel @Inject constructor(
                 remainingNationalTeams = updatedRemainingTeams,
                 selectedCategory = DrawCategory.PLAYERS,
                 flippedCardIndex = -1,
-                isRevealing = false
+                isRevealing = false,
+                isShuffling = false
             )
         }
         updatePrompt()
@@ -733,6 +757,7 @@ class FlipCardDrawViewModel @Inject constructor(
                 fixtures = emptyList(),
                 flippedCardIndex = -1,
                 isRevealing = false,
+                isShuffling = false,
                 drawResult = null,
                 isAddPlayersDialogOpen = false,
                 isExcludeDialogOpen = false

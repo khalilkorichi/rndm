@@ -1,4 +1,4 @@
-﻿package com.rndm.app.presentation.draw.flipcards
+package com.rndm.app.presentation.draw.flipcards
 
 import androidx.lifecycle.SavedStateHandle
 import com.rndm.app.core.util.RandomProvider
@@ -191,7 +191,13 @@ class FlipCardDrawViewModelTest {
         assertEquals("خليل", viewModel.uiState.value.remainingPlayers[0].label)
 
         viewModel.onShuffleCards()
+        assertTrue(viewModel.uiState.value.isShuffling)
+        assertEquals(1L, viewModel.uiState.value.shuffleTrigger)
 
+        testDispatcher.scheduler.advanceTimeBy(700)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isShuffling)
         assertEquals("أحمد", viewModel.uiState.value.remainingPlayers[0].label)
         assertEquals("خليل", viewModel.uiState.value.remainingPlayers.last().label)
     }

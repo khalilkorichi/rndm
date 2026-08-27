@@ -1,4 +1,4 @@
-﻿package com.rndm.app.presentation.draw
+package com.rndm.app.presentation.draw
 
 import androidx.lifecycle.SavedStateHandle
 import com.rndm.app.core.util.RandomProvider
@@ -89,7 +89,7 @@ class DrawSetupAndModesTest {
     }
 
     @Test
-    fun `DrawSetupViewModel allows selecting all draw types`() = runTest {
+    fun `DrawSetupViewModel allows selecting available draw types and ignores disabled ones`() = runTest {
         val viewModel = DrawSetupViewModel(
             getAllProfilesUseCase = getAllProfilesUseCase,
             getProfileGroupsUseCase = getProfileGroupsUseCase,
@@ -104,19 +104,19 @@ class DrawSetupAndModesTest {
 
         assertEquals(DrawType.WHEEL, viewModel.uiState.value.selectedDrawType)
 
-        // Select Flip Cards
+        // Select Flip Cards (Available)
         viewModel.onDrawTypeSelected(DrawType.FLIP_CARDS)
         assertEquals(DrawType.FLIP_CARDS, viewModel.uiState.value.selectedDrawType)
 
-        // Select Spin List
+        // Attempt to select Spin List (Disabled - state stays FLIP_CARDS)
         viewModel.onDrawTypeSelected(DrawType.SPIN_LIST)
-        assertEquals(DrawType.SPIN_LIST, viewModel.uiState.value.selectedDrawType)
+        assertEquals(DrawType.FLIP_CARDS, viewModel.uiState.value.selectedDrawType)
 
-        // Select Round Robin
+        // Attempt to select Round Robin (Disabled - state stays FLIP_CARDS)
         viewModel.onDrawTypeSelected(DrawType.ROUND_ROBIN)
-        assertEquals(DrawType.ROUND_ROBIN, viewModel.uiState.value.selectedDrawType)
+        assertEquals(DrawType.FLIP_CARDS, viewModel.uiState.value.selectedDrawType)
 
-        // Back to Wheel
+        // Back to Wheel (Available)
         viewModel.onDrawTypeSelected(DrawType.WHEEL)
         assertEquals(DrawType.WHEEL, viewModel.uiState.value.selectedDrawType)
     }
