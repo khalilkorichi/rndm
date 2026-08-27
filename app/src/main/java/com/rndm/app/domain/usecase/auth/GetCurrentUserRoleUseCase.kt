@@ -15,4 +15,8 @@ class GetCurrentUserRoleUseCase @Inject constructor(
     suspend fun getSyncRole(): UserRole {
         return authRepository.getCurrentRole()
     }
+
+    fun getFastRole(): UserRole {
+        return authRepository.getFastRole()
+    }
 }

@@ -31,6 +31,12 @@ class FirebaseAuthDataSource @Inject constructor(
         )
     }
 
+    @Volatile
+    private var cachedUserProfile: UserProfile? = null
+
+    @Volatile
+    private var cachedUserRole: UserRole? = null
+
     val currentUser: FirebaseUser?
         get() = firebaseAuth.currentUser
 
@@ -43,9 +49,43 @@ class FirebaseAuthDataSource @Inject constructor(
         return MASTER_ADMIN_EMAILS.contains(clean) || clean.startsWith("admin@")
     }
 
+    fun getFastUserRole(): UserRole {
+        val user = firebaseAuth.currentUser ?: return UserRole.GUEST
+        if (user.isAnonymous) return UserRole.GUEST
+        val email = user.email.orEmpty().lowercase()
+        if (isMasterAdminEmail(email)) return UserRole.ADMIN
+        return cachedUserRole ?: UserRole.USER
+    }
+
+    fun getFastUserProfile(): UserProfile? {
+        val user = firebaseAuth.currentUser ?: return null
+        if (user.isAnonymous) return null
+        val email = user.email.orEmpty()
+        val fallbackName = email.substringBefore("@").ifBlank { "مستخدم" }
+        val displayName = user.displayName?.ifBlank { fallbackName } ?: fallbackName
+        val role = getFastUserRole()
+        val cached = cachedUserProfile
+        if (cached != null && cached.uid == user.uid) {
+            return cached.copy(role = role)
+        }
+        return UserProfile(
+            uid = user.uid,
+            email = email,
+            username = fallbackName,
+            displayName = displayName,
+            role = role,
+            createdAt = user.metadata?.creationTimestamp ?: System.currentTimeMillis()
+        )
+    }
+
     fun observeAuthState(): Flow<FirebaseUser?> = callbackFlow {
         val listener = FirebaseAuth.AuthStateListener { auth ->
-            trySend(auth.currentUser)
+            val user = auth.currentUser
+            if (user == null || user.isAnonymous) {
+                cachedUserProfile = null
+                cachedUserRole = null
+            }
+            trySend(user)
         }
         firebaseAuth.addAuthStateListener(listener)
         awaitClose { firebaseAuth.removeAuthStateListener(listener) }
@@ -156,6 +196,8 @@ class FirebaseAuthDataSource @Inject constructor(
 
     suspend fun signOut(): Result<Unit> {
         return try {
+            cachedUserProfile = null
+            cachedUserRole = null
             firebaseAuth.signOut()
             signInAnonymously()
             Result.success(Unit)
@@ -168,47 +210,55 @@ class FirebaseAuthDataSource @Inject constructor(
     suspend fun determineUserRole(): UserRole {
         val user = firebaseAuth.currentUser ?: return UserRole.GUEST
         if (user.isAnonymous) {
+            cachedUserRole = UserRole.GUEST
             return UserRole.GUEST
         }
 
         val email = user.email.orEmpty().lowercase()
         if (isMasterAdminEmail(email)) {
+            cachedUserRole = UserRole.ADMIN
             return UserRole.ADMIN
         }
 
-        return try {
+        val resolvedRole = try {
             val tokenResult = user.getIdToken(false).await()
             val roleClaim = tokenResult.claims["role"] as? String
             if (roleClaim.equals("admin", ignoreCase = true)) {
-                return UserRole.ADMIN
-            }
-
-            // Check Firestore users collection
-            val userDoc = firestore.collection("users").document(user.uid).get().await()
-            if (userDoc.exists()) {
-                val roleStr = userDoc.getString("role")
-                if (roleStr.equals("admin", ignoreCase = true)) {
-                    UserRole.ADMIN
-                } else {
-                    UserRole.USER
-                }
+                UserRole.ADMIN
             } else {
-                if (email.isNotBlank()) UserRole.USER else UserRole.GUEST
+                // Check Firestore users collection
+                val userDoc = firestore.collection("users").document(user.uid).get().await()
+                if (userDoc.exists()) {
+                    val roleStr = userDoc.getString("role")
+                    if (roleStr.equals("admin", ignoreCase = true)) {
+                        UserRole.ADMIN
+                    } else {
+                        UserRole.USER
+                    }
+                } else {
+                    if (email.isNotBlank()) UserRole.USER else UserRole.GUEST
+                }
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             if (isMasterAdminEmail(email)) UserRole.ADMIN else if (email.isNotBlank()) UserRole.USER else UserRole.GUEST
         }
+
+        cachedUserRole = resolvedRole
+        return resolvedRole
     }
 
     suspend fun getCurrentUserProfile(): UserProfile? {
         val user = firebaseAuth.currentUser ?: return null
-        if (user.isAnonymous) return null
+        if (user.isAnonymous) {
+            cachedUserProfile = null
+            return null
+        }
 
         val email = user.email.orEmpty().lowercase()
         val isMaster = isMasterAdminEmail(email)
 
-        return try {
+        val resolvedProfile = try {
             val userDoc = firestore.collection("users").document(user.uid).get().await()
             if (userDoc.exists()) {
                 val userDto = userDoc.toObject(FirestoreUserDto::class.java)
@@ -218,7 +268,7 @@ class FirebaseAuthDataSource @Inject constructor(
                     } else {
                         UserRole.USER
                     }
-                    return UserProfile(
+                    UserProfile(
                         uid = userDto.uid.ifBlank { user.uid },
                         email = userDto.email.ifBlank { user.email.orEmpty() },
                         username = userDto.username.ifBlank { user.email?.substringBefore("@").orEmpty() },
@@ -226,16 +276,26 @@ class FirebaseAuthDataSource @Inject constructor(
                         role = role,
                         createdAt = userDto.createdAt
                     )
+                } else {
+                    UserProfile(
+                        uid = user.uid,
+                        email = user.email.orEmpty(),
+                        username = user.email?.substringBefore("@").orEmpty(),
+                        displayName = user.displayName ?: user.email?.substringBefore("@") ?: "مستخدم",
+                        role = if (isMaster) UserRole.ADMIN else determineUserRole(),
+                        createdAt = user.metadata?.creationTimestamp ?: System.currentTimeMillis()
+                    )
                 }
+            } else {
+                UserProfile(
+                    uid = user.uid,
+                    email = user.email.orEmpty(),
+                    username = user.email?.substringBefore("@").orEmpty(),
+                    displayName = user.displayName ?: user.email?.substringBefore("@") ?: "مستخدم",
+                    role = if (isMaster) UserRole.ADMIN else determineUserRole(),
+                    createdAt = user.metadata?.creationTimestamp ?: System.currentTimeMillis()
+                )
             }
-            UserProfile(
-                uid = user.uid,
-                email = user.email.orEmpty(),
-                username = user.email?.substringBefore("@").orEmpty(),
-                displayName = user.displayName ?: user.email?.substringBefore("@") ?: "مستخدم",
-                role = if (isMaster) UserRole.ADMIN else determineUserRole(),
-                createdAt = user.metadata?.creationTimestamp ?: System.currentTimeMillis()
-            )
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             UserProfile(
@@ -246,6 +306,10 @@ class FirebaseAuthDataSource @Inject constructor(
                 role = if (isMaster) UserRole.ADMIN else determineUserRole()
             )
         }
+
+        cachedUserProfile = resolvedProfile
+        cachedUserRole = resolvedProfile.role
+        return resolvedProfile
     }
 
     // ── User Management & Promotion (Admin Only) ──────────────────────────

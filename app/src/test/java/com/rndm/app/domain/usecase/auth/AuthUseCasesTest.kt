@@ -79,4 +79,32 @@ class AuthUseCasesTest {
 
         assertEquals(UserRole.ADMIN, role)
     }
+
+    @Test
+    fun `getCurrentUserRoleUseCase getFastRole returns repository fast role synchronously`() {
+        every { authRepository.getFastRole() } returns UserRole.ADMIN
+
+        val role = getCurrentUserRoleUseCase.getFastRole()
+
+        assertEquals(UserRole.ADMIN, role)
+        coVerify(exactly = 1) { authRepository.getFastRole() }
+    }
+
+    @Test
+    fun `getCurrentUserProfileUseCase getFastProfile returns repository fast profile synchronously`() {
+        val useCase = GetCurrentUserProfileUseCase(authRepository)
+        val profile = com.rndm.app.domain.model.UserProfile(
+            uid = "uid_123",
+            email = "user@test.com",
+            username = "test",
+            displayName = "Tester",
+            role = UserRole.USER
+        )
+        every { authRepository.getFastUserProfile() } returns profile
+
+        val result = useCase.getFastProfile()
+
+        assertEquals(profile, result)
+        coVerify(exactly = 1) { authRepository.getFastUserProfile() }
+    }
 }

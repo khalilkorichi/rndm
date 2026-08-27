@@ -6,6 +6,8 @@ import com.rndm.app.domain.model.UserRole
 import com.rndm.app.domain.repository.AuthRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -17,23 +19,41 @@ class AuthRepositoryImpl @Inject constructor(
     private val ioDispatcher: CoroutineDispatcher
 ) : AuthRepository {
 
-    override val currentUserRole: Flow<UserRole> = authDataSource.observeAuthState().map { user ->
-        if (user == null || user.isAnonymous) {
-            UserRole.GUEST
-        } else {
-            authDataSource.determineUserRole()
+    override val currentUserRole: Flow<UserRole> = flow {
+        // Emit fast synchronous role immediately (0ms) to eliminate loading flicker
+        emit(authDataSource.getFastUserRole())
+        authDataSource.observeAuthState().collect { user ->
+            if (user == null || user.isAnonymous) {
+                emit(UserRole.GUEST)
+            } else {
+                emit(authDataSource.getFastUserRole())
+                val resolvedRole = authDataSource.determineUserRole()
+                emit(resolvedRole)
+            }
         }
-    }
+    }.distinctUntilChanged()
 
-    override val currentUid: Flow<String?> = authDataSource.observeAuthState().map { it?.uid }
+    override val currentUid: Flow<String?> = authDataSource.observeAuthState().map { it?.uid }.distinctUntilChanged()
 
-    override val currentUserProfile: Flow<UserProfile?> = authDataSource.observeAuthState().map { user ->
-        if (user == null || user.isAnonymous) {
-            null
-        } else {
-            authDataSource.getCurrentUserProfile()
+    override val currentUserProfile: Flow<UserProfile?> = flow {
+        // Emit fast synchronous profile immediately (0ms) to eliminate loading flicker
+        emit(authDataSource.getFastUserProfile())
+        authDataSource.observeAuthState().collect { user ->
+            if (user == null || user.isAnonymous) {
+                emit(null)
+            } else {
+                emit(authDataSource.getFastUserProfile())
+                val resolvedProfile = authDataSource.getCurrentUserProfile()
+                if (resolvedProfile != null) {
+                    emit(resolvedProfile)
+                }
+            }
         }
-    }
+    }.distinctUntilChanged()
+
+    override fun getFastRole(): UserRole = authDataSource.getFastUserRole()
+
+    override fun getFastUserProfile(): UserProfile? = authDataSource.getFastUserProfile()
 
     override suspend fun initializeGuestSession(): Result<String> = withContext(ioDispatcher) {
         authDataSource.signInAnonymously()

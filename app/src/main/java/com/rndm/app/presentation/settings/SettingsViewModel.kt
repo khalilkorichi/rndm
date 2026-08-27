@@ -31,12 +31,21 @@ class SettingsViewModel @Inject constructor(
     private val promoteUserByEmailUseCase: PromoteUserByEmailUseCase
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SettingsUiState())
+    private val _uiState = MutableStateFlow(
+        SettingsUiState(
+            themeMode = userPreferencesRepository.getInitialThemeMode(),
+            userRole = getCurrentUserRoleUseCase.getFastRole(),
+            currentUserProfile = getCurrentUserProfileUseCase.getFastProfile()
+        )
+    )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     private var usersJob: Job? = null
 
     init {
+        if (_uiState.value.userRole == UserRole.ADMIN) {
+            observeUsersList()
+        }
         observePreferencesAndRole()
     }
 

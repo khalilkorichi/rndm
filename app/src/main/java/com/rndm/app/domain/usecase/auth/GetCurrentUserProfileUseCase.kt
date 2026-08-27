@@ -15,4 +15,8 @@ class GetCurrentUserProfileUseCase @Inject constructor(
     suspend fun getSync(): UserProfile? {
         return authRepository.getCurrentUserProfile()
     }
+
+    fun getFastProfile(): UserProfile? {
+        return authRepository.getFastUserProfile()
+    }
 }
