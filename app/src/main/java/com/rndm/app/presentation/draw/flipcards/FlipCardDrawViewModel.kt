@@ -1,4 +1,4 @@
-﻿package com.rndm.app.presentation.draw.flipcards
+package com.rndm.app.presentation.draw.flipcards
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel

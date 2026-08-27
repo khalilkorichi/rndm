@@ -16,6 +16,7 @@ import com.rndm.app.data.local.entity.ProfileEntity
 import com.rndm.app.data.local.entity.ProfileGroupEntity
 import com.rndm.app.data.local.entity.ProfileItemEntity
 import com.rndm.app.data.local.entity.TournamentEntity
+import com.rndm.app.data.local.entity.TournamentExclusionEntity
 import com.rndm.app.data.local.entity.TournamentParticipantEntity
 
 
@@ -179,6 +180,21 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
     }
 }
 
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `tournament_exclusions` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `tournamentId` INTEGER NOT NULL,
+                `category` TEXT NOT NULL,
+                `itemLabel` TEXT NOT NULL,
+                FOREIGN KEY(`tournamentId`) REFERENCES `tournaments`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+        """.trimIndent())
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_tournament_exclusions_tournamentId` ON `tournament_exclusions` (`tournamentId`)")
+    }
+}
+
 @Database(
     entities = [
         ProfileEntity::class,
@@ -186,10 +202,11 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
         ProfileGroupEntity::class,
         TournamentEntity::class,
         TournamentParticipantEntity::class,
+        TournamentExclusionEntity::class,
         MatchEntity::class,
         PlayerProfileEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = true
 )
 abstract class RndmDatabase : RoomDatabase() {

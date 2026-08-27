@@ -309,6 +309,9 @@ fun RndmNavHost(
                                 onNavigateToFixtures = {
                                     navController.navigate(Destination.MatchFixtures)
                                 },
+                                onNavigateToTournament = { tournamentId ->
+                                    navController.navigate(Destination.TournamentDetail(tournamentId))
+                                },
                                 onNavigateToEditProfile = { profileId ->
                                     navController.navigate(Destination.CreateEditProfile(profileId = profileId))
                                 }

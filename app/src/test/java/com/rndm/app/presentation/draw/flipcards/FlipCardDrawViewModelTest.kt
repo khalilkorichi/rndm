@@ -1,4 +1,4 @@
-﻿package com.rndm.app.presentation.draw.flipcards
+package com.rndm.app.presentation.draw.flipcards
 
 import androidx.lifecycle.SavedStateHandle
 import com.rndm.app.core.util.RandomProvider
@@ -112,6 +112,7 @@ class FlipCardDrawViewModelTest {
 
         // Click card at index 0 ("خليل")
         viewModel.onCardClick(0)
+        testDispatcher.scheduler.runCurrent()
         assertTrue(viewModel.uiState.value.isRevealing)
         assertEquals(0, viewModel.uiState.value.flippedCardIndex)
         assertEquals("خليل", viewModel.uiState.value.drawResult?.selectedItem?.label)

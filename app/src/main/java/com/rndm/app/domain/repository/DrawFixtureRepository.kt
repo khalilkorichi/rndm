@@ -17,6 +17,12 @@ interface DrawFixtureRepository {
     fun loadTournamentFixtures(tournamentId: Long)
     fun queueNewPlayersForDraw(names: List<String>)
     fun consumePendingNewPlayers(): List<String>
+    suspend fun finalizeTournament(
+        name: String,
+        excludedPlayers: List<String> = emptyList(),
+        excludedClubs: List<String> = emptyList(),
+        excludedTeams: List<String> = emptyList()
+    ): Long
     fun clearFixtures()
 }
 

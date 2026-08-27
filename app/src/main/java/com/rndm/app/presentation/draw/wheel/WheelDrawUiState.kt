@@ -37,10 +37,18 @@ data class WheelDrawUiState(
     val currentDrawingPrompt: String = "",
     val isAddPlayersDialogOpen: Boolean = false,
     val isExcludeDialogOpen: Boolean = false,
+    val isCreateTournamentDialogOpen: Boolean = false,
+    val isPostCreationDialogOpen: Boolean = false,
+    val createdTournamentId: Long? = null,
     val reorderingFixture: DrawFixture? = null,
     val swappingPlayerSlot: Pair<DrawFixture, Boolean>? = null,
     val error: String? = null
 ) {
+    val defaultTournamentName: String
+        get() {
+            val total = (fixtures.flatMap { listOfNotNull(it.playerOneName, it.playerTwoName) } + remainingPlayers.map { it.label }).distinct().size
+            return if (total > 0) "بطولة قرعة ($total لاعبين)" else "بطولة قرعة"
+        }
     val existingPlayerNames: List<String>
         get() = (fixtures.flatMap { listOfNotNull(it.playerOneName, it.playerTwoName) } + remainingPlayers.map { it.label } + excludedPlayers.map { it.label }).distinct()
     val currentWheelItems: List<ProfileItem>
