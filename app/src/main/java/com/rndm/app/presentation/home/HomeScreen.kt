@@ -23,6 +23,7 @@ import com.rndm.app.presentation.tournament.detail.components.ScoreInputDialog
 fun HomeScreen(
     onNavigateToDrawSetup: (Long) -> Unit,
     onNavigateToDrawMode: (Long, DrawType) -> Unit = { id, _ -> onNavigateToDrawSetup(id) },
+    onNavigateToFreeWheelDraw: (Long) -> Unit = {},
     onNavigateToClubDuelDraw: () -> Unit = {},
     onNavigateToCreateProfile: () -> Unit,
     onNavigateToProfiles: () -> Unit,
@@ -55,6 +56,7 @@ fun HomeScreen(
                     uiState = uiState,
                     onNavigateToDrawSetup = onNavigateToDrawSetup,
                     onNavigateToDrawMode = onNavigateToDrawMode,
+                    onNavigateToFreeWheelDraw = onNavigateToFreeWheelDraw,
                     onNavigateToClubDuelDraw = onNavigateToClubDuelDraw,
                     onNavigateToCreateProfile = onNavigateToCreateProfile,
                     onNavigateToProfiles = onNavigateToProfiles,

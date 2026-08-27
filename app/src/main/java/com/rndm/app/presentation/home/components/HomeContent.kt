@@ -19,6 +19,7 @@ fun HomeContent(
     uiState: HomeUiState,
     onNavigateToDrawSetup: (Long) -> Unit,
     onNavigateToDrawMode: (Long, DrawType) -> Unit,
+    onNavigateToFreeWheelDraw: (Long) -> Unit = {},
     onNavigateToClubDuelDraw: () -> Unit,
     onNavigateToCreateProfile: () -> Unit,
     onNavigateToProfiles: () -> Unit,
@@ -55,6 +56,7 @@ fun HomeContent(
                 profile = uiState.recentProfile,
                 onStartDrawClick = onNavigateToDrawSetup,
                 onNavigateToDrawMode = onNavigateToDrawMode,
+                onNavigateToFreeWheelDraw = onNavigateToFreeWheelDraw,
                 onNavigateToClubDuelDraw = onNavigateToClubDuelDraw,
                 onCreateProfileClick = onNavigateToCreateProfile,
                 onNavigateToProfiles = onNavigateToProfiles

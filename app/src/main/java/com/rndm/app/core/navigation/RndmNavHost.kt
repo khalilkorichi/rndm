@@ -50,6 +50,7 @@ import com.rndm.app.domain.model.DrawType
 import com.rndm.app.presentation.draw.duel.ClubDuelDrawScreen
 import com.rndm.app.presentation.draw.fixtures.MatchFixturesScreen
 import com.rndm.app.presentation.draw.flipcards.FlipCardDrawScreen
+import com.rndm.app.presentation.draw.free.FreeWheelDrawScreen
 import com.rndm.app.presentation.draw.result.DrawResultScreen
 import com.rndm.app.presentation.draw.setup.DrawSetupScreen
 import com.rndm.app.presentation.draw.spinlist.SpinListDrawScreen
@@ -206,6 +207,9 @@ fun RndmNavHost(
                         onNavigateToDrawMode = { profileId, drawType ->
                             navController.navigate(Destination.Draw(profileId, drawType))
                         },
+                        onNavigateToFreeWheelDraw = { profileId ->
+                            navController.navigate(Destination.FreeWheelDraw(profileId))
+                        },
                         onNavigateToClubDuelDraw = {
                             navController.navigate(Destination.ClubDuelDraw())
                         },
@@ -314,10 +318,11 @@ fun RndmNavHost(
                             FlipCardDrawScreen(
                                 profileId = route.profileId,
                                 onNavigateBack = { navController.popBackStack() },
-                                onNavigateToResult = {
-                                    navController.navigate(Destination.DrawResult) {
-                                        popUpTo<Destination.Draw> { inclusive = true }
-                                    }
+                                onNavigateToFixtures = {
+                                    navController.navigate(Destination.MatchFixtures)
+                                },
+                                onNavigateToEditProfile = { profileId ->
+                                    navController.navigate(Destination.CreateEditProfile(profileId = profileId))
                                 }
                             )
                         }
@@ -350,6 +355,12 @@ fun RndmNavHost(
                             )
                         }
                     }
+                }
+
+                composable<Destination.FreeWheelDraw> { backStackEntry ->
+                    FreeWheelDrawScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
                 }
 
                 composable<Destination.ClubDuelDraw> {

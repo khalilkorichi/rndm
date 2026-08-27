@@ -93,7 +93,7 @@ fun SpinListDrawScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        val items = uiState.profile?.items ?: emptyList()
+        val items = uiState.profile?.activeItems?.ifEmpty { uiState.profile?.items } ?: emptyList()
 
         Column(
             modifier = Modifier

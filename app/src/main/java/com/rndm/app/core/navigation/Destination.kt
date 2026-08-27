@@ -23,6 +23,9 @@ sealed interface Destination {
     data class Draw(val profileId: Long, val drawType: DrawType) : Destination
 
     @Serializable
+    data class FreeWheelDraw(val initialProfileId: Long = 0L) : Destination
+
+    @Serializable
     data class ClubDuelDraw(val profileId: Long = 0L, val targetClub: String = "") : Destination
 
     @Serializable

@@ -34,6 +34,10 @@ import com.rndm.app.R
 import com.rndm.app.core.ui.components.BentoCard
 import com.rndm.app.core.ui.components.RndmButton
 import com.rndm.app.core.ui.components.RndmButtonType
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.rndm.app.domain.model.DrawType
 import com.rndm.app.domain.model.Profile
 import com.rndm.app.domain.model.ProfileType
@@ -43,11 +47,14 @@ fun UnifiedDrawHubCard(
     profile: Profile?,
     onStartDrawClick: (Long) -> Unit,
     onNavigateToDrawMode: (Long, DrawType) -> Unit,
+    onNavigateToFreeWheelDraw: (Long) -> Unit = {},
     onNavigateToClubDuelDraw: () -> Unit,
     onCreateProfileClick: () -> Unit,
     onNavigateToProfiles: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var isDrawModeSelectionOpen by remember { mutableStateOf(false) }
+
     BentoCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
@@ -274,11 +281,7 @@ fun UnifiedDrawHubCard(
                     icon = painterResource(id = R.drawable.ic_wheel),
                     accentColor = MaterialTheme.colorScheme.primary,
                     onClick = {
-                        if (profile != null) {
-                            onNavigateToDrawMode(profile.id, DrawType.WHEEL)
-                        } else {
-                            onCreateProfileClick()
-                        }
+                        isDrawModeSelectionOpen = true
                     },
                     modifier = Modifier.weight(1f)
                 )
@@ -293,6 +296,22 @@ fun UnifiedDrawHubCard(
                 )
             }
         }
+    }
+
+    if (isDrawModeSelectionOpen) {
+        DrawModeSelectionBottomSheet(
+            onDismiss = { isDrawModeSelectionOpen = false },
+            onSelectFreeDraw = {
+                onNavigateToFreeWheelDraw(profile?.id ?: 0L)
+            },
+            onSelectTournamentDraw = {
+                if (profile != null) {
+                    onNavigateToDrawMode(profile.id, com.rndm.app.domain.model.DrawType.WHEEL)
+                } else {
+                    onStartDrawClick(0L)
+                }
+            }
+        )
     }
 }
 

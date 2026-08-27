@@ -717,14 +717,14 @@ class WheelDrawViewModel @Inject constructor(
 
     fun resetDraw() {
         val state = _uiState.value
-        val defaultPlayers = state.selectedPlayersProfile?.activeItems
-            ?: state.playersProfiles.firstOrNull()?.activeItems
+        val defaultPlayers = state.selectedPlayersProfile?.items
+            ?: state.playersProfiles.firstOrNull()?.items
             ?: emptyList()
-        val defaultClubs = state.selectedClubsProfile?.activeItems
-            ?: state.clubsProfiles.firstOrNull()?.activeItems
+        val defaultClubs = state.selectedClubsProfile?.items
+            ?: state.clubsProfiles.firstOrNull()?.items
             ?: emptyList()
-        val defaultTeams = state.selectedNationalTeamsProfile?.activeItems
-            ?: state.nationalTeamsProfiles.firstOrNull()?.activeItems
+        val defaultTeams = state.selectedNationalTeamsProfile?.items
+            ?: state.nationalTeamsProfiles.firstOrNull()?.items
             ?: emptyList()
 
         drawFixtureRepository.clearFixtures()
@@ -733,6 +733,9 @@ class WheelDrawViewModel @Inject constructor(
                 remainingPlayers = defaultPlayers,
                 remainingClubs = defaultClubs,
                 remainingNationalTeams = defaultTeams,
+                excludedPlayers = emptyList(),
+                excludedClubs = emptyList(),
+                excludedNationalTeams = emptyList(),
                 fixtures = emptyList(),
                 targetRotation = 0f,
                 isSpinning = false,

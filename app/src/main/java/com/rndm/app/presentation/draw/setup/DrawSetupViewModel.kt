@@ -179,9 +179,7 @@ class DrawSetupViewModel @Inject constructor(
     }
 
     fun onDrawTypeSelected(drawType: DrawType) {
-        if (drawType == DrawType.WHEEL) {
-            _uiState.update { it.copy(selectedDrawType = drawType) }
-        }
+        _uiState.update { it.copy(selectedDrawType = drawType) }
     }
 
     fun onOpenCreateGroupDialog() {

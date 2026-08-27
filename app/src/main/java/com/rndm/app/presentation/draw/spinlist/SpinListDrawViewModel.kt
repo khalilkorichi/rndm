@@ -64,15 +64,16 @@ class SpinListDrawViewModel @Inject constructor(
 
     fun startSpin() {
         val profile = _uiState.value.profile ?: return
-        if (_uiState.value.isSpinning || profile.items.isEmpty()) return
+        val activeItems = profile.activeItems.ifEmpty { profile.items }
+        if (_uiState.value.isSpinning || activeItems.isEmpty()) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSpinning = true) }
-            val result = performSpinListDrawUseCase(profile.id, profile.items)
-            val selectedIndex = profile.items.indexOfFirst { it.id == result.selectedItem?.id }.coerceAtLeast(0)
+            val result = performSpinListDrawUseCase(profile.id, activeItems)
+            val selectedIndex = activeItems.indexOfFirst { it.id == result.selectedItem?.id }.coerceAtLeast(0)
 
             // Calculate repeated index for infinite-feel scroll
-            val targetIndex = (profile.items.size * 5) + selectedIndex
+            val targetIndex = (activeItems.size * 5) + selectedIndex
             _uiState.update {
                 it.copy(
                     selectedIndex = selectedIndex,
