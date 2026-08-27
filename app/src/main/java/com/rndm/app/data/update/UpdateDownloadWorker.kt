@@ -53,13 +53,22 @@ class UpdateDownloadWorker(
 
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
+        .followRedirects(true)
+        .followSslRedirects(true)
+        .retryOnConnectionFailure(true)
+        .addInterceptor { chain ->
+            val req = chain.request().newBuilder()
+                .header("User-Agent", "RNDM-App-Android")
+                .build()
+            chain.proceed(req)
+        }
         .build()
 
     override suspend fun doWork(): Result {
         val apkUrl = inputData.getString("apkUrl") ?: return Result.failure()
-        val apkSha256 = inputData.getString("apkSha256") ?: return Result.failure()
+        val apkSha256 = inputData.getString("apkSha256") ?: ""
         val versionName = inputData.getString("versionName") ?: "1.0.0"
         val apkSize = inputData.getLong("apkSize", 0L)
         val infoJson = inputData.getString("infoJson") ?: ""
@@ -67,13 +76,12 @@ class UpdateDownloadWorker(
         createNotificationChannel()
         clearPaused(apkUrl)
 
-        val safeHashKey = if (apkSha256.isNotBlank()) apkSha256.trim().lowercase(Locale.US).take(12) else apkUrl.hashCode().toString()
-        val tempFile = File(context.cacheDir, "rndm-update-$safeHashKey.temp")
+        val tempFile = UpdateRepositoryImpl.getTempApkFile(context, versionName)
         var startBytes = if (tempFile.exists()) tempFile.length() else 0L
 
         val repository = getRepository()
 
-        // Check if file is already fully downloaded
+        // Check if file is already fully downloaded and intact
         if (apkSize > 0L && startBytes >= apkSize) {
             if (repository != null && repository.verifyApkSha256(tempFile, apkSha256)) {
                 val savedFile = repository.saveDownloadedApk(tempFile, versionName)
@@ -88,29 +96,40 @@ class UpdateDownloadWorker(
             }
         }
 
-        // Prepare request with Range header for resumable download
-        val requestBuilder = Request.Builder().url(apkUrl)
+        // Prepare request with Range header for resumable download if tempFile exists
+        var requestBuilder = Request.Builder().url(apkUrl)
         if (startBytes > 0L) {
             requestBuilder.addHeader("Range", "bytes=$startBytes-")
         }
-        val request = requestBuilder.build()
+        var request = requestBuilder.build()
 
         try {
             setForeground(createForegroundInfo(0, "جاري البدء...", "جاري الحساب...", false, infoJson, apkUrl, apkSize, apkSha256, versionName))
 
-            val response = client.newCall(request).execute()
+            var response = client.newCall(request).execute()
+
+            // Automatically handle 416 Range Not Satisfiable by clearing invalid temp file and starting fresh
+            if (response.code == 416 && startBytes > 0L) {
+                response.close()
+                tempFile.delete()
+                startBytes = 0L
+                request = Request.Builder().url(apkUrl).build()
+                response = client.newCall(request).execute()
+            }
+
             if (!response.isSuccessful) {
                 val errorMsg = when (response.code) {
                     404 -> "ملف الـ APK غير متوفر على الخادم (رابط التحميل 404)"
                     403 -> "تم رفض الاتصال بالخادم (403 Forbidden)"
-                    416 -> "تم استكمال الملف مسبقاً أو تعارض النطاق (416)"
-                    429 -> "تم تجاوز حد الطلبات المؤقت (Rate Limit)"
+                    416 -> "تعارض في نطاق استكمال الملف (416 Range Not Satisfiable)"
+                    429 -> "تم تجاوز حد الطلبات المؤقت لـ GitHub (Rate Limit)"
                     else -> "فشل الاستجابة من الخادم (رمز الخطأ: ${response.code})"
                 }
+                response.close()
                 throw IOException(errorMsg)
             }
 
-            val body = response.body ?: throw IOException("Empty response body")
+            val body = response.body ?: throw IOException("استجابة الخادم فارغة (Empty body)")
             val remainingLength = body.contentLength()
             val totalLength = if (startBytes > 0L && response.code == 206) {
                 remainingLength + startBytes
@@ -125,11 +144,12 @@ class UpdateDownloadWorker(
                 startBytes = 0L
             }
 
+            var totalBytesRead = 0L
+
             body.byteStream().use { input ->
                 FileOutputStream(tempFile, isAppend).use { output ->
                     val buffer = ByteArray(32768)
                     var bytesRead: Int
-                    var totalBytesRead = 0L
                     var lastEmittedTime = System.currentTimeMillis()
                     var lastEmittedBytes = 0L
                     val speedWindow = LinkedList<Long>()
@@ -178,6 +198,15 @@ class UpdateDownloadWorker(
                 }
             }
 
+            // Verify that the stream was not abruptly terminated prematurely
+            if (remainingLength > 0L && totalBytesRead < remainingLength) {
+                throw IOException("انقطع الاتصال قبل اكتمال تحميل الملف (تم استلام $totalBytesRead من $remainingLength بايت)")
+            }
+
+            if (tempFile.length() < 500_000L) {
+                throw IOException("حجم ملف التحديث المستلم غير صالح أو تالف (${tempFile.length()} بايت)")
+            }
+
             // Final file integrity verification
             val currentRepo = getRepository()
             val info = getUpdateInfoFromJson(infoJson, apkUrl, apkSize, apkSha256, versionName)
@@ -192,7 +221,7 @@ class UpdateDownloadWorker(
                     return Result.success()
                 } else {
                     tempFile.delete()
-                    val errorMsg = "فشلت عملية التحقق من سلامة الملف (SHA256 Mismatch)"
+                    val errorMsg = "فشلت عملية التحقق من سلامة حزمة التحديث (ملف تالف أو غير متطابق)"
                     showFailureNotification(errorMsg)
                     updateRepositoryState(DownloadState.Error(errorMsg, info))
                     return Result.failure()
@@ -201,7 +230,7 @@ class UpdateDownloadWorker(
                 return Result.failure()
             }
         } catch (e: Exception) {
-            val errorMsg = e.localizedMessage ?: "فشل تحميل الملف"
+            val errorMsg = e.localizedMessage ?: "فشل تحميل التحديث"
             showFailureNotification(errorMsg)
             val info = getUpdateInfoFromJson(infoJson, apkUrl, apkSize, apkSha256, versionName)
             updateRepositoryState(DownloadState.Error(errorMsg, info))

@@ -1,13 +1,11 @@
 package com.rndm.app.data.update
 
 import com.squareup.moshi.Json
-import com.squareup.moshi.JsonClass
 import retrofit2.http.GET
 import retrofit2.http.Headers
 import retrofit2.http.Path
 import retrofit2.http.Url
 
-@JsonClass(generateAdapter = true)
 data class UpdateManifest(
     @Json(name = "versionCode") val versionCode: Int,
     @Json(name = "versionName") val versionName: String,
@@ -20,7 +18,6 @@ data class UpdateManifest(
     @Json(name = "releaseNotes") val releaseNotes: String? = null
 )
 
-@JsonClass(generateAdapter = true)
 data class GitHubReleaseResponse(
     @Json(name = "tag_name") val tagName: String,
     @Json(name = "name") val name: String?,
@@ -29,7 +26,6 @@ data class GitHubReleaseResponse(
     @Json(name = "assets") val assets: List<GitHubAsset>
 )
 
-@JsonClass(generateAdapter = true)
 data class GitHubAsset(
     @Json(name = "name") val name: String,
     @Json(name = "size") val size: Long,

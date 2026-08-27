@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.rndm.app.domain.model.ProfileType
 import com.rndm.app.domain.model.TournamentType
 import com.rndm.app.domain.usecase.profile.GetAllProfilesUseCase
+import com.rndm.app.domain.usecase.sync.PublishTournamentUseCase
 import com.rndm.app.domain.usecase.tournament.CreateTournamentUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -18,7 +19,8 @@ import javax.inject.Inject
 @HiltViewModel
 class CreateTournamentViewModel @Inject constructor(
     private val getAllProfilesUseCase: GetAllProfilesUseCase,
-    private val createTournamentUseCase: CreateTournamentUseCase
+    private val createTournamentUseCase: CreateTournamentUseCase,
+    private val publishTournamentUseCase: PublishTournamentUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CreateTournamentUiState())
@@ -101,6 +103,14 @@ class CreateTournamentViewModel @Inject constructor(
                     groupsCount = state.groupsCount,
                     qualifiersPerGroup = state.qualifiersPerGroup
                 )
+                // Auto-publish in background to Cloud Firestore
+                launch {
+                    try {
+                        publishTournamentUseCase(tournamentId)
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                    }
+                }
                 _uiState.update { it.copy(isLoading = false, isCreated = tournamentId) }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e

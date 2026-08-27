@@ -1,6 +1,7 @@
 package com.rndm.app.domain.repository
 
 import com.rndm.app.domain.model.AuditLog
+import com.rndm.app.domain.model.LiveTournamentPreview
 import com.rndm.app.domain.model.Match
 import com.rndm.app.domain.model.Tournament
 import com.rndm.app.domain.model.TournamentStatus
@@ -13,4 +14,6 @@ interface SyncRepository {
     suspend fun syncMatchScore(tournamentId: Long, match: Match, oldScoreOne: Int?, oldScoreTwo: Int?): Result<Unit>
     suspend fun updateTournamentStatus(tournamentId: Long, status: TournamentStatus): Result<Unit>
     fun observeAuditLogs(tournamentId: Long): Flow<List<AuditLog>>
+    fun observeAvailableLiveTournaments(): Flow<List<Tournament>>
+    suspend fun getLiveTournamentPreview(remoteTournamentId: String): Result<LiveTournamentPreview>
 }

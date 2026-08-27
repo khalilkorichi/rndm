@@ -82,4 +82,34 @@ class SyncUseCasesTest {
         assertTrue(result.isFailure)
         coVerify(exactly = 0) { syncRepository.joinTournamentByCode(any()) }
     }
+
+    @Test
+    fun `observeAvailableLiveTournamentsUseCase streams live tournaments from repository`() = runTest {
+        val useCase = ObserveAvailableLiveTournamentsUseCase(syncRepository)
+        io.mockk.every { syncRepository.observeAvailableLiveTournaments() } returns kotlinx.coroutines.flow.flowOf(listOf(testTournament))
+
+        val resultFlow = useCase()
+        resultFlow.collect { list ->
+            assertEquals(1, list.size)
+            assertEquals("KHL-7A3", list.first().shareCode)
+        }
+        io.mockk.verify { syncRepository.observeAvailableLiveTournaments() }
+    }
+
+    @Test
+    fun `getLiveTournamentPreviewUseCase fetches full preview from repository`() = runTest {
+        val useCase = GetLiveTournamentPreviewUseCase(syncRepository)
+        val preview = com.rndm.app.domain.model.LiveTournamentPreview(
+            tournament = testTournament,
+            participants = emptyList(),
+            matches = emptyList()
+        )
+        coEvery { syncRepository.getLiveTournamentPreview("tourn_xyz") } returns Result.success(preview)
+
+        val result = useCase("tourn_xyz")
+
+        assertTrue(result.isSuccess)
+        assertEquals("بطولة رمضان الكبرى", result.getOrNull()?.tournament?.name)
+        coVerify { syncRepository.getLiveTournamentPreview("tourn_xyz") }
+    }
 }

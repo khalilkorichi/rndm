@@ -30,6 +30,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.security.MessageDigest
 import java.util.Locale
+import java.util.zip.ZipFile
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -70,6 +71,13 @@ class UpdateRepositoryImpl @Inject constructor(
         }
     }
 
+    companion object {
+        fun getTempApkFile(context: Context, versionName: String): File {
+            val safeVersion = versionName.replace("[^a-zA-Z0-9.-]".toRegex(), "_")
+            return File(context.cacheDir, "rndm-update-$safeVersion.temp")
+        }
+    }
+
     override fun startDownload(info: UpdateInfo) {
         UpdateDownloadWorker.setPaused(info.apkUrl, false)
         val infoJson = moshi.adapter(UpdateInfo::class.java).toJson(info)
@@ -89,9 +97,9 @@ class UpdateRepositoryImpl @Inject constructor(
 
         WorkManager.getInstance(context).enqueueUniqueWork("apk_download", ExistingWorkPolicy.REPLACE, request)
 
-        val tempFile = File(context.cacheDir, "rndm-update-temp.apk")
+        val tempFile = getTempApkFile(context, info.versionName)
         val startBytes = if (tempFile.exists()) tempFile.length() else 0L
-        val initialPercent = if (info.apkSize > 0L) (startBytes * 100 / info.apkSize).toInt().coerceIn(0, 100) else 0
+        val initialPercent = if (info.apkSize > 0L && startBytes > 0L) (startBytes * 100 / info.apkSize).toInt().coerceIn(0, 100) else 0
         _downloadState.value = DownloadState.Downloading(initialPercent, "", "", info)
     }
 
@@ -105,7 +113,7 @@ class UpdateRepositoryImpl @Inject constructor(
     override fun cancelDownload(info: UpdateInfo) {
         WorkManager.getInstance(context).cancelUniqueWork("apk_download")
         UpdateDownloadWorker.clearPaused(info.apkUrl)
-        File(context.cacheDir, "rndm-update-temp.apk").delete()
+        getTempApkFile(context, info.versionName).delete()
         _downloadState.value = DownloadState.Idle
     }
 
@@ -249,7 +257,10 @@ class UpdateRepositoryImpl @Inject constructor(
     }
 
     override fun verifyApkSha256(file: File, expectedSha256: String): Boolean {
-        if (!file.exists() || file.length() == 0L) return false
+        // 1. فحص وجود الملف والحد الأدنى للحجم (ملف الـ APK الحقيقي لا يقل عن 500 كيلوبايت)
+        if (!file.exists() || !file.isFile || file.length() < 500_000L) {
+            return false
+        }
 
         val cleanExpected = expectedSha256
             .removePrefix("sha256:")
@@ -259,7 +270,7 @@ class UpdateRepositoryImpl @Inject constructor(
             .trim()
             .lowercase(Locale.US)
 
-        // 1. حساب بصمة SHA-256 التشفيرية ومطابقتها
+        // 2. حساب بصمة SHA-256 ومطابقتها إذا كانت متوفرة
         if (cleanExpected.isNotBlank()) {
             val computedHex = try {
                 val digest = MessageDigest.getInstance("SHA-256")
@@ -280,19 +291,32 @@ class UpdateRepositoryImpl @Inject constructor(
             }
         }
 
-        // 2. التحقق من سلامة بنية حزمة الـ APK
-        return try {
-            val pm = context.packageManager
-            val archiveInfo = pm.getPackageArchiveInfo(file.absolutePath, 0)
-            if (archiveInfo != null) {
-                archiveInfo.packageName == context.packageName
-            } else {
-                // في حال إرجاع null بسبب قيود الحماية في بعض إصدارات أندرويد الحديثة
-                // فالبصمة التشفيرية SHA-256 كافية لضمان سلامة الملف
-                true
+        // 3. فحص البنية التحتية لحزمة الـ APK عبر ZipFile
+        val hasValidZipStructure = try {
+            ZipFile(file).use { zip ->
+                val hasManifest = zip.getEntry("AndroidManifest.xml") != null
+                val hasDex = zip.getEntry("classes.dex") != null
+                hasManifest && hasDex
             }
         } catch (e: Exception) {
-            true
+            false
+        }
+        if (!hasValidZipStructure) {
+            return false
+        }
+
+        // 4. التحقق من سلامة الحزمة واسم الحزمة عبر نظام Android PackageManager
+        return try {
+            val pm = context.packageManager
+            val archiveInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.getPackageArchiveInfo(file.absolutePath, android.content.pm.PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getPackageArchiveInfo(file.absolutePath, 0)
+            }
+            archiveInfo != null && archiveInfo.packageName == context.packageName
+        } catch (e: Exception) {
+            false
         }
     }
 
@@ -325,15 +349,32 @@ class UpdateRepositoryImpl @Inject constructor(
     override suspend fun saveDownloadedApk(file: File, versionName: String): File = withContext(Dispatchers.IO) {
         val dir = File(context.filesDir, "updates").apply { if (!exists()) mkdirs() }
         val dest = File(dir, "rndm-v$versionName.apk")
-        file.copyTo(dest, overwrite = true)
-        dest
+        val tempDest = File(dir, "rndm-v$versionName.tmp")
+        file.copyTo(tempDest, overwrite = true)
+        if (tempDest.renameTo(dest)) {
+            dest
+        } else {
+            tempDest.copyTo(dest, overwrite = true)
+            tempDest.delete()
+            dest
+        }
     }
 
     override suspend fun getDownloadedApks(): List<File> = withContext(Dispatchers.IO) {
         val dir = File(context.filesDir, "updates")
         if (!dir.exists()) return@withContext emptyList()
-        dir.listFiles { f -> f.extension == "apk" && f.name.startsWith("rndm-v") }
-            ?.sortedByDescending { it.lastModified() }?.toList() ?: emptyList()
+        val allApks = dir.listFiles { f -> f.extension == "apk" && f.name.startsWith("rndm-v") }?.toList() ?: emptyList()
+
+        // التحقق من سلامة كل ملف محلي وحذف أي ملف تالف تلقائياً
+        val validApks = mutableListOf<File>()
+        for (apk in allApks) {
+            if (verifyApkSha256(apk, "")) {
+                validApks.add(apk)
+            } else {
+                apk.delete()
+            }
+        }
+        validApks.sortedByDescending { it.lastModified() }
     }
 
     override suspend fun deleteDownloadedApk(file: File): Boolean = withContext(Dispatchers.IO) {

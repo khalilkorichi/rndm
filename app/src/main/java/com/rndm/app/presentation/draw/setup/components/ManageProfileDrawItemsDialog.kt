@@ -98,7 +98,7 @@ fun ManageProfileDrawItemsDialog(
         val raw = newItemText.trim()
         if (raw.isBlank()) return
 
-        val parts = raw.split(',', '\n', '،').map { it.trim() }.filter { it.isNotEmpty() }
+        val parts = parseRawInputItems(raw)
         parts.forEach { name ->
             if (itemsList.none { it.label.equals(name, ignoreCase = true) }) {
                 itemsList.add(
@@ -563,4 +563,15 @@ fun ManageProfileDrawItemsDialog(
             }
         }
     )
+}
+
+private fun parseRawInputItems(raw: String): List<String> {
+    val items = mutableListOf<String>()
+    for (part in raw.split(',', '\n', '،')) {
+        val trimmed = part.trim()
+        if (trimmed.isNotEmpty()) {
+            items.add(trimmed)
+        }
+    }
+    return items
 }

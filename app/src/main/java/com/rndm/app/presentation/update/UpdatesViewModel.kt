@@ -63,6 +63,7 @@ class UpdatesViewModel @Inject constructor(
     val dismissedVersion: StateFlow<String?> = _dismissedVersion.asStateFlow()
 
     private var lastUpdateCheckTime: Long = 0L
+    private var checkUpdateJob: kotlinx.coroutines.Job? = null
 
     fun dismissUpdate(versionName: String) {
         _dismissedVersion.value = versionName
@@ -89,7 +90,11 @@ class UpdatesViewModel @Inject constructor(
                         _uiState.value = UpdateUiState.Paused(state.info, state.progress)
                     }
                     is DownloadState.Success -> {
-                        _uiState.value = UpdateUiState.ReadyToInstall(state.info, state.file)
+                        if (state.file.exists() && state.file.length() > 0) {
+                            _uiState.value = UpdateUiState.ReadyToInstall(state.info, state.file)
+                        } else {
+                            _uiState.value = UpdateUiState.UpdateAvailable(state.info)
+                        }
                         loadDownloadedApks()
                     }
                     is DownloadState.Error -> {
@@ -101,7 +106,8 @@ class UpdatesViewModel @Inject constructor(
     }
 
     fun checkForUpdates(isBackground: Boolean = false) {
-        viewModelScope.launch {
+        checkUpdateJob?.cancel()
+        checkUpdateJob = viewModelScope.launch {
             if (!isBackground) {
                 _uiState.value = UpdateUiState.Checking
                 _checkingStep.value = CheckingStep.ReadingLocalVersion
@@ -115,7 +121,15 @@ class UpdatesViewModel @Inject constructor(
 
             result.onSuccess { info ->
                 if (info.hasUpdate) {
-                    _uiState.value = UpdateUiState.UpdateAvailable(info)
+                    // Check if already downloaded and verified on disk
+                    val existingApks = downloadUpdateUseCase.getDownloadedApks()
+                    _downloadedApks.value = existingApks
+                    val matchingApk = existingApks.firstOrNull { it.name == "rndm-v${info.versionName}.apk" }
+                    if (matchingApk != null && matchingApk.exists()) {
+                        _uiState.value = UpdateUiState.ReadyToInstall(info, matchingApk)
+                    } else {
+                        _uiState.value = UpdateUiState.UpdateAvailable(info)
+                    }
                 } else {
                     if (!isBackground) {
                         _uiState.value = UpdateUiState.NoUpdate(
@@ -147,10 +161,18 @@ class UpdatesViewModel @Inject constructor(
         }
     }
 
-    fun downloadUpdate(info: UpdateInfo) = downloadUpdateUseCase.startDownload(info)
+    fun downloadUpdate(info: UpdateInfo) {
+        _uiState.value = UpdateUiState.Downloading(info, 0, "", "")
+        downloadUpdateUseCase.startDownload(info)
+    }
+
     fun pauseDownload(info: UpdateInfo) = downloadUpdateUseCase.pauseDownload(info)
     fun resumeDownload(info: UpdateInfo) = downloadUpdateUseCase.startDownload(info)
-    fun cancelDownload(info: UpdateInfo) = downloadUpdateUseCase.cancelDownload(info)
+
+    fun cancelDownload(info: UpdateInfo) {
+        downloadUpdateUseCase.cancelDownload(info)
+        _uiState.value = UpdateUiState.UpdateAvailable(info)
+    }
 
     fun loadDownloadedApks() {
         viewModelScope.launch {

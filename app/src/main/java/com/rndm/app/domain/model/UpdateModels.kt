@@ -1,9 +1,7 @@
 package com.rndm.app.domain.model
 
-import com.squareup.moshi.JsonClass
 import java.io.File
 
-@JsonClass(generateAdapter = true)
 data class UpdateInfo(
     val hasUpdate: Boolean,
     val versionCode: Int,

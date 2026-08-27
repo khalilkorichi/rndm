@@ -1,6 +1,7 @@
 package com.rndm.app.presentation.tournament.list
 
 import androidx.compose.runtime.Immutable
+import com.rndm.app.domain.model.LiveTournamentPreview
 import com.rndm.app.domain.model.Tournament
 import com.rndm.app.domain.model.TournamentStage
 import com.rndm.app.domain.model.TournamentType
@@ -12,8 +13,18 @@ data class TournamentListUiState(
     val selectedSort: TournamentSort = TournamentSort.DATE_DESC,
     val isLoading: Boolean = true,
     val pendingDeleteId: Long? = null,
-    val pendingArchiveId: Long? = null
+    val pendingArchiveId: Long? = null,
+    val liveTournaments: List<Tournament> = emptyList(),
+    val dismissedLiveTournamentIds: Set<String> = emptySet(),
+    val selectedPreviewTournament: Tournament? = null,
+    val liveTournamentPreview: LiveTournamentPreview? = null,
+    val isPreviewLoading: Boolean = false,
+    val isJoiningLiveTournament: Boolean = false,
+    val joinedTournamentLocalId: Long? = null,
+    val liveTournamentErrorMessage: String? = null
 ) {
+    val activeLiveTournament: Tournament?
+        get() = liveTournaments.firstOrNull { it.remoteId != null && it.remoteId !in dismissedLiveTournamentIds }
     val filteredTournaments: List<Tournament>
         get() {
             val filtered = when (selectedFilter) {

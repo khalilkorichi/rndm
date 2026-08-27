@@ -122,6 +122,12 @@ val UpdateErrorRedDark = Color(0xFFDC2626)
 val SyncPendingColor = Color(0xFFFF8A5B)
 val SyncPendingBgColor = Color(0xFFFFB088)
 
+// Live Tournament Bar Tokens
+val LiveTournamentGradientStart = Color(0xFF6C5CE7)
+val LiveTournamentGradientEnd = Color(0xFF4834D4)
+val LiveTournamentBadgeBg = Color(0xFFFFD166)
+val LiveTournamentBadgeText = Color(0xFF2D3436)
+
 // Extended Colors for Wheel & Draw segments
 @Immutable
 data class ExtendedColors(

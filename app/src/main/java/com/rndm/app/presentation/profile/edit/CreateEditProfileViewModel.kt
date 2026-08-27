@@ -80,7 +80,7 @@ class CreateEditProfileViewModel @Inject constructor(
         } else if (typeName != null && !_uiState.value.isEditMode) {
             val parsedType = try {
                 ProfileType.valueOf(typeName)
-            } catch (e: Exception) {
+            } catch (e: IllegalArgumentException) {
                 ProfileType.PLAYERS
             }
             _uiState.update { it.copy(type = parsedType) }
@@ -284,6 +284,7 @@ class CreateEditProfileViewModel @Inject constructor(
 
                 _uiState.update { it.copy(isLoading = false, isSaved = true) }
             } catch (e: Exception) {
+                if (e is kotlin.coroutines.cancellation.CancellationException) throw e
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "فشل حفظ البروفايل") }
             }
         }

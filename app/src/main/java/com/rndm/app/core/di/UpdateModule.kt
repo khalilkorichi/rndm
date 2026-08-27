@@ -53,8 +53,19 @@ object UpdateNetworkModule {
             level = HttpLoggingInterceptor.Level.BASIC
         }
         return OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
+            .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
+            .followRedirects(true)
+            .followSslRedirects(true)
+            .retryOnConnectionFailure(true)
+            .addInterceptor { chain ->
+                val originalRequest = chain.request()
+                val requestWithHeaders = originalRequest.newBuilder()
+                    .header("User-Agent", "RNDM-App-Android")
+                    .header("Accept", "application/vnd.github.v3+json, application/json, */*")
+                    .build()
+                chain.proceed(requestWithHeaders)
+            }
             .addInterceptor(logging)
             .build()
     }

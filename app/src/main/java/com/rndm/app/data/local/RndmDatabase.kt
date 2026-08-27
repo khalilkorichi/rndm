@@ -166,6 +166,13 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
     }
 }
 
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_profile_groups_createdAt` ON `profile_groups` (`createdAt`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_profile_groups_name` ON `profile_groups` (`name`)")
+    }
+}
+
 @Database(
     entities = [
         ProfileEntity::class,
@@ -176,7 +183,7 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
         MatchEntity::class,
         PlayerProfileEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = true
 )
 abstract class RndmDatabase : RoomDatabase() {

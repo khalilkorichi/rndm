@@ -16,11 +16,11 @@ android {
         applicationId = "com.rndm.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 7
-        versionName = "1.0.6"
+        versionCode = 8
+        versionName = "1.0.7"
 
         buildConfigField("Long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L")
-        buildConfigField("Long", "UPDATE_IDENTITY", "106L")
+        buildConfigField("Long", "UPDATE_IDENTITY", "107L")
         buildConfigField("String", "GITHUB_OWNER", "\"khalilkorichi\"")
         buildConfigField("String", "GITHUB_REPO", "\"rndm\"")
 
@@ -74,6 +74,13 @@ android {
     lint {
         checkReleaseBuilds = false
         abortOnError = false
+    }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            isReturnDefaultValues = true
+        }
     }
 }
 

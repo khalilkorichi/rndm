@@ -233,4 +233,43 @@ class SyncRepositoryImpl @Inject constructor(
             }
         }.flowOn(ioDispatcher)
     }
+
+    override fun observeAvailableLiveTournaments(): Flow<List<Tournament>> {
+        return kotlinx.coroutines.flow.combine(
+            remoteTournamentDataSource.observeLivePublicTournaments(),
+            tournamentDao.getAllTournaments()
+        ) { remoteList, localEntities ->
+            val currentUid = authDataSource.currentUid
+            val localRemoteIds = localEntities.mapNotNull { it.remoteId }.toSet()
+            val localShareCodes = localEntities.mapNotNull { it.shareCode?.replace("-", "")?.replace(" ", "")?.uppercase() }.toSet()
+
+            remoteList.filter { remoteDto ->
+                val isHost = currentUid != null && remoteDto.hostUid.isNotBlank() && remoteDto.hostUid == currentUid
+                val cleanRemoteCode = remoteDto.shareCode.replace("-", "").replace(" ", "").uppercase()
+                val alreadyJoined = remoteDto.id in localRemoteIds || cleanRemoteCode in localShareCodes
+                !isHost && !alreadyJoined
+            }.map { it.toDomain() }
+        }.flowOn(ioDispatcher)
+    }
+
+    override suspend fun getLiveTournamentPreview(remoteTournamentId: String): Result<com.rndm.app.domain.model.LiveTournamentPreview> = withContext(ioDispatcher) {
+        try {
+            val snapshotResult = remoteTournamentDataSource.getTournamentSnapshot(remoteTournamentId)
+            val (tournamentDto, participantDtos, matchDtos) = snapshotResult.getOrThrow()
+            val domainTournament = tournamentDto.toDomain()
+            val domainParticipants = participantDtos.map { it.toDomain() }
+            val domainMatches = matchDtos.map { it.toDomain() }
+
+            Result.success(
+                com.rndm.app.domain.model.LiveTournamentPreview(
+                    tournament = domainTournament,
+                    participants = domainParticipants,
+                    matches = domainMatches
+                )
+            )
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Result.failure(e)
+        }
+    }
 }

@@ -287,4 +287,24 @@ class FirestoreTournamentDataSource @Inject constructor(
             Result.failure(e)
         }
     }
+
+    fun observeLivePublicTournaments(limit: Long = 10): Flow<List<FirestoreTournamentDto>> = callbackFlow {
+        val query = firestore.collection("tournaments")
+            .limit(limit)
+
+        val listener = query.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Log.w("SYNC_RNDM", "Error observing live tournaments: ${error.message}")
+                trySend(emptyList())
+                return@addSnapshotListener
+            }
+            if (snapshot != null) {
+                val list = snapshot.toObjects(FirestoreTournamentDto::class.java)
+                    .filter { !it.isArchived && it.status == "ACTIVE" }
+                    .sortedByDescending { it.updatedAt.coerceAtLeast(it.createdAt) }
+                trySend(list)
+            }
+        }
+        awaitClose { listener.remove() }
+    }
 }

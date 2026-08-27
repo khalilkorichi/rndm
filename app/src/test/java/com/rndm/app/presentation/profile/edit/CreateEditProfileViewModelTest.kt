@@ -4,20 +4,23 @@ import androidx.lifecycle.SavedStateHandle
 import com.rndm.app.domain.model.Profile
 import com.rndm.app.domain.model.ProfileItem
 import com.rndm.app.domain.model.ProfileType
+import com.rndm.app.domain.model.UserRole
+import com.rndm.app.domain.usecase.auth.GetCurrentUserRoleUseCase
 import com.rndm.app.domain.usecase.profile.CreateProfileUseCase
 import com.rndm.app.domain.usecase.profile.GetProfileByIdUseCase
 import com.rndm.app.domain.usecase.profile.UpdateProfileUseCase
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -29,6 +32,7 @@ class CreateEditProfileViewModelTest {
     private val getProfileByIdUseCase = mockk<GetProfileByIdUseCase>()
     private val createProfileUseCase = mockk<CreateProfileUseCase>()
     private val updateProfileUseCase = mockk<UpdateProfileUseCase>()
+    private val getCurrentUserRoleUseCase = mockk<GetCurrentUserRoleUseCase>()
 
     private fun createViewModel(
         profileId: Long = 0L,
@@ -38,10 +42,12 @@ class CreateEditProfileViewModelTest {
             set("profileId", profileId)
             if (typeName != null) set("typeName", typeName)
         }
+        every { getCurrentUserRoleUseCase() } returns flowOf(UserRole.ADMIN)
         return CreateEditProfileViewModel(
             getProfileByIdUseCase = getProfileByIdUseCase,
             createProfileUseCase = createProfileUseCase,
             updateProfileUseCase = updateProfileUseCase,
+            getCurrentUserRoleUseCase = getCurrentUserRoleUseCase,
             savedStateHandle = savedStateHandle
         )
     }
@@ -68,12 +74,13 @@ class CreateEditProfileViewModelTest {
         viewModel.onItemInputChange("أحمد")
         viewModel.onAddItem()
 
-        assertEquals(listOf("خليل", "عبدو", "أحمد"), viewModel.uiState.value.items)
+        assertEquals(listOf("خليل", "عبدو", "أحمد"), viewModel.uiState.value.items.map { it.label })
 
-        // Edit index 1 from "عبدو" to "عبد الرحمن"
-        viewModel.onEditItem(index = 1, newLabel = "عبد الرحمن")
+        // Edit item 1 from "عبدو" to "عبد الرحمن"
+        val itemId = viewModel.uiState.value.items[1].id
+        viewModel.onEditItem(id = itemId, newLabel = "عبد الرحمن")
 
-        assertEquals(listOf("خليل", "عبد الرحمن", "أحمد"), viewModel.uiState.value.items)
+        assertEquals(listOf("خليل", "عبد الرحمن", "أحمد"), viewModel.uiState.value.items.map { it.label })
     }
 
     @Test
@@ -86,26 +93,11 @@ class CreateEditProfileViewModelTest {
         viewModel.onAddItem()
 
         // Try blank update
-        viewModel.onEditItem(index = 0, newLabel = "   ")
+        val itemId = viewModel.uiState.value.items[0].id
+        viewModel.onEditItem(id = itemId, newLabel = "   ")
 
         // Should remain untouched
-        assertEquals(listOf("ريال مدريد", "برشلونة"), viewModel.uiState.value.items)
-    }
-
-    @Test
-    fun `onEditItem ignores out-of-bounds index`() = runTest {
-        val viewModel = createViewModel()
-
-        viewModel.onItemInputChange("المغرب")
-        viewModel.onAddItem()
-        viewModel.onItemInputChange("الجزائر")
-        viewModel.onAddItem()
-
-        // Out of bounds index
-        viewModel.onEditItem(index = 5, newLabel = "تونس")
-        viewModel.onEditItem(index = -1, newLabel = "مصر")
-
-        assertEquals(listOf("المغرب", "الجزائر"), viewModel.uiState.value.items)
+        assertEquals(listOf("ريال مدريد", "برشلونة"), viewModel.uiState.value.items.map { it.label })
     }
 
     @Test
@@ -127,11 +119,12 @@ class CreateEditProfileViewModelTest {
 
         assertTrue(viewModel.uiState.value.isEditMode)
         assertEquals("أندية أوروبا", viewModel.uiState.value.name)
-        assertEquals(listOf("مانشستر سيتي", "ليفربول", "أرسنال"), viewModel.uiState.value.items)
+        assertEquals(listOf("مانشستر سيتي", "ليفربول", "أرسنال"), viewModel.uiState.value.items.map { it.label })
 
         // Edit Liverpool to Bayern Munich
-        viewModel.onEditItem(index = 1, newLabel = "بايرن ميونخ")
+        val itemId = viewModel.uiState.value.items[1].id
+        viewModel.onEditItem(id = itemId, newLabel = "بايرن ميونخ")
 
-        assertEquals(listOf("مانشستر سيتي", "بايرن ميونخ", "أرسنال"), viewModel.uiState.value.items)
+        assertEquals(listOf("مانشستر سيتي", "بايرن ميونخ", "أرسنال"), viewModel.uiState.value.items.map { it.label })
     }
 }

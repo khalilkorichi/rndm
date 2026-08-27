@@ -8,6 +8,7 @@ import com.rndm.app.domain.model.ProfileItem
 import com.rndm.app.domain.model.ProfileType
 import com.rndm.app.domain.usecase.profile.GetAllProfilesUseCase
 import com.rndm.app.domain.usecase.profile.GetProfileByIdUseCase
+import com.rndm.app.domain.usecase.profile.UpdateItemActiveStateUseCase
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -30,8 +31,20 @@ class WheelDrawViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private val getAllProfilesUseCase = mockk<GetAllProfilesUseCase>()
     private val getProfileByIdUseCase = mockk<GetProfileByIdUseCase>()
+    private val updateItemActiveStateUseCase = mockk<UpdateItemActiveStateUseCase>(relaxed = true)
     private lateinit var fixtureRepository: DrawFixtureRepositoryImpl
     private val randomProvider = mockk<RandomProvider>()
+
+    private fun createViewModel(profileId: Long = 1L): WheelDrawViewModel {
+        return WheelDrawViewModel(
+            getAllProfilesUseCase = getAllProfilesUseCase,
+            getProfileByIdUseCase = getProfileByIdUseCase,
+            updateItemActiveStateUseCase = updateItemActiveStateUseCase,
+            drawFixtureRepository = fixtureRepository,
+            randomProvider = randomProvider,
+            savedStateHandle = SavedStateHandle(mapOf("profileId" to profileId))
+        )
+    }
 
     private val playersProfile = Profile(
         id = 1L,
@@ -91,13 +104,7 @@ class WheelDrawViewModelTest {
     fun `drawing players generates match fixtures and switching to clubs assigns clubs sequentially`() = runTest {
         every { randomProvider.nextInt(any()) } returns 0
 
-        val viewModel = WheelDrawViewModel(
-            getAllProfilesUseCase,
-            getProfileByIdUseCase,
-            fixtureRepository,
-            randomProvider,
-            SavedStateHandle(mapOf("profileId" to 1L))
-        )
+        val viewModel = createViewModel(profileId = 1L)
 
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -159,13 +166,7 @@ class WheelDrawViewModelTest {
             returnIdx % max
         }
 
-        val viewModel = WheelDrawViewModel(
-            getAllProfilesUseCase,
-            getProfileByIdUseCase,
-            fixtureRepository,
-            randomProvider,
-            SavedStateHandle(mapOf("profileId" to 1L))
-        )
+        val viewModel = createViewModel(profileId = 1L)
 
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -209,13 +210,7 @@ class WheelDrawViewModelTest {
         )
         coEvery { getProfileByIdUseCase(99L) } returns singlePlayerProfile
 
-        val viewModel = WheelDrawViewModel(
-            getAllProfilesUseCase,
-            getProfileByIdUseCase,
-            fixtureRepository,
-            randomProvider,
-            SavedStateHandle(mapOf("profileId" to 99L))
-        )
+        val viewModel = createViewModel(profileId = 99L)
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.initializeWithProfileId(99L)
@@ -250,13 +245,7 @@ class WheelDrawViewModelTest {
         coEvery { getProfileByIdUseCase(2L) } returns extendedClubsProfile
         every { getAllProfilesUseCase() } returns flowOf(listOf(playersProfile, extendedClubsProfile, teamsProfile))
 
-        val viewModel = WheelDrawViewModel(
-            getAllProfilesUseCase,
-            getProfileByIdUseCase,
-            fixtureRepository,
-            randomProvider,
-            SavedStateHandle(mapOf("profileId" to 1L))
-        )
+        val viewModel = createViewModel(profileId = 1L)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // 1. Draw all 4 original players (2 matches)
@@ -371,13 +360,7 @@ class WheelDrawViewModelTest {
         coEvery { getProfileByIdUseCase(5L) } returns oddPlayersProfile
         every { getAllProfilesUseCase() } returns flowOf(listOf(oddPlayersProfile, clubsProfile, teamsProfile))
 
-        val viewModel = WheelDrawViewModel(
-            getAllProfilesUseCase,
-            getProfileByIdUseCase,
-            fixtureRepository,
-            randomProvider,
-            SavedStateHandle(mapOf("profileId" to 5L))
-        )
+        val viewModel = createViewModel(profileId = 5L)
         testDispatcher.scheduler.advanceUntilIdle()
 
         // 1. Draw Player 1
@@ -418,13 +401,7 @@ class WheelDrawViewModelTest {
 
     @Test
     fun `excluding candidate removes from wheel and adds to excluded list without deleting from profile`() = runTest {
-        val viewModel = WheelDrawViewModel(
-            getAllProfilesUseCase,
-            getProfileByIdUseCase,
-            fixtureRepository,
-            randomProvider,
-            SavedStateHandle(mapOf("profileId" to 1L))
-        )
+        val viewModel = createViewModel(profileId = 1L)
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(4, viewModel.uiState.value.remainingPlayers.size)
@@ -443,13 +420,7 @@ class WheelDrawViewModelTest {
 
     @Test
     fun `restoring excluded candidate puts them back in wheel remaining items`() = runTest {
-        val viewModel = WheelDrawViewModel(
-            getAllProfilesUseCase,
-            getProfileByIdUseCase,
-            fixtureRepository,
-            randomProvider,
-            SavedStateHandle(mapOf("profileId" to 1L))
-        )
+        val viewModel = createViewModel(profileId = 1L)
         testDispatcher.scheduler.advanceUntilIdle()
 
         val playerToExclude = viewModel.uiState.value.remainingPlayers.first { it.label == "ديدو" }
@@ -468,13 +439,7 @@ class WheelDrawViewModelTest {
 
     @Test
     fun `resetDraw clears excluded lists and restores all initial profile items`() = runTest {
-        val viewModel = WheelDrawViewModel(
-            getAllProfilesUseCase,
-            getProfileByIdUseCase,
-            fixtureRepository,
-            randomProvider,
-            SavedStateHandle(mapOf("profileId" to 1L))
-        )
+        val viewModel = createViewModel(profileId = 1L)
         testDispatcher.scheduler.advanceUntilIdle()
 
         val item1 = viewModel.uiState.value.remainingPlayers[0]
@@ -494,13 +459,7 @@ class WheelDrawViewModelTest {
 
     @Test
     fun `onOpenExcludeDialog and onDismissExcludeDialog manage dialog state`() = runTest {
-        val viewModel = WheelDrawViewModel(
-            getAllProfilesUseCase,
-            getProfileByIdUseCase,
-            fixtureRepository,
-            randomProvider,
-            SavedStateHandle(mapOf("profileId" to 1L))
-        )
+        val viewModel = createViewModel(profileId = 1L)
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(false, viewModel.uiState.value.isExcludeDialogOpen)
