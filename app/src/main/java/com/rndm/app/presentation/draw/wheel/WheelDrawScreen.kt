@@ -20,6 +20,7 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -30,7 +31,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,10 +46,13 @@ import com.rndm.app.core.ui.components.RndmButtonType
 import com.rndm.app.core.ui.components.RndmTopAppBar
 import com.rndm.app.core.ui.components.RndmTopBarAction
 import com.rndm.app.core.util.Constants
+import com.rndm.app.presentation.draw.wheel.components.CreateTournamentFromDrawDialog
 import com.rndm.app.presentation.draw.wheel.components.DrawCategorySelector
 import com.rndm.app.presentation.draw.wheel.components.DrawnMatchesFeed
 import com.rndm.app.presentation.draw.wheel.components.ExcludeFromDrawDialog
 import com.rndm.app.presentation.draw.wheel.components.LiveMatchDrawSimulationCard
+import com.rndm.app.presentation.draw.wheel.components.PostTournamentCreatedDialog
+import com.rndm.app.presentation.draw.wheel.components.RetractableCreateTournamentFab
 import com.rndm.app.presentation.draw.wheel.components.WheelArrowIndicator
 import com.rndm.app.presentation.draw.wheel.components.WheelCanvas
 import com.rndm.app.presentation.draw.wheel.components.WheelCenterExclusionHub
@@ -59,6 +65,7 @@ fun WheelDrawScreen(
     onNavigateBack: () -> Unit,
     onNavigateToResult: () -> Unit,
     onNavigateToFixtures: () -> Unit = {},
+    onNavigateToTournament: (Long) -> Unit = {},
     onNavigateToEditProfile: (Long) -> Unit = {},
     viewModel: WheelDrawViewModel = hiltViewModel()
 ) {
@@ -134,25 +141,14 @@ fun WheelDrawScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onNavigateToFixtures,
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                icon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_fixtures),
-                        contentDescription = null,
-                        modifier = Modifier.size(22.dp)
-                    )
-                },
-                text = {
-                    val count = uiState.fixtures.size
-                    Text(
-                        text = if (count > 0) "جدول المباريات ($count)" else "جدول المباريات",
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
+            RetractableCreateTournamentFab(
+                onClick = { viewModel.onOpenCreateTournamentDialog() }
             )
+        },
+        floatingActionButtonPosition = if (LocalLayoutDirection.current == LayoutDirection.Rtl) {
+            FabPosition.Start
+        } else {
+            FabPosition.End
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
@@ -500,6 +496,30 @@ fun WheelDrawScreen(
                 onExcludeAll = { viewModel.excludeAll(uiState.selectedCategory) },
                 onRestoreAll = { viewModel.restoreAll(uiState.selectedCategory) },
                 onDismiss = viewModel::onDismissExcludeDialog
+            )
+        }
+
+        if (uiState.isCreateTournamentDialogOpen) {
+            CreateTournamentFromDrawDialog(
+                initialName = uiState.defaultTournamentName,
+                onConfirm = { name -> viewModel.onConfirmCreateTournament(name) },
+                onDismiss = viewModel::onDismissCreateTournamentDialog
+            )
+        }
+
+        if (uiState.isPostCreationDialogOpen) {
+            PostTournamentCreatedDialog(
+                onNavigateToTournament = {
+                    val id = uiState.createdTournamentId ?: 0L
+                    viewModel.onDismissPostCreationDialog()
+                    if (id > 0L) {
+                        onNavigateToTournament(id)
+                    }
+                },
+                onStartNewTournament = {
+                    viewModel.onStartNewTournament()
+                },
+                onDismiss = viewModel::onDismissPostCreationDialog
             )
         }
     }

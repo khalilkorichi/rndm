@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import com.rndm.app.data.local.entity.TournamentEntity
+import com.rndm.app.data.local.entity.TournamentExclusionEntity
 import com.rndm.app.data.local.entity.TournamentParticipantEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -69,4 +70,16 @@ interface TournamentDao {
 
     @Query("UPDATE tournament_participants SET groupIndex = :newGroupIndex WHERE tournamentId = :tournamentId AND playerName = :playerName")
     suspend fun updateParticipantGroup(tournamentId: Long, playerName: String, newGroupIndex: Int)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertExclusions(exclusions: List<TournamentExclusionEntity>)
+
+    @Query("SELECT * FROM tournament_exclusions WHERE tournamentId = :tournamentId")
+    fun getExclusionsByTournamentId(tournamentId: Long): Flow<List<TournamentExclusionEntity>>
+
+    @Query("SELECT * FROM tournament_exclusions WHERE tournamentId = :tournamentId")
+    suspend fun getExclusionsListByTournamentId(tournamentId: Long): List<TournamentExclusionEntity>
+
+    @Query("DELETE FROM tournament_exclusions WHERE tournamentId = :tournamentId")
+    suspend fun deleteExclusionsByTournamentId(tournamentId: Long)
 }

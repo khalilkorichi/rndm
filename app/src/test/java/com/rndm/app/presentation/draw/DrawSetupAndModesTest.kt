@@ -157,9 +157,11 @@ class DrawSetupAndModesTest {
             randomProvider = randomProvider,
             savedStateHandle = SavedStateHandle(mapOf("profileId" to 10L))
         )
+        viewModel.initializeWithProfileId(10L)
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onCardClick(1)
+        testDispatcher.scheduler.runCurrent()
         assertTrue(viewModel.uiState.value.isRevealing)
         assertEquals(1, viewModel.uiState.value.flippedCardIndex)
     }

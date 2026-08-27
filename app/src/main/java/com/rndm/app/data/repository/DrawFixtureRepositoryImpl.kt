@@ -4,6 +4,7 @@ import com.rndm.app.data.local.dao.MatchDao
 import com.rndm.app.data.local.dao.TournamentDao
 import com.rndm.app.data.local.entity.MatchEntity
 import com.rndm.app.data.local.entity.TournamentEntity
+import com.rndm.app.data.local.entity.TournamentExclusionEntity
 import com.rndm.app.data.local.entity.TournamentParticipantEntity
 import com.rndm.app.data.mapper.toDomain
 import com.rndm.app.data.mapper.toEntity
@@ -37,6 +38,7 @@ class DrawFixtureRepositoryImpl @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
     private var _currentTournamentId: Long = 0L
+    private var _customTournamentName: String? = null
     override val currentTournamentId: Long
         get() = _currentTournamentId
 
@@ -126,7 +128,7 @@ class DrawFixtureRepositoryImpl @Inject constructor(
             val totalPlayers = fixtures.flatMap { listOfNotNull(it.playerOneName, it.playerTwoName) }.distinct().size
             val isSevenPlayers = fixtures.size == 4 && fixtures.lastOrNull()?.playerTwoName == null
 
-            val tournamentName = "بطولة قرعة ($totalPlayers لاعبين)"
+            val tournamentName = _customTournamentName ?: "بطولة قرعة ($totalPlayers لاعبين)"
 
             if (currentTournamentId == 0L) {
                 val entity = TournamentEntity(
@@ -313,8 +315,57 @@ class DrawFixtureRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun finalizeTournament(
+        name: String,
+        excludedPlayers: List<String>,
+        excludedClubs: List<String>,
+        excludedTeams: List<String>
+    ): Long {
+        _customTournamentName = name
+        val list = _fixtures.value
+        val totalPlayers = list.flatMap { listOfNotNull(it.playerOneName, it.playerTwoName) }.distinct().size
+
+        val tournamentId = if (_currentTournamentId == 0L) {
+            val entity = TournamentEntity(
+                name = name,
+                type = TournamentType.DRAW_KNOCKOUT,
+                stage = TournamentStage.KNOCKOUT_ROUNDS,
+                playersProfileId = 0L,
+                groupsCount = 0,
+                qualifiersPerGroup = 0
+            )
+            val newId = tournamentDao.insertTournament(entity)
+            _currentTournamentId = newId
+            newId
+        } else {
+            val existing = tournamentDao.getTournamentById(_currentTournamentId)
+            if (existing != null) {
+                tournamentDao.updateTournament(
+                    existing.copy(
+                        name = name,
+                        updatedAt = System.currentTimeMillis()
+                    )
+                )
+            }
+            _currentTournamentId
+        }
+
+        // Save exclusions specifically for this tournament
+        tournamentDao.deleteExclusionsByTournamentId(tournamentId)
+        val exclusions = mutableListOf<TournamentExclusionEntity>()
+        excludedPlayers.forEach { exclusions.add(TournamentExclusionEntity(tournamentId = tournamentId, category = "PLAYERS", itemLabel = it)) }
+        excludedClubs.forEach { exclusions.add(TournamentExclusionEntity(tournamentId = tournamentId, category = "CLUBS", itemLabel = it)) }
+        excludedTeams.forEach { exclusions.add(TournamentExclusionEntity(tournamentId = tournamentId, category = "NATIONAL_TEAMS", itemLabel = it)) }
+        if (exclusions.isNotEmpty()) {
+            tournamentDao.insertExclusions(exclusions)
+        }
+
+        return tournamentId
+    }
+
     override fun clearFixtures() {
         _fixtures.value = emptyList()
         _currentTournamentId = 0L
+        _customTournamentName = null
     }
 }
