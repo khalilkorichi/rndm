@@ -27,6 +27,8 @@ data class TournamentDetailUiState(
     val userRole: UserRole = UserRole.GUEST,
     val isPublishing: Boolean = false,
     val publishErrorMessage: String? = null,
+    val isBroadcasting: Boolean = false,
+    val isBroadcasted: Boolean = false,
     val isShareDialogOpen: Boolean = false,
     val activeShareCode: String? = null,
     val requestFeedbackMessage: String? = null

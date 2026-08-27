@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,16 +17,23 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.rndm.app.R
-import com.rndm.app.core.theme.RndmThemeTokens
+import com.rndm.app.core.theme.*
 import com.rndm.app.core.ui.components.BentoCard
 import com.rndm.app.core.ui.components.EmptyState
 import com.rndm.app.core.ui.components.LtrForcedText
@@ -41,7 +49,6 @@ private enum class PreviewTab(val title: String) {
     PARTICIPANTS("المشاركون")
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LiveTournamentPreviewSheet(
     preview: LiveTournamentPreview?,
@@ -51,288 +58,381 @@ fun LiveTournamentPreviewSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val clipboardManager = LocalClipboardManager.current
     var selectedTab by remember { mutableStateOf(PreviewTab.MATCHES) }
     var copiedCode by remember { mutableStateOf(false) }
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
 
-    ModalBottomSheet(
+    Dialog(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        dragHandle = { BottomSheetDefaults.DragHandle() },
-        modifier = modifier.fillMaxHeight(0.85f)
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
     ) {
-        if (isLoading || preview == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 24.dp),
+            contentAlignment = Alignment.Center
+        ) {
             Box(
-                modifier = Modifier
+                modifier = modifier
                     .fillMaxWidth()
-                    .height(300.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(36.dp),
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        } else {
-            val tournament = preview.tournament
-            val participants = preview.participants
-            val matches = preview.matches
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp)
-            ) {
-                // Header Info
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = tournament.name,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-
-                            // Type badge
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.padding(start = 4.dp)
-                            ) {
-                                Text(
-                                    text = if (tournament.type == TournamentType.GROUPS_KNOCKOUT) "مجموعات" else "إقصائيات",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    .heightIn(min = 200.dp, max = screenHeight * 0.82f)
+                    .shadow(
+                        elevation = if (isDark) 24.dp else 16.dp,
+                        shape = RoundedCornerShape(26.dp),
+                        spotColor = if (isDark) BottomBarShadowDark.copy(alpha = 0.7f) else PrimaryLight.copy(alpha = 0.2f),
+                        ambientColor = if (isDark) BottomBarShadowDark.copy(alpha = 0.5f) else PrimaryLight.copy(alpha = 0.1f)
+                    )
+                    .clip(RoundedCornerShape(26.dp))
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = if (isDark) {
+                                listOf(
+                                    BottomBarDarkBgTop.copy(alpha = 0.98f),
+                                    BottomBarDarkBgBottom.copy(alpha = 0.96f)
+                                )
+                            } else {
+                                listOf(
+                                    BottomBarLightBgTop.copy(alpha = 0.98f),
+                                    BottomBarLightBgBottom.copy(alpha = 0.94f)
                                 )
                             }
-                        }
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text(
-                                text = "عدد المشاركين: ${participants.size}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            Text(
-                                text = "•",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            Text(
-                                text = "المباريات: ${matches.size}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    // Share Code Capsule with Copy
-                    if (!tournament.shareCode.isNullOrBlank()) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
-                            ),
-                            onClick = {
-                                clipboardManager.setText(AnnotatedString(tournament.shareCode!!))
-                                copiedCode = true
+                        )
+                    )
+                    .border(
+                        width = 1.dp,
+                        brush = Brush.verticalGradient(
+                            colors = if (isDark) {
+                                listOf(
+                                    BottomBarDarkBorderTop.copy(alpha = 0.9f),
+                                    BottomBarDarkBorderBottom.copy(alpha = 0.4f)
+                                )
+                            } else {
+                                listOf(
+                                    Color.White.copy(alpha = 0.95f),
+                                    BottomBarLightBorderBottom.copy(alpha = 0.65f)
+                                )
                             }
+                        ),
+                        shape = RoundedCornerShape(26.dp)
+                    )
+                    .padding(horizontal = 18.dp, vertical = 16.dp)
+            ) {
+                if (isLoading || preview == null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(240.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(36.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                } else {
+                    val tournament = preview.tournament
+                    val participants = preview.participants
+                    val matches = preview.matches
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // Header Info with Close Icon
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = tournament.name,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    // Type badge
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
+                                        modifier = Modifier.padding(start = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = if (tournament.type == TournamentType.GROUPS_KNOCKOUT) "مجموعات" else "إقصائيات",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(3.dp))
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = "المشاركون: ${participants.size}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+
+                                    Text(
+                                        text = "•",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+
+                                    Text(
+                                        text = "المباريات: ${matches.size}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            // Share Code & Close Actions
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Icon(
-                                    painter = painterResource(if (copiedCode) R.drawable.ic_check else R.drawable.ic_copy),
-                                    contentDescription = "نسخ الكود",
-                                    tint = MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                LtrForcedText(
-                                    text = tournament.shareCode!!,
-                                    style = MaterialTheme.typography.labelMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Capsule Tab Selector
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        PreviewTab.entries.forEach { tab ->
-                            val isSelected = selectedTab == tab
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(
-                                        if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent
-                                    )
-                                    .clickable { selectedTab = tab }
-                                    .padding(vertical = 8.dp)
-                            ) {
-                                Text(
-                                    text = tab.title,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Tab Content
-                Box(modifier = Modifier.weight(1f)) {
-                    when (selectedTab) {
-                        PreviewTab.MATCHES -> {
-                            if (matches.isEmpty()) {
-                                EmptyState(
-                                    icon = painterResource(id = R.drawable.ic_gamepad),
-                                    title = "لا توجد مباريات بعد",
-                                    description = "لم يتم جدولة مباريات لهذه البطولة بعد",
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            } else {
-                                LazyColumn(
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                    contentPadding = PaddingValues(bottom = 16.dp),
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
-                                    items(
-                                        items = matches,
-                                        key = { it.id }
-                                    ) { match ->
-                                        PreviewMatchCard(match = match)
-                                    }
-                                }
-                            }
-                        }
-                        PreviewTab.PARTICIPANTS -> {
-                            if (participants.isEmpty()) {
-                                EmptyState(
-                                    icon = painterResource(id = R.drawable.ic_person),
-                                    title = "لا يوجد مشاركون",
-                                    description = "لم يتم إضافة أي لاعب لهذه البطولة",
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            } else {
-                                val grouped = remember(participants) { participants.groupBy { it.groupIndex } }
-                                LazyColumn(
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                    contentPadding = PaddingValues(bottom = 16.dp),
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
-                                    if (grouped.size > 1 && tournament.type == TournamentType.GROUPS_KNOCKOUT) {
-                                        grouped.forEach { (groupIndex, groupMembers) ->
-                                            item(key = "group_$groupIndex") {
-                                                Text(
-                                                    text = "المجموعة ${('A' + groupIndex)}",
-                                                    style = MaterialTheme.typography.titleSmall,
+                                if (!tournament.shareCode.isNullOrBlank()) {
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            1.dp,
+                                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
+                                        ),
+                                        onClick = {
+                                            clipboardManager.setText(AnnotatedString(tournament.shareCode!!))
+                                            copiedCode = true
+                                        }
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(if (copiedCode) R.drawable.ic_check else R.drawable.ic_copy),
+                                                contentDescription = "نسخ الكود",
+                                                tint = MaterialTheme.colorScheme.secondary,
+                                                modifier = Modifier.size(13.dp)
+                                            )
+                                            LtrForcedText(
+                                                text = tournament.shareCode!!,
+                                                style = MaterialTheme.typography.labelSmall.copy(
                                                     fontWeight = FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                                                    color = MaterialTheme.colorScheme.onSecondaryContainer
                                                 )
-                                            }
-                                            items(
-                                                items = groupMembers,
-                                                key = { it.id }
-                                            ) { participant ->
-                                                PreviewParticipantCard(participant = participant)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Surface(
+                                    onClick = onDismiss,
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "إغلاق",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Capsule Tab Selector (Styled like RndmBottomBar)
+                        Surface(
+                            shape = CircleShape,
+                            color = if (isDark) BottomBarDarkBgBottom.copy(alpha = 0.8f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (isDark) BottomBarDarkBorderTop.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(3.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                PreviewTab.entries.forEach { tab ->
+                                    val isSelected = selectedTab == tab
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(CircleShape)
+                                            .background(
+                                                if (isSelected) {
+                                                    if (isDark) BottomBarSelectedDarkBgTop else MaterialTheme.colorScheme.surface
+                                                } else Color.Transparent
+                                            )
+                                            .clickable { selectedTab = tab }
+                                            .padding(vertical = 7.dp)
+                                    ) {
+                                        Text(
+                                            text = tab.title,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Scrollable Tab Content (LazyColumn inside dynamic weight)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .fillMaxWidth()
+                        ) {
+                            when (selectedTab) {
+                                PreviewTab.MATCHES -> {
+                                    if (matches.isEmpty()) {
+                                        EmptyState(
+                                            icon = painterResource(id = R.drawable.ic_gamepad),
+                                            title = "لا توجد مباريات بعد",
+                                            description = "لم يتم جدولة مباريات لهذه البطولة بعد",
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 24.dp)
+                                        )
+                                    } else {
+                                        LazyColumn(
+                                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                                            contentPadding = PaddingValues(vertical = 4.dp),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            itemsIndexed(
+                                                items = matches,
+                                                key = { index, match ->
+                                                    val rId = match.remoteId
+                                                    if (!rId.isNullOrBlank()) rId else "match_${index}_${match.playerOneName}_${match.playerTwoName}_${match.roundIndex}"
+                                                }
+                                            ) { _, match ->
+                                                PreviewMatchCard(match = match)
                                             }
                                         }
+                                    }
+                                }
+                                PreviewTab.PARTICIPANTS -> {
+                                    if (participants.isEmpty()) {
+                                        EmptyState(
+                                            icon = painterResource(id = R.drawable.ic_person),
+                                            title = "لا يوجد مشاركون",
+                                            description = "لم يتم إضافة أي لاعب لهذه البطولة",
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 24.dp)
+                                        )
                                     } else {
-                                        items(
-                                            items = participants,
-                                            key = { it.id }
-                                        ) { participant ->
-                                            PreviewParticipantCard(participant = participant)
+                                        val grouped = remember(participants) { participants.groupBy { it.groupIndex } }
+                                        LazyColumn(
+                                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                                            contentPadding = PaddingValues(vertical = 4.dp),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            if (grouped.size > 1 && tournament.type == TournamentType.GROUPS_KNOCKOUT) {
+                                                grouped.forEach { (groupIndex, groupMembers) ->
+                                                    item(key = "group_$groupIndex") {
+                                                        Text(
+                                                            text = "المجموعة ${('A' + groupIndex)}",
+                                                            style = MaterialTheme.typography.titleSmall,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = MaterialTheme.colorScheme.primary,
+                                                            modifier = Modifier.padding(top = 6.dp, bottom = 2.dp)
+                                                        )
+                                                    }
+                                                    itemsIndexed(
+                                                        items = groupMembers,
+                                                        key = { index, participant ->
+                                                            val rId = participant.remoteId
+                                                            if (!rId.isNullOrBlank()) rId else "part_${groupIndex}_${index}_${participant.playerName}"
+                                                        }
+                                                    ) { _, participant ->
+                                                        PreviewParticipantCard(participant = participant)
+                                                    }
+                                                }
+                                            } else {
+                                                itemsIndexed(
+                                                    items = participants,
+                                                    key = { index, participant ->
+                                                        val rId = participant.remoteId
+                                                        if (!rId.isNullOrBlank()) rId else "part_${index}_${participant.playerName}"
+                                                    }
+                                                ) { _, participant ->
+                                                    PreviewParticipantCard(participant = participant)
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                    }
-                }
 
-                // Bottom Action: Join Button
-                Surface(
-                    color = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp)
-                ) {
-                    Button(
-                        onClick = onJoinClick,
-                        enabled = !isJoining,
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp)
-                    ) {
-                        if (isJoining) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.GroupAdd,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "انضمام إلى هذه البطولة الآن",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Bottom Action: Join Button (Pill Container)
+                        Button(
+                            onClick = onJoinClick,
+                            enabled = !isJoining,
+                            shape = CircleShape,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                        ) {
+                            if (isJoining) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.GroupAdd,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "انضمام إلى هذه البطولة الآن",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }

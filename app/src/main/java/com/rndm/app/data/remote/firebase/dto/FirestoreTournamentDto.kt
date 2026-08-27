@@ -16,6 +16,7 @@ data class FirestoreTournamentDto(
     val groupsCount: Int = 2,
     val qualifiersPerGroup: Int = 2,
     val isArchived: Boolean = false,
+    val isPublic: Boolean = false,
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
     val version: Long = 1L

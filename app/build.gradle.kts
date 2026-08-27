@@ -16,11 +16,11 @@ android {
         applicationId = "com.rndm.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 8
-        versionName = "1.0.7"
+        versionCode = 10
+        versionName = "1.0.9"
 
         buildConfigField("Long", "BUILD_TIMESTAMP", "${System.currentTimeMillis()}L")
-        buildConfigField("Long", "UPDATE_IDENTITY", "107L")
+        buildConfigField("Long", "UPDATE_IDENTITY", "109L")
         buildConfigField("String", "GITHUB_OWNER", "\"khalilkorichi\"")
         buildConfigField("String", "GITHUB_REPO", "\"rndm\"")
 

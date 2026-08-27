@@ -16,4 +16,6 @@ interface SyncRepository {
     fun observeAuditLogs(tournamentId: Long): Flow<List<AuditLog>>
     fun observeAvailableLiveTournaments(): Flow<List<Tournament>>
     suspend fun getLiveTournamentPreview(remoteTournamentId: String): Result<LiveTournamentPreview>
+    suspend fun broadcastTournamentToPublic(tournamentId: Long): Result<Unit>
+    suspend fun cleanupExpiredTournaments(): Result<Unit>
 }

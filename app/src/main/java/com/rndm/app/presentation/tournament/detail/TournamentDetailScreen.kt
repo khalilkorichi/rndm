@@ -293,6 +293,11 @@ fun TournamentDetailScreen(
             ShareTournamentDialog(
                 tournamentName = tournament.name,
                 shareCode = resolvedShareCode,
+                isUploading = uiState.isPublishing,
+                isHost = tournament.isHost,
+                isBroadcasting = uiState.isBroadcasting,
+                isBroadcasted = uiState.isBroadcasted,
+                onBroadcastToPublic = viewModel::onBroadcastToPublic,
                 onDismissRequest = viewModel::onDismissShareDialog
             )
         }

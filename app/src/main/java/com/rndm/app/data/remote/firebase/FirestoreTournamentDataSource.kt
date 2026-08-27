@@ -288,6 +288,67 @@ class FirestoreTournamentDataSource @Inject constructor(
         }
     }
 
+    suspend fun cleanupExpiredTournaments(): Result<Unit> {
+        return try {
+            val oneHourAgo = System.currentTimeMillis() - (60 * 60 * 1000L)
+            val snapshot = firestore.collection("tournaments")
+                .limit(50)
+                .get()
+                .await()
+
+            val batch = firestore.batch()
+            var count = 0
+
+            for (doc in snapshot.documents) {
+                val createdAt = doc.getLong("createdAt") ?: 0L
+                val isArchived = doc.getBoolean("archived") ?: false
+                val stage = doc.getString("stage") ?: ""
+                val status = doc.getString("status") ?: ""
+                val shareCode = doc.getString("shareCode")
+
+                // Expire if older than 1 hour, or completed, or already marked archived
+                if (createdAt < oneHourAgo || stage == "COMPLETED" || status == "ARCHIVED" || isArchived) {
+                    batch.delete(doc.reference)
+                    if (!shareCode.isNullOrBlank()) {
+                        val clean = shareCode.replace("-", "").replace(" ", "").uppercase()
+                        batch.delete(firestore.collection("tournament_codes").document(clean))
+                        batch.delete(firestore.collection("tournament_codes").document(shareCode))
+                    }
+                    count++
+                }
+            }
+
+            if (count > 0) {
+                batch.commit().await()
+                Log.d("SYNC_RNDM", "Cleaned up $count expired/completed tournaments from Cloud Firestore")
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Log.w("SYNC_RNDM", "Cleanup expired tournaments error: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun setTournamentPublicBroadcast(tournamentId: String, isPublic: Boolean = true): Result<Unit> {
+        return try {
+            firestore.collection("tournaments").document(tournamentId)
+                .update(
+                    mapOf(
+                        "isPublic" to isPublic,
+                        "public" to isPublic,
+                        "updatedAt" to System.currentTimeMillis()
+                    )
+                ).await()
+            Log.d("SYNC_RNDM", "Tournament $tournamentId public broadcast set to $isPublic")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Log.e("SYNC_RNDM", "Failed set tournament public broadcast", e)
+            Result.failure(e)
+        }
+    }
+
     fun observeLivePublicTournaments(limit: Long = 10): Flow<List<FirestoreTournamentDto>> = callbackFlow {
         val query = firestore.collection("tournaments")
             .limit(limit)
@@ -299,8 +360,15 @@ class FirestoreTournamentDataSource @Inject constructor(
                 return@addSnapshotListener
             }
             if (snapshot != null) {
+                val oneHourAgo = System.currentTimeMillis() - (60 * 60 * 1000L)
                 val list = snapshot.toObjects(FirestoreTournamentDto::class.java)
-                    .filter { !it.isArchived && it.status == "ACTIVE" }
+                    .filter {
+                        !it.isArchived &&
+                        it.isPublic &&
+                        it.status == "ACTIVE" &&
+                        it.stage != "COMPLETED" &&
+                        it.createdAt >= oneHourAgo
+                    }
                     .sortedByDescending { it.updatedAt.coerceAtLeast(it.createdAt) }
                 trySend(list)
             }

@@ -43,6 +43,7 @@ class TournamentDetailViewModel @Inject constructor(
     private val tournamentRepository: TournamentRepository,
     private val drawFixtureRepository: DrawFixtureRepository,
     private val publishTournamentUseCase: PublishTournamentUseCase,
+    private val broadcastTournamentUseCase: com.rndm.app.domain.usecase.sync.BroadcastTournamentUseCase,
     private val observeRemoteTournamentUseCase: ObserveRemoteTournamentUseCase,
     private val getCurrentUserRoleUseCase: GetCurrentUserRoleUseCase,
     private val submitTournamentRequestUseCase: SubmitTournamentRequestUseCase,
@@ -236,6 +237,28 @@ class TournamentDetailViewModel @Inject constructor(
 
     fun onDismissShareDialog() {
         _uiState.update { it.copy(isShareDialogOpen = false) }
+    }
+
+    fun onBroadcastToPublic() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBroadcasting = true, publishErrorMessage = null) }
+            val result = broadcastTournamentUseCase(tournamentId)
+            if (result.isSuccess) {
+                _uiState.update {
+                    it.copy(
+                        isBroadcasting = false,
+                        isBroadcasted = true
+                    )
+                }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        isBroadcasting = false,
+                        publishErrorMessage = result.exceptionOrNull()?.localizedMessage ?: "تعذر نشر البطولة في الشريط المباشر"
+                    )
+                }
+            }
+        }
     }
 
     fun generateDirectKnockout() {

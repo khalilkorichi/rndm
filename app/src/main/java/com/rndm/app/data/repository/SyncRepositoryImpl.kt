@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -36,6 +37,7 @@ class SyncRepositoryImpl @Inject constructor(
     private val authDataSource: FirebaseAuthDataSource,
     private val ioDispatcher: CoroutineDispatcher
 ) : SyncRepository {
+    private val locallyPublishedRemoteIds = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     override suspend fun publishTournament(tournamentId: Long): Result<Tournament> = withContext(ioDispatcher) {
         try {
@@ -62,6 +64,7 @@ class SyncRepositoryImpl @Inject constructor(
 
             if (publishResult.isSuccess) {
                 val publishedDto = publishResult.getOrThrow()
+                locallyPublishedRemoteIds.add(publishedDto.id)
                 val updatedEntity = tournamentEntity.copy(
                     remoteId = publishedDto.id,
                     shareCode = publishedDto.shareCode,
@@ -72,6 +75,14 @@ class SyncRepositoryImpl @Inject constructor(
                     lastSyncedAt = System.currentTimeMillis()
                 )
                 tournamentDao.updateTournament(updatedEntity)
+                // Clean up any expired tournaments from the cloud in background
+                kotlinx.coroutines.CoroutineScope(ioDispatcher).launch {
+                    try {
+                        remoteTournamentDataSource.cleanupExpiredTournaments()
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                    }
+                }
                 Result.success(updatedEntity.toDomain())
             } else {
                 Result.failure(publishResult.exceptionOrNull() ?: Exception("فشل نشر البطولة"))
@@ -240,14 +251,23 @@ class SyncRepositoryImpl @Inject constructor(
             tournamentDao.getAllTournaments()
         ) { remoteList, localEntities ->
             val currentUid = authDataSource.currentUid
-            val localRemoteIds = localEntities.mapNotNull { it.remoteId }.toSet()
-            val localShareCodes = localEntities.mapNotNull { it.shareCode?.replace("-", "")?.replace(" ", "")?.uppercase() }.toSet()
+            val localRemoteIds = localEntities.mapNotNull { it.remoteId?.trim() }.filter { it.isNotBlank() }.toSet()
+            val localShareCodes = localEntities.mapNotNull { it.shareCode?.replace("-", "")?.replace(" ", "")?.uppercase() }.filter { it.isNotBlank() }.toSet()
+            val localNames = localEntities.map { it.name.trim().lowercase() }.toSet()
+
+            val oneHourAgo = System.currentTimeMillis() - (60 * 60 * 1000L)
 
             remoteList.filter { remoteDto ->
+                val isFresh = remoteDto.createdAt >= oneHourAgo && remoteDto.stage != "COMPLETED" && remoteDto.status == "ACTIVE"
+                val isLocallyPublished = remoteDto.id in locallyPublishedRemoteIds
                 val isHost = currentUid != null && remoteDto.hostUid.isNotBlank() && remoteDto.hostUid == currentUid
                 val cleanRemoteCode = remoteDto.shareCode.replace("-", "").replace(" ", "").uppercase()
-                val alreadyJoined = remoteDto.id in localRemoteIds || cleanRemoteCode in localShareCodes
-                !isHost && !alreadyJoined
+                val matchesLocalRemoteId = remoteDto.id in localRemoteIds
+                val matchesLocalCode = cleanRemoteCode.isNotBlank() && cleanRemoteCode in localShareCodes
+                val matchesLocalName = remoteDto.name.trim().lowercase() in localNames
+
+                val isOwnerOrAlreadyPresent = isLocallyPublished || isHost || matchesLocalRemoteId || matchesLocalCode || matchesLocalName
+                isFresh && !isOwnerOrAlreadyPresent
             }.map { it.toDomain() }
         }.flowOn(ioDispatcher)
     }
@@ -267,6 +287,35 @@ class SyncRepositoryImpl @Inject constructor(
                     matches = domainMatches
                 )
             )
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun broadcastTournamentToPublic(tournamentId: Long): Result<Unit> = withContext(ioDispatcher) {
+        try {
+            val tournamentEntity = tournamentDao.getTournamentById(tournamentId)
+                ?: return@withContext Result.failure(IllegalArgumentException("البطولة غير موجودة محلياً"))
+
+            val remoteId = tournamentEntity.remoteId
+                ?: return@withContext Result.failure(IllegalStateException("لم يتم رفع البطولة بعد إلى السحابة"))
+
+            val result = remoteTournamentDataSource.setTournamentPublicBroadcast(remoteId, true)
+            if (result.isSuccess) {
+                Result.success(Unit)
+            } else {
+                Result.failure(result.exceptionOrNull() ?: Exception("فشل نشر البطولة للعامة"))
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun cleanupExpiredTournaments(): Result<Unit> = withContext(ioDispatcher) {
+        try {
+            remoteTournamentDataSource.cleanupExpiredTournaments()
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Result.failure(e)

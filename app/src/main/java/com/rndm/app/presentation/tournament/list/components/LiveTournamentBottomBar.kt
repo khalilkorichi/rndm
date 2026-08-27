@@ -1,7 +1,8 @@
 package com.rndm.app.presentation.tournament.list.components
 
-import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -12,23 +13,21 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.rndm.app.core.theme.LiveTournamentBadgeBg
-import com.rndm.app.core.theme.LiveTournamentBadgeText
-import com.rndm.app.core.theme.LiveTournamentGradientEnd
-import com.rndm.app.core.theme.LiveTournamentGradientStart
+import com.rndm.app.core.theme.*
 import com.rndm.app.core.ui.components.LtrForcedText
 import com.rndm.app.domain.model.Tournament
 import com.rndm.app.domain.model.TournamentType
@@ -42,35 +41,90 @@ fun LiveTournamentBottomBar(
     modifier: Modifier = Modifier,
     isJoining: Boolean = false
 ) {
-    val gradientColors = remember { listOf(LiveTournamentGradientStart, LiveTournamentGradientEnd) }
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse_transition")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.95f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse_scale"
+    )
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp)
-            .shadow(elevation = 10.dp, shape = RoundedCornerShape(20.dp), spotColor = LiveTournamentGradientEnd.copy(alpha = 0.5f))
-            .background(brush = Brush.horizontalGradient(gradientColors), shape = RoundedCornerShape(20.dp))
-            .clip(RoundedCornerShape(20.dp))
-            .clickable { onPreviewClick(tournament) }
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 14.dp),
+        contentAlignment = Alignment.Center
     ) {
         Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(
+                    elevation = if (isDark) 18.dp else 12.dp,
+                    shape = CircleShape,
+                    spotColor = if (isDark) BottomBarShadowDark.copy(alpha = 0.6f) else PrimaryLight.copy(alpha = 0.15f),
+                    ambientColor = if (isDark) BottomBarShadowDark.copy(alpha = 0.4f) else PrimaryLight.copy(alpha = 0.08f)
+                )
+                .clip(CircleShape)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = if (isDark) {
+                            listOf(
+                                BottomBarDarkBgTop.copy(alpha = 0.97f),
+                                BottomBarDarkBgBottom.copy(alpha = 0.95f)
+                            )
+                        } else {
+                            listOf(
+                                BottomBarLightBgTop.copy(alpha = 0.96f),
+                                BottomBarLightBgBottom.copy(alpha = 0.90f)
+                            )
+                        }
+                    )
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.horizontalGradient(
+                        colors = if (isDark) {
+                            listOf(
+                                PrimaryDark.copy(alpha = 0.7f),
+                                BottomBarDarkBorderTop.copy(alpha = 0.8f),
+                                PrimaryDark.copy(alpha = 0.4f)
+                            )
+                        } else {
+                            listOf(
+                                PrimaryLight.copy(alpha = 0.6f),
+                                Color.White.copy(alpha = 0.9f),
+                                PrimaryLight.copy(alpha = 0.3f)
+                            )
+                        }
+                    ),
+                    shape = CircleShape
+                )
+                .clickable { onPreviewClick(tournament) }
+                .padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Live / Trophy Badge Icon
+            // Pulsing Live Icon
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(40.dp)
-                    .background(Color.White.copy(alpha = 0.2f), shape = CircleShape)
+                    .size(34.dp)
+                    .scale(pulseScale)
+                    .background(
+                        brush = Brush.linearGradient(listOf(LiveTournamentGradientStart, LiveTournamentGradientEnd)),
+                        shape = CircleShape
+                    )
             ) {
                 Icon(
                     imageVector = Icons.Default.EmojiEvents,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
 
@@ -81,25 +135,27 @@ fun LiveTournamentBottomBar(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "بطولة حية متاحة! 🔥",
-                        color = Color.White,
+                        text = tournament.name,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                     if (!tournament.shareCode.isNullOrBlank()) {
                         Surface(
-                            color = LiveTournamentBadgeBg,
-                            shape = RoundedCornerShape(4.dp),
-                            modifier = Modifier.padding(start = 2.dp)
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                            shape = RoundedCornerShape(4.dp)
                         ) {
                             LtrForcedText(
                                 text = tournament.shareCode!!,
                                 style = TextStyle(
-                                    color = LiveTournamentBadgeText,
-                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    fontSize = 9.sp,
                                     fontWeight = FontWeight.Black
                                 ),
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
@@ -108,88 +164,89 @@ fun LiveTournamentBottomBar(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(2.dp))
-
                 Text(
-                    text = "${tournament.name} • ${if (tournament.type == TournamentType.GROUPS_KNOCKOUT) "مجموعات" else "إقصائيات"}",
-                    color = Color.White.copy(alpha = 0.9f),
-                    fontSize = 11.sp,
+                    text = "بطولة حية • ${if (tournament.type == TournamentType.GROUPS_KNOCKOUT) "مجموعات" else "إقصائيات"}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
 
-            // Action Buttons
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            // Preview Pill Button
+            Surface(
+                onClick = { onPreviewClick(tournament) },
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+                modifier = Modifier.height(30.dp)
             ) {
-                // Preview Button
-                OutlinedButton(
-                    onClick = { onPreviewClick(tournament) },
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color.White
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        Color.White.copy(alpha = 0.7f)
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    modifier = Modifier.height(34.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 8.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Visibility,
                         contentDescription = "معاينة",
-                        modifier = Modifier.size(14.dp)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(13.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("معاينة", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = "معاينة",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
+            }
 
-                // Join Button
-                Button(
-                    onClick = { onJoinClick(tournament) },
-                    enabled = !isJoining,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White,
-                        contentColor = LiveTournamentGradientEnd
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                    modifier = Modifier.height(34.dp)
-                ) {
-                    if (isJoining) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(14.dp),
-                            color = LiveTournamentGradientEnd,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.GroupAdd,
-                            contentDescription = "انضمام",
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("انضمام", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
-                    }
-                }
-
-                // Dismiss Button
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(24.dp)
-                ) {
+            // Join Pill Button
+            Button(
+                onClick = { onJoinClick(tournament) },
+                enabled = !isJoining,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                shape = CircleShape,
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                modifier = Modifier.height(30.dp)
+            ) {
+                if (isJoining) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(12.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                } else {
                     Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "إغلاق",
-                        tint = Color.White.copy(alpha = 0.75f),
-                        modifier = Modifier.size(16.dp)
+                        imageVector = Icons.Default.GroupAdd,
+                        contentDescription = "انضمام",
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = "انضمام",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.ExtraBold
                     )
                 }
+            }
+
+            // Dismiss Button
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "إغلاق",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.size(15.dp)
+                )
             }
         }
     }
 }
+

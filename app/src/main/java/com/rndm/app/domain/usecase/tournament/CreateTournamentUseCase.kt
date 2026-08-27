@@ -82,7 +82,8 @@ class CreateTournamentUseCase @Inject constructor(
             playersProfileId = playersProfile.id,
             clubsProfileId = clubsProfile?.id,
             groupsCount = groupsCount,
-            qualifiersPerGroup = qualifiersPerGroup
+            qualifiersPerGroup = qualifiersPerGroup,
+            isHost = true
         )
 
         return tournamentRepository.saveTournament(tournament, participants, matches)

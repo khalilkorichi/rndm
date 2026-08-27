@@ -21,7 +21,8 @@ data class TournamentListUiState(
     val isPreviewLoading: Boolean = false,
     val isJoiningLiveTournament: Boolean = false,
     val joinedTournamentLocalId: Long? = null,
-    val liveTournamentErrorMessage: String? = null
+    val liveTournamentErrorMessage: String? = null,
+    val isRefreshing: Boolean = false
 ) {
     val activeLiveTournament: Tournament?
         get() = liveTournaments.firstOrNull { it.remoteId != null && it.remoteId !in dismissedLiveTournamentIds }

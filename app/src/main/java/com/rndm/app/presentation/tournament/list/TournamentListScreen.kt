@@ -2,6 +2,7 @@ package com.rndm.app.presentation.tournament.list
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -36,6 +37,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -178,9 +180,13 @@ fun TournamentListScreen(
             )
         },
         floatingActionButton = {
+            val fabPaddingBottom by animateDpAsState(
+                targetValue = if (uiState.activeLiveTournament != null) 140.dp else 76.dp,
+                label = "fab_padding"
+            )
             FloatingActionButton(
                 onClick = { showCreateOptionsSheet = true },
-                modifier = Modifier.padding(bottom = 76.dp),
+                modifier = Modifier.padding(bottom = fabPaddingBottom),
                 shape = MaterialTheme.shapes.large,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
@@ -251,95 +257,106 @@ fun TournamentListScreen(
                     )
                 }
 
-                Crossfade(targetState = uiState.isLoading, label = "tournaments_crossfade") { isLoading ->
-                    if (isLoading) {
-                        ProfileListSkeleton(modifier = Modifier.padding(16.dp))
-                    } else if (uiState.filteredTournaments.isEmpty()) {
-                        EmptyState(
-                            icon = painterResource(id = R.drawable.ic_tournament_outlined),
-                            title = "لا توجد بطولات",
-                            description = "ابدأ بإنشاء بطولة قرعة أو بطولة مجموعات لتنظيم مبارياتك ومتابعة النتائج.",
-                            actionText = "إنشاء بطولة",
-                            onActionClick = { showCreateOptionsSheet = true },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            // Winner Hall of Fame if there are winners
-                            if (uiState.winnerStats.isNotEmpty()) {
-                                item {
-                                    BentoCard(modifier = Modifier.fillMaxWidth()) {
-                                        Column {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Surface(
-                                                    shape = CircleShape,
-                                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                                    modifier = Modifier.size(32.dp)
-                                                ) {
-                                                    Box(contentAlignment = Alignment.Center) {
-                                                        Icon(
-                                                            painter = painterResource(id = R.drawable.ic_star),
-                                                            contentDescription = null,
-                                                            tint = MaterialTheme.colorScheme.primary,
-                                                            modifier = Modifier.size(18.dp)
-                                                        )
-                                                    }
-                                                }
-                                                Spacer(modifier = Modifier.width(spacing.sm))
-                                                Text(
-                                                    text = "لوحة الأبطال",
-                                                    style = MaterialTheme.typography.titleSmall,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.onSurface
-                                                )
-                                            }
-
-                                            Spacer(modifier = Modifier.height(spacing.sm))
-
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .horizontalScroll(rememberScrollState()),
-                                                horizontalArrangement = Arrangement.spacedBy(spacing.sm)
-                                            ) {
-                                                uiState.winnerStats.forEach { stat ->
+                PullToRefreshBox(
+                    isRefreshing = uiState.isRefreshing,
+                    onRefresh = viewModel::onRefresh,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Crossfade(targetState = uiState.isLoading, label = "tournaments_crossfade") { isLoading ->
+                        if (isLoading) {
+                            ProfileListSkeleton(modifier = Modifier.padding(16.dp))
+                        } else if (uiState.filteredTournaments.isEmpty()) {
+                            EmptyState(
+                                icon = painterResource(id = R.drawable.ic_tournament_outlined),
+                                title = "لا توجد بطولات",
+                                description = "ابدأ بإنشاء بطولة قرعة أو بطولة مجموعات لتنظيم مبارياتك ومتابعة النتائج.",
+                                actionText = "إنشاء بطولة",
+                                onActionClick = { showCreateOptionsSheet = true },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(
+                                    start = 16.dp, 
+                                    end = 16.dp, 
+                                    top = 16.dp, 
+                                    bottom = if (uiState.activeLiveTournament != null) 144.dp else 96.dp
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                // Winner Hall of Fame if there are winners
+                                if (uiState.winnerStats.isNotEmpty()) {
+                                    item {
+                                        BentoCard(modifier = Modifier.fillMaxWidth()) {
+                                            Column {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
                                                     Surface(
-                                                        shape = RoundedCornerShape(12.dp),
-                                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                                                        shape = CircleShape,
+                                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                                        modifier = Modifier.size(32.dp)
                                                     ) {
-                                                        Row(
-                                                            verticalAlignment = Alignment.CenterVertically,
-                                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                                        ) {
+                                                        Box(contentAlignment = Alignment.Center) {
                                                             Icon(
-                                                                painter = painterResource(id = R.drawable.ic_medal),
+                                                                painter = painterResource(id = R.drawable.ic_star),
                                                                 contentDescription = null,
-                                                                tint = MaterialTheme.colorScheme.secondary,
-                                                                modifier = Modifier.size(16.dp)
+                                                                tint = MaterialTheme.colorScheme.primary,
+                                                                modifier = Modifier.size(18.dp)
                                                             )
-                                                            Spacer(modifier = Modifier.width(6.dp))
-                                                            Text(
-                                                                text = stat.winnerName,
-                                                                style = MaterialTheme.typography.bodyMedium,
-                                                                fontWeight = FontWeight.SemiBold
-                                                            )
-                                                            Spacer(modifier = Modifier.width(6.dp))
-                                                            Surface(
-                                                                shape = CircleShape,
-                                                                color = MaterialTheme.colorScheme.primary,
-                                                                modifier = Modifier.size(20.dp)
+                                                        }
+                                                    }
+                                                    Spacer(modifier = Modifier.width(spacing.sm))
+                                                    Text(
+                                                        text = "لوحة الأبطال",
+                                                        style = MaterialTheme.typography.titleSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                }
+
+                                                Spacer(modifier = Modifier.height(spacing.sm))
+
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .horizontalScroll(rememberScrollState()),
+                                                    horizontalArrangement = Arrangement.spacedBy(spacing.sm)
+                                                ) {
+                                                    uiState.winnerStats.forEach { stat ->
+                                                        Surface(
+                                                            shape = RoundedCornerShape(12.dp),
+                                                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                                                        ) {
+                                                            Row(
+                                                                verticalAlignment = Alignment.CenterVertically,
+                                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                                                             ) {
-                                                                Box(contentAlignment = Alignment.Center) {
-                                                                    Text(
-                                                                        text = "${stat.winsCount}",
-                                                                        style = MaterialTheme.typography.labelSmall,
-                                                                        color = MaterialTheme.colorScheme.onPrimary,
-                                                                        fontWeight = FontWeight.Bold
-                                                                    )
+                                                                Icon(
+                                                                    painter = painterResource(id = R.drawable.ic_medal),
+                                                                    contentDescription = null,
+                                                                    tint = MaterialTheme.colorScheme.secondary,
+                                                                    modifier = Modifier.size(16.dp)
+                                                                )
+                                                                Spacer(modifier = Modifier.width(6.dp))
+                                                                Text(
+                                                                    text = stat.winnerName,
+                                                                    style = MaterialTheme.typography.bodyMedium,
+                                                                    fontWeight = FontWeight.SemiBold
+                                                                )
+                                                                Spacer(modifier = Modifier.width(6.dp))
+                                                                Surface(
+                                                                    shape = CircleShape,
+                                                                    color = MaterialTheme.colorScheme.primary,
+                                                                    modifier = Modifier.size(20.dp)
+                                                                ) {
+                                                                    Box(contentAlignment = Alignment.Center) {
+                                                                        Text(
+                                                                            text = "${stat.winsCount}",
+                                                                            style = MaterialTheme.typography.labelSmall,
+                                                                            color = MaterialTheme.colorScheme.onPrimary,
+                                                                            fontWeight = FontWeight.Bold
+                                                                        )
+                                                                    }
                                                                 }
                                                             }
                                                         }
@@ -349,19 +366,19 @@ fun TournamentListScreen(
                                         }
                                     }
                                 }
-                            }
 
-                            items(
-                                items = uiState.filteredTournaments,
-                                key = { it.id }
-                            ) { tournament ->
-                                SwipeableTournamentCard(
-                                    tournament = tournament,
-                                    onClick = { onNavigateToTournamentDetail(tournament.id) },
-                                    onEdit = { onNavigateToEditTournament(tournament.id) },
-                                    onArchive = { viewModel.archiveTournament(tournament.id) },
-                                    onDelete = { viewModel.requestDelete(tournament.id) }
-                                )
+                                items(
+                                    items = uiState.filteredTournaments,
+                                    key = { it.id }
+                                ) { tournament ->
+                                    SwipeableTournamentCard(
+                                        tournament = tournament,
+                                        onClick = { onNavigateToTournamentDetail(tournament.id) },
+                                        onEdit = { onNavigateToEditTournament(tournament.id) },
+                                        onArchive = { viewModel.archiveTournament(tournament.id) },
+                                        onDelete = { viewModel.requestDelete(tournament.id) }
+                                    )
+                                }
                             }
                         }
                     }

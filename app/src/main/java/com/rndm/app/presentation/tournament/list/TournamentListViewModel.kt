@@ -25,7 +25,8 @@ class TournamentListViewModel @Inject constructor(
     private val archiveTournamentUseCase: ArchiveTournamentUseCase,
     private val observeAvailableLiveTournamentsUseCase: ObserveAvailableLiveTournamentsUseCase,
     private val getLiveTournamentPreviewUseCase: GetLiveTournamentPreviewUseCase,
-    private val joinTournamentByCodeUseCase: JoinTournamentByCodeUseCase
+    private val joinTournamentByCodeUseCase: JoinTournamentByCodeUseCase,
+    private val cleanupExpiredTournamentsUseCase: com.rndm.app.domain.usecase.sync.CleanupExpiredTournamentsUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TournamentListUiState())
@@ -59,6 +60,20 @@ class TournamentListViewModel @Inject constructor(
 
     fun onSortSelect(sort: TournamentSort) {
         _uiState.update { it.copy(selectedSort = sort) }
+    }
+
+    fun onRefresh() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true) }
+            try {
+                cleanupExpiredTournamentsUseCase()
+                kotlinx.coroutines.delay(600)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+            } finally {
+                _uiState.update { it.copy(isRefreshing = false) }
+            }
+        }
     }
 
     // ── Live Tournaments Actions ────────────────────────────────
