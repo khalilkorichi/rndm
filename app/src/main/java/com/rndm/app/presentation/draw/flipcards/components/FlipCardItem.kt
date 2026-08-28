@@ -1,4 +1,4 @@
-﻿package com.rndm.app.presentation.draw.flipcards.components
+package com.rndm.app.presentation.draw.flipcards.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -54,6 +54,7 @@ fun FlipCardItem(
     cardNumber: Int,
     itemLabel: String,
     isFlipped: Boolean,
+    isDrawn: Boolean = false,
     isEnabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -68,7 +69,7 @@ fun FlipCardItem(
 
     // Rotation angle from 0 to 180 degrees
     val rotation by animateFloatAsState(
-        targetValue = if (isFlipped) 180f else 0f,
+        targetValue = if (isFlipped || isDrawn) 180f else 0f,
         animationSpec = tween(
             durationMillis = Constants.FLIP_CARD_DURATION_MS.toInt(),
             easing = FastOutSlowInEasing
@@ -78,9 +79,16 @@ fun FlipCardItem(
 
     // Elevation & scale bump during rotation
     val scale by animateFloatAsState(
-        targetValue = if (isFlipped) 1.05f else 1.0f,
+        targetValue = if (isFlipped && !isDrawn) 1.05f else 1.0f,
         animationSpec = tween(durationMillis = 350),
         label = "flip_card_scale_$cardNumber"
+    )
+
+    // Alpha / Opacity reduction for drawn cards
+    val cardAlpha by animateFloatAsState(
+        targetValue = if (isDrawn) 0.45f else 1.0f,
+        animationSpec = tween(durationMillis = 350),
+        label = "flip_card_alpha_$cardNumber"
     )
 
     val cardShape = RoundedCornerShape(18.dp)
@@ -91,7 +99,7 @@ fun FlipCardItem(
         DrawCategory.NATIONAL_TEAMS -> MaterialTheme.colorScheme.tertiary
     }
 
-    val totalElevation = (if (isFlipped) 14f else 3f) + shuffleElevation
+    val totalElevation = (if (isFlipped && !isDrawn) 14f else if (isDrawn) 1f else 3f) + shuffleElevation
 
     Card(
         modifier = modifier
@@ -105,14 +113,15 @@ fun FlipCardItem(
                 cameraDistance = 16f * density
                 scaleX = scale * shuffleScale
                 scaleY = scale * shuffleScale
+                alpha = cardAlpha
             }
             .shadow(
                 elevation = totalElevation.dp,
                 shape = cardShape,
-                ambientColor = if (isFlipped || shuffleElevation > 0f) categoryColor.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.2f),
-                spotColor = if (isFlipped || shuffleElevation > 0f) categoryColor else Color.Black.copy(alpha = 0.3f)
+                ambientColor = if ((isFlipped && !isDrawn) || shuffleElevation > 0f) categoryColor.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.2f),
+                spotColor = if ((isFlipped && !isDrawn) || shuffleElevation > 0f) categoryColor else Color.Black.copy(alpha = 0.3f)
             )
-            .clickable(enabled = isEnabled && !isFlipped) {
+            .clickable(enabled = isEnabled && !isFlipped && !isDrawn) {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onClick()
             },
@@ -125,12 +134,19 @@ fun FlipCardItem(
             }
         ),
         border = BorderStroke(
-            width = if (isFlipped || shuffleElevation > 0f) 2.dp else 1.2.dp,
-            brush = if (isFlipped || shuffleElevation > 0f) {
+            width = if (isFlipped && !isDrawn) 2.dp else if (isDrawn) 1.dp else 1.2.dp,
+            brush = if (isFlipped && !isDrawn) {
                 Brush.verticalGradient(
                     colors = listOf(
                         categoryColor,
                         MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
+            } else if (isDrawn) {
+                Brush.verticalGradient(
+                    colors = listOf(
+                        categoryColor.copy(alpha = 0.35f),
+                        categoryColor.copy(alpha = 0.15f)
                     )
                 )
             } else {

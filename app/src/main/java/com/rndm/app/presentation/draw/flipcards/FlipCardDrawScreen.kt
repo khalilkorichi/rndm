@@ -1,4 +1,4 @@
-﻿package com.rndm.app.presentation.draw.flipcards
+package com.rndm.app.presentation.draw.flipcards
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -208,9 +208,10 @@ fun FlipCardDrawScreen(
                 }
 
                 // 3. Flip Cards Deck Area / Category Empty States
-                val items = uiState.currentCardsItems
+                val cards = uiState.currentCards
+                val remainingCount = uiState.currentRemainingItems.size
 
-                if (items.isEmpty()) {
+                if (cards.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -309,7 +310,7 @@ fun FlipCardDrawScreen(
                         FlipCardExclusionHub(
                             category = uiState.selectedCategory,
                             excludedCount = uiState.currentExcludedItems.size,
-                            remainingCount = items.size,
+                            remainingCount = remainingCount,
                             isRevealing = uiState.isRevealing,
                             isShuffling = uiState.isShuffling,
                             onOpenExcludeDialog = { viewModel.onOpenExcludeDialog() },
@@ -343,12 +344,14 @@ fun FlipCardDrawScreen(
                                 verticalArrangement = Arrangement.spacedBy(vertSpacing)
                             ) {
                                 items(
-                                    count = items.size,
+                                    count = cards.size,
                                     // Crucial: Use index key so Compose does NOT auto-scroll or jump when item order changes!
                                     key = { index -> index }
                                 ) { index ->
+                                    val cardState = cards[index]
                                     val isFlipped = uiState.flippedCardIndex == index
-                                    val item = items[index]
+                                    val isDrawn = cardState.isDrawn
+                                    val item = cardState.item
                                     val revealedLabel = if (isFlipped) {
                                         uiState.drawResult?.selectedItem?.label ?: item.label
                                     } else {
@@ -365,17 +368,18 @@ fun FlipCardDrawScreen(
                                     }
                                     val dirY = if (row % 2 == 0) -0.7f else 0.7f
 
-                                    val offsetX = stepXPx * dirX * 0.95f * arcCurve
-                                    val offsetY = stepYPx * dirY * 0.35f * arcCurve
-                                    val tiltZ = (dirX * -9f + dirY * 4f) * arcCurve
-                                    val scale = 1f + (0.07f * arcCurve)
-                                    val elevation = if ((row + col) % 2 == 0) 16f * arcCurve else 4f * arcCurve
+                                    val offsetX = if (isDrawn) 0f else stepXPx * dirX * 0.95f * arcCurve
+                                    val offsetY = if (isDrawn) 0f else stepYPx * dirY * 0.35f * arcCurve
+                                    val tiltZ = if (isDrawn) 0f else (dirX * -9f + dirY * 4f) * arcCurve
+                                    val scale = if (isDrawn) 1f else 1f + (0.07f * arcCurve)
+                                    val elevation = if (isDrawn) 0f else if ((row + col) % 2 == 0) 16f * arcCurve else 4f * arcCurve
 
                                     FlipCardItem(
                                         cardNumber = index + 1,
                                         itemLabel = revealedLabel,
                                         isFlipped = isFlipped,
-                                        isEnabled = !uiState.isRevealing && !uiState.isShuffling,
+                                        isDrawn = isDrawn,
+                                        isEnabled = !uiState.isRevealing && !uiState.isShuffling && !isDrawn,
                                         onClick = { viewModel.onCardClick(index) },
                                         category = uiState.selectedCategory,
                                         shuffleOffsetX = offsetX,

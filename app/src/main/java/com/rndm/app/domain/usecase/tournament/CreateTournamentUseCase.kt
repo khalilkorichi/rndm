@@ -25,8 +25,10 @@ class CreateTournamentUseCase @Inject constructor(
         groupsCount: Int = 2,
         qualifiersPerGroup: Int = 2
     ): Long {
-        val shuffledPlayers = randomProvider.shuffle(playersProfile.items)
-        val shuffledClubs = clubsProfile?.items?.let { randomProvider.shuffle(it) } ?: emptyList()
+        val activePlayers = playersProfile.activeItems.ifEmpty { playersProfile.items }
+        val activeClubs = clubsProfile?.activeItems?.ifEmpty { clubsProfile.items } ?: emptyList()
+        val shuffledPlayers = randomProvider.shuffle(activePlayers)
+        val shuffledClubs = if (activeClubs.isNotEmpty()) randomProvider.shuffle(activeClubs) else emptyList()
 
         val participants = shuffledPlayers.mapIndexed { index, playerItem ->
             val groupIndex = if (type == TournamentType.GROUPS_KNOCKOUT) index % groupsCount else 0

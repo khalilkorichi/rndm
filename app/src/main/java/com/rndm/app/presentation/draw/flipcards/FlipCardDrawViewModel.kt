@@ -53,6 +53,7 @@ class FlipCardDrawViewModel @Inject constructor(
             val profile = getProfileByIdUseCase(profileId)
             if (profile != null) {
                 val activeItems = profile.activeItems.ifEmpty { profile.items }
+                val activeCards = activeItems.map { FlipCardState(item = it, isDrawn = false) }
                 val excludedItems = if (profile.activeItems.isEmpty()) emptyList() else profile.excludedItems
 
                 when (profile.type) {
@@ -61,7 +62,7 @@ class FlipCardDrawViewModel @Inject constructor(
                             it.copy(
                                 selectedCategory = DrawCategory.PLAYERS,
                                 selectedPlayersProfile = profile,
-                                remainingPlayers = activeItems,
+                                playerCards = activeCards,
                                 excludedPlayers = excludedItems,
                                 flippedCardIndex = -1,
                                 isRevealing = false,
@@ -74,7 +75,7 @@ class FlipCardDrawViewModel @Inject constructor(
                             it.copy(
                                 selectedCategory = DrawCategory.CLUBS,
                                 selectedClubsProfile = profile,
-                                remainingClubs = activeItems,
+                                clubsCards = activeCards,
                                 excludedClubs = excludedItems,
                                 flippedCardIndex = -1,
                                 isRevealing = false,
@@ -87,7 +88,7 @@ class FlipCardDrawViewModel @Inject constructor(
                             it.copy(
                                 selectedCategory = DrawCategory.NATIONAL_TEAMS,
                                 selectedNationalTeamsProfile = profile,
-                                remainingNationalTeams = activeItems,
+                                nationalTeamsCards = activeCards,
                                 excludedNationalTeams = excludedItems,
                                 flippedCardIndex = -1,
                                 isRevealing = false,
@@ -113,17 +114,17 @@ class FlipCardDrawViewModel @Inject constructor(
                     val selClub = current.selectedClubsProfile ?: clubs.firstOrNull { it.id == initialProfileId } ?: clubs.firstOrNull()
                     val selTeam = current.selectedNationalTeamsProfile ?: teams.firstOrNull { it.id == initialProfileId } ?: teams.firstOrNull()
 
-                    val remPlayers = if (current.remainingPlayers.isEmpty() && selPlayer != null) {
-                        selPlayer.activeItems.ifEmpty { selPlayer.items }
-                    } else current.remainingPlayers
+                    val initPlayerCards = if (current.playerCards.isEmpty() && selPlayer != null) {
+                        (selPlayer.activeItems.ifEmpty { selPlayer.items }).map { FlipCardState(item = it, isDrawn = false) }
+                    } else current.playerCards
 
-                    val remClubs = if (current.remainingClubs.isEmpty() && selClub != null) {
-                        selClub.activeItems.ifEmpty { selClub.items }
-                    } else current.remainingClubs
+                    val initClubCards = if (current.clubsCards.isEmpty() && selClub != null) {
+                        (selClub.activeItems.ifEmpty { selClub.items }).map { FlipCardState(item = it, isDrawn = false) }
+                    } else current.clubsCards
 
-                    val remTeams = if (current.remainingNationalTeams.isEmpty() && selTeam != null) {
-                        selTeam.activeItems.ifEmpty { selTeam.items }
-                    } else current.remainingNationalTeams
+                    val initTeamCards = if (current.nationalTeamsCards.isEmpty() && selTeam != null) {
+                        (selTeam.activeItems.ifEmpty { selTeam.items }).map { FlipCardState(item = it, isDrawn = false) }
+                    } else current.nationalTeamsCards
 
                     val exclPlayers = if (current.excludedPlayers.isEmpty() && selPlayer != null) selPlayer.excludedItems else current.excludedPlayers
                     val exclClubs = if (current.excludedClubs.isEmpty() && selClub != null) selClub.excludedItems else current.excludedClubs
@@ -148,9 +149,9 @@ class FlipCardDrawViewModel @Inject constructor(
                         selectedPlayersProfile = selPlayer,
                         selectedClubsProfile = selClub,
                         selectedNationalTeamsProfile = selTeam,
-                        remainingPlayers = remPlayers,
-                        remainingClubs = remClubs,
-                        remainingNationalTeams = remTeams,
+                        playerCards = initPlayerCards,
+                        clubsCards = initClubCards,
+                        nationalTeamsCards = initTeamCards,
                         excludedPlayers = exclPlayers,
                         excludedClubs = exclClubs,
                         excludedNationalTeams = exclTeams
@@ -197,9 +198,17 @@ class FlipCardDrawViewModel @Inject constructor(
         val state = _uiState.value
         if (state.isRevealing || state.isShuffling) return
 
-        val shuffledPlayers = randomProvider.shuffle(state.remainingPlayers)
-        val shuffledClubs = randomProvider.shuffle(state.remainingClubs)
-        val shuffledTeams = randomProvider.shuffle(state.remainingNationalTeams)
+        val currentCards = state.currentCards
+        val undrawnIndices = currentCards.indices.filter { !currentCards[it].isDrawn }
+        if (undrawnIndices.size <= 1) return
+
+        val undrawnItems = undrawnIndices.map { currentCards[it].item }
+        val shuffledUndrawn = randomProvider.shuffle(undrawnItems)
+
+        val updatedCards = currentCards.toMutableList()
+        undrawnIndices.forEachIndexed { i, targetIdx ->
+            updatedCards[targetIdx] = FlipCardState(item = shuffledUndrawn[i], isDrawn = false)
+        }
 
         _uiState.update {
             it.copy(
@@ -214,15 +223,15 @@ class FlipCardDrawViewModel @Inject constructor(
             _uiState.update { current ->
                 when (current.selectedCategory) {
                     DrawCategory.PLAYERS -> current.copy(
-                        remainingPlayers = shuffledPlayers,
+                        playerCards = updatedCards,
                         isShuffling = false
                     )
                     DrawCategory.CLUBS -> current.copy(
-                        remainingClubs = shuffledClubs,
+                        clubsCards = updatedCards,
                         isShuffling = false
                     )
                     DrawCategory.NATIONAL_TEAMS -> current.copy(
-                        remainingNationalTeams = shuffledTeams,
+                        nationalTeamsCards = updatedCards,
                         isShuffling = false
                     )
                 }
@@ -232,11 +241,13 @@ class FlipCardDrawViewModel @Inject constructor(
 
     fun onCardClick(cardIndex: Int) {
         val state = _uiState.value
-        val items = state.currentCardsItems
-        if (state.isRevealing || state.isShuffling || items.isEmpty() || cardIndex !in items.indices) return
+        val cards = state.currentCards
+        if (state.isRevealing || state.isShuffling || cards.isEmpty() || cardIndex !in cards.indices) return
 
-        // Pick item for this card slot
-        val drawnItem = items[cardIndex]
+        val targetCard = cards[cardIndex]
+        if (targetCard.isDrawn) return
+
+        val drawnItem = targetCard.item
 
         // 1. Reveal card immediately
         _uiState.update {
@@ -251,41 +262,20 @@ class FlipCardDrawViewModel @Inject constructor(
             // 2. 1.2s celebration delay
             delay(1200)
 
-            // 3. Atomically apply to fixtures, consume card, and reset flippedCardIndex
-            applyDrawnItem(drawnItem)
-
-            // 4. If only 1 item remains in the category, auto-assign it seamlessly
-            checkAutoAssignSingleRemaining()
+            // 3. Atomically apply to fixtures, mark card as isDrawn, and reset flippedCardIndex
+            applyDrawnItem(cardIndex, drawnItem)
         }
     }
 
-    private fun checkAutoAssignSingleRemaining() {
-        val state = _uiState.value
-        val items = state.currentCardsItems
-        if (items.size == 1) {
-            viewModelScope.launch {
-                delay(600)
-                val lastItem = items.first()
-                _uiState.update {
-                    it.copy(
-                        flippedCardIndex = 0,
-                        isRevealing = true,
-                        drawResult = DrawResult(drawType = DrawType.FLIP_CARDS, selectedItem = lastItem)
-                    )
-                }
-                delay(1200)
-                applyDrawnItem(lastItem)
-            }
-        }
-    }
-
-    private fun applyDrawnItem(drawnItem: ProfileItem) {
+    private fun applyDrawnItem(cardIndex: Int, drawnItem: ProfileItem) {
         val state = _uiState.value
         val fixtures = state.fixtures.toMutableList()
 
         when (state.selectedCategory) {
             DrawCategory.PLAYERS -> {
-                val remPlayers = state.remainingPlayers.filter { it.id != drawnItem.id && it.label != drawnItem.label }
+                val updatedCards = state.playerCards.mapIndexed { idx, card ->
+                    if (idx == cardIndex) card.copy(isDrawn = true) else card
+                }
                 val lastFixture = fixtures.lastOrNull()
 
                 if (lastFixture != null && lastFixture.playerTwoName == null) {
@@ -303,7 +293,7 @@ class FlipCardDrawViewModel @Inject constructor(
                 drawFixtureRepository.setFixtures(fixtures)
                 _uiState.update {
                     it.copy(
-                        remainingPlayers = remPlayers,
+                        playerCards = updatedCards,
                         fixtures = fixtures,
                         flippedCardIndex = -1,
                         isRevealing = false,
@@ -313,10 +303,9 @@ class FlipCardDrawViewModel @Inject constructor(
             }
             DrawCategory.CLUBS, DrawCategory.NATIONAL_TEAMS -> {
                 val isClubs = state.selectedCategory == DrawCategory.CLUBS
-                val remItems = if (isClubs) {
-                    state.remainingClubs.filter { it.id != drawnItem.id && it.label != drawnItem.label }
-                } else {
-                    state.remainingNationalTeams.filter { it.id != drawnItem.id && it.label != drawnItem.label }
+                val targetCards = if (isClubs) state.clubsCards else state.nationalTeamsCards
+                val updatedCards = targetCards.mapIndexed { idx, card ->
+                    if (idx == cardIndex) card.copy(isDrawn = true) else card
                 }
 
                 var assigned = false
@@ -341,7 +330,7 @@ class FlipCardDrawViewModel @Inject constructor(
                 _uiState.update { current ->
                     if (isClubs) {
                         current.copy(
-                            remainingClubs = remItems,
+                            clubsCards = updatedCards,
                             fixtures = fixtures,
                             flippedCardIndex = -1,
                             isRevealing = false,
@@ -349,7 +338,7 @@ class FlipCardDrawViewModel @Inject constructor(
                         )
                     } else {
                         current.copy(
-                            remainingNationalTeams = remItems,
+                            nationalTeamsCards = updatedCards,
                             fixtures = fixtures,
                             flippedCardIndex = -1,
                             isRevealing = false,
@@ -471,17 +460,17 @@ class FlipCardDrawViewModel @Inject constructor(
         _uiState.update { current ->
             when (category) {
                 DrawCategory.PLAYERS -> current.copy(
-                    remainingPlayers = current.remainingPlayers.filter { it.id != item.id || it.label != item.label },
+                    playerCards = current.playerCards.filter { it.item.id != item.id || it.item.label != item.label },
                     excludedPlayers = (current.excludedPlayers + item.copy(isActive = false)).distinctBy { it.label },
                     flippedCardIndex = -1
                 )
                 DrawCategory.CLUBS -> current.copy(
-                    remainingClubs = current.remainingClubs.filter { it.id != item.id || it.label != item.label },
+                    clubsCards = current.clubsCards.filter { it.item.id != item.id || it.item.label != item.label },
                     excludedClubs = (current.excludedClubs + item.copy(isActive = false)).distinctBy { it.label },
                     flippedCardIndex = -1
                 )
                 DrawCategory.NATIONAL_TEAMS -> current.copy(
-                    remainingNationalTeams = current.remainingNationalTeams.filter { it.id != item.id || it.label != item.label },
+                    nationalTeamsCards = current.nationalTeamsCards.filter { it.item.id != item.id || it.item.label != item.label },
                     excludedNationalTeams = (current.excludedNationalTeams + item.copy(isActive = false)).distinctBy { it.label },
                     flippedCardIndex = -1
                 )
@@ -506,20 +495,22 @@ class FlipCardDrawViewModel @Inject constructor(
             }
         }
 
+        val restoredCard = FlipCardState(item = item.copy(isActive = true), isDrawn = false)
+
         _uiState.update { current ->
             when (category) {
                 DrawCategory.PLAYERS -> current.copy(
-                    remainingPlayers = (current.remainingPlayers + item.copy(isActive = true)).distinctBy { it.label },
+                    playerCards = (current.playerCards + restoredCard).distinctBy { it.item.label },
                     excludedPlayers = current.excludedPlayers.filter { it.id != item.id && it.label != item.label },
                     flippedCardIndex = -1
                 )
                 DrawCategory.CLUBS -> current.copy(
-                    remainingClubs = (current.remainingClubs + item.copy(isActive = true)).distinctBy { it.label },
+                    clubsCards = (current.clubsCards + restoredCard).distinctBy { it.item.label },
                     excludedClubs = current.excludedClubs.filter { it.id != item.id && it.label != item.label },
                     flippedCardIndex = -1
                 )
                 DrawCategory.NATIONAL_TEAMS -> current.copy(
-                    remainingNationalTeams = (current.remainingNationalTeams + item.copy(isActive = true)).distinctBy { it.label },
+                    nationalTeamsCards = (current.nationalTeamsCards + restoredCard).distinctBy { it.item.label },
                     excludedNationalTeams = current.excludedNationalTeams.filter { it.id != item.id && it.label != item.label },
                     flippedCardIndex = -1
                 )
@@ -555,18 +546,18 @@ class FlipCardDrawViewModel @Inject constructor(
         _uiState.update { current ->
             when (category) {
                 DrawCategory.PLAYERS -> current.copy(
-                    remainingPlayers = emptyList(),
-                    excludedPlayers = (current.excludedPlayers + current.remainingPlayers.map { it.copy(isActive = false) }).distinctBy { it.label },
+                    playerCards = current.playerCards.filter { it.isDrawn },
+                    excludedPlayers = (current.excludedPlayers + itemsToExclude.map { it.copy(isActive = false) }).distinctBy { it.label },
                     flippedCardIndex = -1
                 )
                 DrawCategory.CLUBS -> current.copy(
-                    remainingClubs = emptyList(),
-                    excludedClubs = (current.excludedClubs + current.remainingClubs.map { it.copy(isActive = false) }).distinctBy { it.label },
+                    clubsCards = current.clubsCards.filter { it.isDrawn },
+                    excludedClubs = (current.excludedClubs + itemsToExclude.map { it.copy(isActive = false) }).distinctBy { it.label },
                     flippedCardIndex = -1
                 )
                 DrawCategory.NATIONAL_TEAMS -> current.copy(
-                    remainingNationalTeams = emptyList(),
-                    excludedNationalTeams = (current.excludedNationalTeams + current.remainingNationalTeams.map { it.copy(isActive = false) }).distinctBy { it.label },
+                    nationalTeamsCards = current.nationalTeamsCards.filter { it.isDrawn },
+                    excludedNationalTeams = (current.excludedNationalTeams + itemsToExclude.map { it.copy(isActive = false) }).distinctBy { it.label },
                     flippedCardIndex = -1
                 )
             }
@@ -590,21 +581,30 @@ class FlipCardDrawViewModel @Inject constructor(
 
         _uiState.update { current ->
             when (category) {
-                DrawCategory.PLAYERS -> current.copy(
-                    remainingPlayers = (current.remainingPlayers + current.excludedPlayers.map { it.copy(isActive = true) }).distinctBy { it.label },
-                    excludedPlayers = emptyList(),
-                    flippedCardIndex = -1
-                )
-                DrawCategory.CLUBS -> current.copy(
-                    remainingClubs = (current.remainingClubs + current.excludedClubs.map { it.copy(isActive = true) }).distinctBy { it.label },
-                    excludedClubs = emptyList(),
-                    flippedCardIndex = -1
-                )
-                DrawCategory.NATIONAL_TEAMS -> current.copy(
-                    remainingNationalTeams = (current.remainingNationalTeams + current.excludedNationalTeams.map { it.copy(isActive = true) }).distinctBy { it.label },
-                    excludedNationalTeams = emptyList(),
-                    flippedCardIndex = -1
-                )
+                DrawCategory.PLAYERS -> {
+                    val restoredCards = current.excludedPlayers.map { FlipCardState(it.copy(isActive = true), isDrawn = false) }
+                    current.copy(
+                        playerCards = (current.playerCards + restoredCards).distinctBy { it.item.label },
+                        excludedPlayers = emptyList(),
+                        flippedCardIndex = -1
+                    )
+                }
+                DrawCategory.CLUBS -> {
+                    val restoredCards = current.excludedClubs.map { FlipCardState(it.copy(isActive = true), isDrawn = false) }
+                    current.copy(
+                        clubsCards = (current.clubsCards + restoredCards).distinctBy { it.item.label },
+                        excludedClubs = emptyList(),
+                        flippedCardIndex = -1
+                    )
+                }
+                DrawCategory.NATIONAL_TEAMS -> {
+                    val restoredCards = current.excludedNationalTeams.map { FlipCardState(it.copy(isActive = true), isDrawn = false) }
+                    current.copy(
+                        nationalTeamsCards = (current.nationalTeamsCards + restoredCards).distinctBy { it.item.label },
+                        excludedNationalTeams = emptyList(),
+                        flippedCardIndex = -1
+                    )
+                }
             }
         }
         updatePrompt()
@@ -632,42 +632,41 @@ class FlipCardDrawViewModel @Inject constructor(
             }
         }
 
-        val newPlayerItems = names.mapIndexed { idx, name ->
-            ProfileItem(
-                id = System.currentTimeMillis() + idx,
-                label = name,
-                isActive = true
+        val newCardStates = names.mapIndexed { idx, name ->
+            FlipCardState(
+                item = ProfileItem(
+                    id = System.currentTimeMillis() + idx,
+                    label = name,
+                    isActive = true
+                ),
+                isDrawn = false
             )
         }
 
-        val updatedRemainingPlayers = (state.remainingPlayers + newPlayerItems).distinctBy { it.label }
+        val updatedPlayerCards = (state.playerCards + newCardStates).distinctBy { it.item.label }
         val updatedExcludedPlayers = state.excludedPlayers.filter { excl ->
             names.none { it.equals(excl.label, ignoreCase = true) }
         }
 
         val assignedClubs = state.fixtures.flatMap { listOfNotNull(it.playerOneTeam, it.playerTwoTeam) }.toSet()
-        val unassignedClubs = (state.selectedClubsProfile?.activeItems ?: emptyList()).filter { it.label !in assignedClubs }
-        val updatedRemainingClubs = if (state.remainingClubs.isNotEmpty()) {
-            (state.remainingClubs + unassignedClubs).distinctBy { it.label }
-        } else {
-            unassignedClubs
-        }
+        val existingClubLabels = state.clubsCards.map { it.item.label }.toSet()
+        val unassignedClubs = (state.selectedClubsProfile?.activeItems ?: emptyList())
+            .filter { it.label !in assignedClubs && it.label !in existingClubLabels }
+        val updatedClubCards = state.clubsCards + unassignedClubs.map { FlipCardState(item = it, isDrawn = false) }
 
         val assignedTeams = state.fixtures.flatMap { listOfNotNull(it.playerOneTeam, it.playerTwoTeam) }.toSet()
-        val unassignedTeams = (state.selectedNationalTeamsProfile?.activeItems ?: emptyList()).filter { it.label !in assignedTeams }
-        val updatedRemainingTeams = if (state.remainingNationalTeams.isNotEmpty()) {
-            (state.remainingNationalTeams + unassignedTeams).distinctBy { it.label }
-        } else {
-            unassignedTeams
-        }
+        val existingTeamLabels = state.nationalTeamsCards.map { it.item.label }.toSet()
+        val unassignedTeams = (state.selectedNationalTeamsProfile?.activeItems ?: emptyList())
+            .filter { it.label !in assignedTeams && it.label !in existingTeamLabels }
+        val updatedTeamCards = state.nationalTeamsCards + unassignedTeams.map { FlipCardState(item = it, isDrawn = false) }
 
         _uiState.update {
             it.copy(
                 isAddPlayersDialogOpen = false,
-                remainingPlayers = updatedRemainingPlayers,
+                playerCards = updatedPlayerCards,
                 excludedPlayers = updatedExcludedPlayers,
-                remainingClubs = updatedRemainingClubs,
-                remainingNationalTeams = updatedRemainingTeams,
+                clubsCards = updatedClubCards,
+                nationalTeamsCards = updatedTeamCards,
                 selectedCategory = DrawCategory.PLAYERS,
                 flippedCardIndex = -1,
                 isRevealing = false,
@@ -735,25 +734,23 @@ class FlipCardDrawViewModel @Inject constructor(
 
     fun resetDraw() {
         val state = _uiState.value
-        val defaultPlayers = state.selectedPlayersProfile?.items
-            ?: state.playersProfiles.firstOrNull()?.items
-            ?: emptyList()
-        val defaultClubs = state.selectedClubsProfile?.items
-            ?: state.clubsProfiles.firstOrNull()?.items
-            ?: emptyList()
-        val defaultTeams = state.selectedNationalTeamsProfile?.items
-            ?: state.nationalTeamsProfiles.firstOrNull()?.items
-            ?: emptyList()
+        val selPlayer = state.selectedPlayersProfile ?: state.playersProfiles.firstOrNull()
+        val selClub = state.selectedClubsProfile ?: state.clubsProfiles.firstOrNull()
+        val selTeam = state.selectedNationalTeamsProfile ?: state.nationalTeamsProfiles.firstOrNull()
+
+        val defaultPlayers = (selPlayer?.activeItems?.ifEmpty { selPlayer.items } ?: emptyList()).map { FlipCardState(item = it, isDrawn = false) }
+        val defaultClubs = (selClub?.activeItems?.ifEmpty { selClub.items } ?: emptyList()).map { FlipCardState(item = it, isDrawn = false) }
+        val defaultTeams = (selTeam?.activeItems?.ifEmpty { selTeam.items } ?: emptyList()).map { FlipCardState(item = it, isDrawn = false) }
 
         drawFixtureRepository.clearFixtures()
         _uiState.update {
             it.copy(
-                remainingPlayers = defaultPlayers,
-                remainingClubs = defaultClubs,
-                remainingNationalTeams = defaultTeams,
-                excludedPlayers = emptyList(),
-                excludedClubs = emptyList(),
-                excludedNationalTeams = emptyList(),
+                playerCards = defaultPlayers,
+                clubsCards = defaultClubs,
+                nationalTeamsCards = defaultTeams,
+                excludedPlayers = selPlayer?.excludedItems ?: emptyList(),
+                excludedClubs = selClub?.excludedItems ?: emptyList(),
+                excludedNationalTeams = selTeam?.excludedItems ?: emptyList(),
                 fixtures = emptyList(),
                 flippedCardIndex = -1,
                 isRevealing = false,

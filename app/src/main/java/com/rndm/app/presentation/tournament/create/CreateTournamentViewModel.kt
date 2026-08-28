@@ -87,8 +87,9 @@ class CreateTournamentViewModel @Inject constructor(
             state.clubsProfiles.firstOrNull { it.id == state.selectedClubsProfileId }
         } else null
 
-        if (playerProfile == null || playerProfile.items.size < 3) {
-            _uiState.update { it.copy(errorMessage = "يجب اختيار بروفايل لاعبين يحتوي على 3 لاعبين على الأقل") }
+        val activePlayers = playerProfile?.activeItems?.ifEmpty { playerProfile.items } ?: emptyList()
+        if (playerProfile == null || activePlayers.size < 3) {
+            _uiState.update { it.copy(errorMessage = "يجب اختيار بروفايل لاعبين يحتوي على 3 لاعبين نشطين على الأقل") }
             return
         }
 

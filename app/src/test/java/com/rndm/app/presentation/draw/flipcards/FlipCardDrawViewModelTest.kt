@@ -107,6 +107,7 @@ class FlipCardDrawViewModelTest {
         val viewModel = createViewModel(profileId = 1L)
         testDispatcher.scheduler.advanceUntilIdle()
 
+        assertEquals(4, viewModel.uiState.value.playerCards.size)
         assertEquals(4, viewModel.uiState.value.remainingPlayers.size)
         assertEquals(0, viewModel.uiState.value.fixtures.size)
 
@@ -121,19 +122,30 @@ class FlipCardDrawViewModelTest {
         testDispatcher.scheduler.advanceTimeBy(1300)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        // Card consumed and assigned to match 1
+        // Card consumed in-place: deck size remains 4, card 0 is marked isDrawn
         assertFalse(viewModel.uiState.value.isRevealing)
         assertEquals(-1, viewModel.uiState.value.flippedCardIndex)
+        assertEquals(4, viewModel.uiState.value.playerCards.size)
+        assertTrue(viewModel.uiState.value.playerCards[0].isDrawn)
+        assertFalse(viewModel.uiState.value.playerCards[1].isDrawn)
         assertEquals(3, viewModel.uiState.value.remainingPlayers.size)
         assertEquals(1, viewModel.uiState.value.fixtures.size)
         assertEquals("خليل", viewModel.uiState.value.fixtures[0].playerOneName)
         assertEquals(null, viewModel.uiState.value.fixtures[0].playerTwoName)
 
-        // Click card at index 0 ("عبدو") to form opponent
+        // Clicking card at index 0 again does nothing because it is already drawn
         viewModel.onCardClick(0)
+        testDispatcher.scheduler.runCurrent()
+        assertFalse(viewModel.uiState.value.isRevealing)
+
+        // Click card at index 1 ("عبدو") to form opponent
+        viewModel.onCardClick(1)
         testDispatcher.scheduler.advanceTimeBy(1300)
         testDispatcher.scheduler.advanceUntilIdle()
 
+        assertEquals(4, viewModel.uiState.value.playerCards.size)
+        assertTrue(viewModel.uiState.value.playerCards[0].isDrawn)
+        assertTrue(viewModel.uiState.value.playerCards[1].isDrawn)
         assertEquals(2, viewModel.uiState.value.remainingPlayers.size)
         assertEquals(1, viewModel.uiState.value.fixtures.size)
         assertEquals("خليل", viewModel.uiState.value.fixtures[0].playerOneName)
@@ -150,7 +162,7 @@ class FlipCardDrawViewModelTest {
         testDispatcher.scheduler.advanceTimeBy(1300)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        viewModel.onCardClick(0)
+        viewModel.onCardClick(1)
         testDispatcher.scheduler.advanceTimeBy(1300)
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -159,6 +171,7 @@ class FlipCardDrawViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(DrawCategory.CLUBS, viewModel.uiState.value.selectedCategory)
+        assertEquals(4, viewModel.uiState.value.clubsCards.size)
         assertEquals(4, viewModel.uiState.value.remainingClubs.size)
 
         // 3. Flip Club 1 (assigned to Khalil)
@@ -168,15 +181,19 @@ class FlipCardDrawViewModelTest {
 
         assertEquals("ريال مدريد", viewModel.uiState.value.fixtures[0].playerOneTeam)
         assertEquals(null, viewModel.uiState.value.fixtures[0].playerTwoTeam)
+        assertEquals(4, viewModel.uiState.value.clubsCards.size)
+        assertTrue(viewModel.uiState.value.clubsCards[0].isDrawn)
         assertEquals(3, viewModel.uiState.value.remainingClubs.size)
 
         // 4. Flip Club 2 (assigned to Abdou)
-        viewModel.onCardClick(0)
+        viewModel.onCardClick(1)
         testDispatcher.scheduler.advanceTimeBy(1300)
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals("ريال مدريد", viewModel.uiState.value.fixtures[0].playerOneTeam)
         assertEquals("برشلونة", viewModel.uiState.value.fixtures[0].playerTwoTeam)
+        assertEquals(4, viewModel.uiState.value.clubsCards.size)
+        assertTrue(viewModel.uiState.value.clubsCards[1].isDrawn)
         assertEquals(2, viewModel.uiState.value.remainingClubs.size)
     }
 
@@ -189,7 +206,7 @@ class FlipCardDrawViewModelTest {
         val viewModel = createViewModel(profileId = 1L)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals("خليل", viewModel.uiState.value.remainingPlayers[0].label)
+        assertEquals("خليل", viewModel.uiState.value.playerCards[0].item.label)
 
         viewModel.onShuffleCards()
         assertTrue(viewModel.uiState.value.isShuffling)
@@ -199,8 +216,8 @@ class FlipCardDrawViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isShuffling)
-        assertEquals("أحمد", viewModel.uiState.value.remainingPlayers[0].label)
-        assertEquals("خليل", viewModel.uiState.value.remainingPlayers.last().label)
+        assertEquals("أحمد", viewModel.uiState.value.playerCards[0].item.label)
+        assertEquals("خليل", viewModel.uiState.value.playerCards.last().item.label)
     }
 
     @Test
@@ -255,5 +272,6 @@ class FlipCardDrawViewModelTest {
         assertEquals(4, viewModel.uiState.value.remainingPlayers.size)
         assertEquals(0, viewModel.uiState.value.fixtures.size)
         assertEquals(-1, viewModel.uiState.value.flippedCardIndex)
+        assertTrue(viewModel.uiState.value.playerCards.all { !it.isDrawn })
     }
 }

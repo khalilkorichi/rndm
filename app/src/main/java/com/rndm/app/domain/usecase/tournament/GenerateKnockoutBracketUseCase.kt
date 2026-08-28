@@ -173,7 +173,7 @@ class GenerateKnockoutBracketUseCase @Inject constructor(
                 }
 
                 count == 5 -> {
-                    // Quarter-Finals (3 matches: 2 full pairs + Match 3: Player 5 vs Lucky Loser)
+                    // Quarter-Finals (2 matches for first 4 players)
                     val p1 = qualifiers.getOrNull(0)
                     val p2 = qualifiers.getOrNull(1)
                     val p3 = qualifiers.getOrNull(2)
@@ -208,21 +208,7 @@ class GenerateKnockoutBracketUseCase @Inject constructor(
                         )
                     )
 
-                    matches.add(
-                        Match(
-                            tournamentId = tournamentId,
-                            stage = MatchStage.QUARTER_FINALS,
-                            roundIndex = 1,
-                            bracketMatchIndex = 3,
-                            playerOneName = p5?.playerName ?: "TBD",
-                            playerOneClub = p5?.clubName,
-                            playerTwoName = "أحسن خاسر",
-                            isPlayerTwoLuckyLoser = true,
-                            status = MatchStatus.PENDING
-                        )
-                    )
-
-                    // Semi-Finals (2 matches): SF1 is Winner QF1 vs Winner QF2, SF2 is Winner QF3 vs Lucky Loser
+                    // Semi-Finals (2 matches): SF1 is Winner QF1 vs Winner QF2, SF2 is Player 5 vs Lucky Loser
                     matches.add(
                         Match(
                             tournamentId = tournamentId,
@@ -241,7 +227,8 @@ class GenerateKnockoutBracketUseCase @Inject constructor(
                             stage = MatchStage.SEMI_FINALS,
                             roundIndex = 2,
                             bracketMatchIndex = 2,
-                            playerOneName = "فائز ربع النهائي 3",
+                            playerOneName = p5?.playerName ?: "TBD",
+                            playerOneClub = p5?.clubName,
                             playerTwoName = "أحسن خاسر",
                             isPlayerTwoLuckyLoser = true,
                             status = MatchStatus.PENDING

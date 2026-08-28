@@ -6,6 +6,7 @@ import com.rndm.app.domain.repository.TournamentRepository
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -125,7 +126,7 @@ class GenerateKnockoutBracketUseCaseTest {
     }
 
     @Test
-    fun `generating knockout bracket for 5 players creates 3 QF with Match 3 having Player 5 vs Lucky Loser and SF2 with Winner QF3 vs Lucky Loser`() = runTest {
+    fun `generating knockout bracket for 5 players creates 2 QF and SF2 with Player 5 vs Lucky Loser`() = runTest {
         val participants = (1..5).map {
             TournamentParticipant(
                 playerItemId = it.toLong(),
@@ -140,7 +141,7 @@ class GenerateKnockoutBracketUseCaseTest {
         val sfMatches = matches.filter { it.stage == MatchStage.SEMI_FINALS }
         val finalMatches = matches.filter { it.stage == MatchStage.FINAL }
 
-        assertEquals(3, qfMatches.size)
+        assertEquals(2, qfMatches.size)
         assertEquals(2, sfMatches.size)
         assertEquals(1, finalMatches.size)
 
@@ -150,11 +151,7 @@ class GenerateKnockoutBracketUseCaseTest {
         assertEquals("Player 3", qfMatches[1].playerOneName)
         assertEquals("Player 4", qfMatches[1].playerTwoName)
 
-        assertEquals("Player 5", qfMatches[2].playerOneName)
-        assertEquals("أحسن خاسر", qfMatches[2].playerTwoName)
-        assertTrue(qfMatches[2].isPlayerTwoLuckyLoser)
-
-        assertEquals("فائز ربع النهائي 3", sfMatches[1].playerOneName)
+        assertEquals("Player 5", sfMatches[1].playerOneName)
         assertEquals("أحسن خاسر", sfMatches[1].playerTwoName)
         assertTrue(sfMatches[1].isPlayerTwoLuckyLoser)
     }
@@ -223,6 +220,68 @@ class GenerateKnockoutBracketUseCaseTest {
         assertEquals("فائز ربع النهائي 3", sfMatches[1].playerOneName)
         assertEquals("أحسن خاسر", sfMatches[1].playerTwoName)
         assertTrue(sfMatches[1].isPlayerTwoLuckyLoser)
+    }
+
+    @Test
+    fun `generating knockout bracket for 7 players creates 4 QF with only Match 4 having Lucky Loser and SF2 with Winner QF3 vs Winner QF4`() = runTest {
+        val participants = (1..7).map {
+            TournamentParticipant(
+                playerItemId = it.toLong(),
+                playerName = "Player $it",
+                groupIndex = 0
+            )
+        }
+
+        val matches = useCase(tournamentId = 1L, qualifiers = participants)
+
+        val qfMatches = matches.filter { it.stage == MatchStage.QUARTER_FINALS }
+        val sfMatches = matches.filter { it.stage == MatchStage.SEMI_FINALS }
+
+        assertEquals(4, qfMatches.size)
+        assertEquals(2, sfMatches.size)
+
+        assertEquals("Player 1", qfMatches[0].playerOneName)
+        assertEquals("Player 2", qfMatches[0].playerTwoName)
+
+        assertEquals("Player 3", qfMatches[1].playerOneName)
+        assertEquals("Player 4", qfMatches[1].playerTwoName)
+
+        assertEquals("Player 5", qfMatches[2].playerOneName)
+        assertEquals("Player 6", qfMatches[2].playerTwoName)
+        assertFalse(qfMatches[2].isPlayerTwoLuckyLoser)
+
+        assertEquals("Player 7", qfMatches[3].playerOneName)
+        assertEquals("أحسن خاسر", qfMatches[3].playerTwoName)
+        assertTrue(qfMatches[3].isPlayerTwoLuckyLoser)
+
+        // Semi-Finals has NO lucky loser slots
+        assertEquals("فائز ربع النهائي 1", sfMatches[0].playerOneName)
+        assertEquals("فائز ربع النهائي 2", sfMatches[0].playerTwoName)
+        assertEquals("فائز ربع النهائي 3", sfMatches[1].playerOneName)
+        assertEquals("فائز ربع النهائي 4", sfMatches[1].playerTwoName)
+        assertFalse(sfMatches[0].isPlayerTwoLuckyLoser)
+        assertFalse(sfMatches[1].isPlayerTwoLuckyLoser)
+    }
+
+    @Test
+    fun `generating knockout bracket for 8 players creates 4 standard QF and 2 standard SF with no lucky losers`() = runTest {
+        val participants = (1..8).map {
+            TournamentParticipant(
+                playerItemId = it.toLong(),
+                playerName = "Player $it",
+                groupIndex = 0
+            )
+        }
+
+        val matches = useCase(tournamentId = 1L, qualifiers = participants)
+
+        val qfMatches = matches.filter { it.stage == MatchStage.QUARTER_FINALS }
+        val sfMatches = matches.filter { it.stage == MatchStage.SEMI_FINALS }
+
+        assertEquals(4, qfMatches.size)
+        assertEquals(2, sfMatches.size)
+
+        assertTrue(matches.none { it.isPlayerTwoLuckyLoser || it.playerTwoName == "أحسن خاسر" })
     }
 
     @Test

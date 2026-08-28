@@ -191,28 +191,26 @@ class DrawFixtureRepositoryImpl @Inject constructor(
             val existingMatches = matchDao.getMatchesList(currentTournamentId)
 
             val matches = domainMatches.mapIndexed { idx, match ->
-                val matchingFixture = fixtures.getOrNull(match.bracketMatchIndex?.minus(1) ?: idx)
                 val existingMatch = existingMatches.firstOrNull {
                     it.stage == match.stage && it.roundIndex == match.roundIndex && it.bracketMatchIndex == match.bracketMatchIndex
                 }
 
                 if (existingMatch != null && (existingMatch.status == MatchStatus.FINISHED || existingMatch.scoreOne != null)) {
                     existingMatch
-                } else if (matchingFixture != null && matchingFixture.isFinished && match.roundIndex == 1) {
-                    val winner = calculateWinner(matchingFixture.scoreOne, matchingFixture.scoreTwo, match.playerOneName, match.playerTwoName)
-                    match.copy(
-                        scoreOne = matchingFixture.scoreOne,
-                        scoreTwo = matchingFixture.scoreTwo,
-                        winnerName = winner,
-                        status = MatchStatus.FINISHED
-                    ).toEntity(currentTournamentId)
-                } else if (existingMatch != null) {
-                    existingMatch.copy(
-                        playerOneName = if (existingMatch.playerOneName != "TBD" && existingMatch.playerOneName.isNotBlank()) existingMatch.playerOneName else match.playerOneName,
-                        playerTwoName = if (existingMatch.playerTwoName != "TBD" && !existingMatch.playerTwoName.isNullOrBlank()) existingMatch.playerTwoName else match.playerTwoName
-                    )
                 } else {
-                    match.toEntity(currentTournamentId)
+                    val matchingFixture = fixtures.getOrNull(match.bracketMatchIndex?.minus(1) ?: idx)
+                    if (matchingFixture != null && matchingFixture.isFinished && match.roundIndex == 1) {
+                        val winner = calculateWinner(matchingFixture.scoreOne, matchingFixture.scoreTwo, match.playerOneName, match.playerTwoName)
+                        match.copy(
+                            id = existingMatch?.id ?: 0L,
+                            scoreOne = matchingFixture.scoreOne,
+                            scoreTwo = matchingFixture.scoreTwo,
+                            winnerName = winner,
+                            status = MatchStatus.FINISHED
+                        ).toEntity(currentTournamentId)
+                    } else {
+                        match.copy(id = existingMatch?.id ?: 0L).toEntity(currentTournamentId)
+                    }
                 }
             }
 
