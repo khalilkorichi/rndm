@@ -195,6 +195,12 @@ val MIGRATION_12_13 = object : Migration(12, 13) {
     }
 }
 
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE matches ADD COLUMN isExtraTime INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 @Database(
     entities = [
         ProfileEntity::class,
@@ -206,7 +212,7 @@ val MIGRATION_12_13 = object : Migration(12, 13) {
         MatchEntity::class,
         PlayerProfileEntity::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = true
 )
 abstract class RndmDatabase : RoomDatabase() {

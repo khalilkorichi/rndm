@@ -8,6 +8,7 @@ import com.rndm.app.data.remote.firebase.FirebaseAuthDataSource
 import com.rndm.app.data.remote.firebase.FirestoreAuditDataSource
 import com.rndm.app.data.remote.firebase.FirestoreTournamentDataSource
 import com.rndm.app.data.remote.firebase.dto.FirestoreAuditLogDto
+import com.rndm.app.data.remote.mapper.getDeterministicRemoteId
 import com.rndm.app.data.remote.mapper.toDomain
 import com.rndm.app.data.remote.mapper.toFirestoreDto
 import com.rndm.app.domain.model.AuditLog
@@ -15,6 +16,7 @@ import com.rndm.app.domain.model.Match
 import com.rndm.app.domain.model.SyncStatus
 import com.rndm.app.domain.model.Tournament
 import com.rndm.app.domain.model.TournamentStatus
+import com.rndm.app.domain.model.isRealPlayerName
 import com.rndm.app.domain.repository.SyncRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -54,7 +56,11 @@ class SyncRepositoryImpl @Inject constructor(
             val tournamentDomain = tournamentEntity.toDomain()
             val remoteTournamentDto = tournamentDomain.toFirestoreDto(hostUid = currentUid)
             val remoteParticipantDtos = participants.map { it.toDomain().toFirestoreDto() }
-            val remoteMatchDtos = matches.map { it.toDomain().toFirestoreDto(actorUid = currentUid) }
+            val remoteMatchDtos = matches.map { m ->
+                val domainM = m.toDomain()
+                val detId = domainM.getDeterministicRemoteId()
+                domainM.toFirestoreDto(remoteId = detId, actorUid = currentUid)
+            }
 
             val publishResult = remoteTournamentDataSource.publishTournament(
                 tournament = remoteTournamentDto,
@@ -75,6 +81,14 @@ class SyncRepositoryImpl @Inject constructor(
                     lastSyncedAt = System.currentTimeMillis()
                 )
                 tournamentDao.updateTournament(updatedEntity)
+
+                // Update local matches with their deterministic remote IDs
+                matches.forEach { matchEntity ->
+                    val domainM = matchEntity.toDomain()
+                    val detId = domainM.getDeterministicRemoteId()
+                    matchDao.updateMatch(matchEntity.copy(remoteId = detId, syncStatus = SyncStatus.SYNCED))
+                }
+
                 // Clean up any expired tournaments from the cloud in background
                 kotlinx.coroutines.CoroutineScope(ioDispatcher).launch {
                     try {
@@ -136,7 +150,9 @@ class SyncRepositoryImpl @Inject constructor(
             )
 
             val localId = tournamentDao.insertTournament(tournamentToInsert.toEntity())
-            val participantsToInsert = participantDtos.map { it.toDomain(tournamentId = localId).toEntity(localId) }
+            val participantsToInsert = participantDtos
+                .map { it.toDomain(tournamentId = localId).toEntity(localId) }
+                .filter { it.playerName.isRealPlayerName() }
             val matchesToInsert = matchDtos.map { it.toDomain(tournamentId = localId).toEntity(localId) }
 
             tournamentDao.insertParticipants(participantsToInsert)
@@ -161,20 +177,34 @@ class SyncRepositoryImpl @Inject constructor(
                             (it.stage.name == remoteDto.stage && it.roundIndex == remoteDto.roundIndex && it.bracketMatchIndex == remoteDto.bracketMatchIndex && it.groupIndex == remoteDto.groupIndex)
                         }
                         if (existingLocalMatch != null) {
-                            val updated = existingLocalMatch.copy(
-                                scoreOne = remoteDto.scoreOne,
-                                scoreTwo = remoteDto.scoreTwo,
-                                penaltyScoreOne = remoteDto.penaltyScoreOne,
-                                penaltyScoreTwo = remoteDto.penaltyScoreTwo,
-                                winnerName = remoteDto.winnerName,
-                                status = com.rndm.app.domain.model.MatchStatus.valueOf(remoteDto.status),
-                                isPlayerOneLuckyLoser = remoteDto.isPlayerOneLuckyLoser,
-                                isPlayerTwoLuckyLoser = remoteDto.isPlayerTwoLuckyLoser,
-                                remoteId = remoteDto.id,
-                                syncStatus = SyncStatus.SYNCED,
-                                updatedAt = remoteDto.updatedAt
-                            )
-                            matchDao.updateMatch(updated)
+                            val localIsFinished = existingLocalMatch.status == com.rndm.app.domain.model.MatchStatus.FINISHED
+                            val remoteIsFinished = remoteDto.status == com.rndm.app.domain.model.MatchStatus.FINISHED.name
+
+                            if (localIsFinished && !remoteIsFinished && existingLocalMatch.updatedAt >= remoteDto.updatedAt) {
+                                // Local match is finished and newer: auto-heal remote by pushing finished result
+                                val currentUid = authDataSource.currentUid ?: "unknown"
+                                remoteTournamentDataSource.updateMatchScore(
+                                    remoteId,
+                                    existingLocalMatch.toDomain().toFirestoreDto(actorUid = currentUid)
+                                )
+                            } else if (remoteIsFinished || remoteDto.updatedAt >= existingLocalMatch.updatedAt) {
+                                val updated = existingLocalMatch.copy(
+                                    scoreOne = remoteDto.scoreOne ?: if (remoteIsFinished) existingLocalMatch.scoreOne else null,
+                                    scoreTwo = remoteDto.scoreTwo ?: if (remoteIsFinished) existingLocalMatch.scoreTwo else null,
+                                    penaltyScoreOne = remoteDto.penaltyScoreOne,
+                                    penaltyScoreTwo = remoteDto.penaltyScoreTwo,
+                                    winnerName = if (!remoteDto.winnerName.isNullOrBlank()) remoteDto.winnerName else existingLocalMatch.winnerName,
+                                    playerOneName = if (!remoteDto.playerOneName.isNullOrBlank() && remoteDto.playerOneName != "TBD") remoteDto.playerOneName else existingLocalMatch.playerOneName,
+                                    playerTwoName = if (!remoteDto.playerTwoName.isNullOrBlank() && remoteDto.playerTwoName != "TBD") remoteDto.playerTwoName else existingLocalMatch.playerTwoName,
+                                    status = com.rndm.app.domain.model.MatchStatus.valueOf(remoteDto.status),
+                                    isPlayerOneLuckyLoser = remoteDto.isPlayerOneLuckyLoser,
+                                    isPlayerTwoLuckyLoser = remoteDto.isPlayerTwoLuckyLoser,
+                                    remoteId = remoteDto.id,
+                                    syncStatus = SyncStatus.SYNCED,
+                                    updatedAt = remoteDto.updatedAt
+                                )
+                                matchDao.updateMatch(updated)
+                            }
                         }
                     }
                 }
@@ -207,6 +237,23 @@ class SyncRepositoryImpl @Inject constructor(
                     timestamp = System.currentTimeMillis()
                 )
                 remoteAuditDataSource.logAction(remoteId, logDto)
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun syncTournamentMatches(tournamentId: Long, matches: List<Match>): Result<Unit> = withContext(ioDispatcher) {
+        try {
+            val tournamentEntity = tournamentDao.getTournamentById(tournamentId)
+            val remoteId = tournamentEntity?.remoteId
+
+            if (remoteId != null && tournamentEntity.isRemote) {
+                val currentUid = authDataSource.currentUid ?: "unknown"
+                val matchDtos = matches.map { it.toFirestoreDto(actorUid = currentUid) }
+                remoteTournamentDataSource.updateMatchesBatch(remoteId, matchDtos)
             }
             Result.success(Unit)
         } catch (e: Exception) {

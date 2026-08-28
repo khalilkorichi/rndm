@@ -12,6 +12,7 @@ interface SyncRepository {
     suspend fun joinTournamentByCode(shareCode: String): Result<Long>
     fun observeRemoteMatches(tournamentId: Long): Flow<Unit>
     suspend fun syncMatchScore(tournamentId: Long, match: Match, oldScoreOne: Int?, oldScoreTwo: Int?): Result<Unit>
+    suspend fun syncTournamentMatches(tournamentId: Long, matches: List<Match>): Result<Unit>
     suspend fun updateTournamentStatus(tournamentId: Long, status: TournamentStatus): Result<Unit>
     fun observeAuditLogs(tournamentId: Long): Flow<List<AuditLog>>
     fun observeAvailableLiveTournaments(): Flow<List<Tournament>>

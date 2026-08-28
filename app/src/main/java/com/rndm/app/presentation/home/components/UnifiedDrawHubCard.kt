@@ -50,6 +50,7 @@ fun UnifiedDrawHubCard(
     onNavigateToFreeWheelDraw: (Long) -> Unit = {},
     onNavigateToClubDuelDraw: () -> Unit,
     onCreateProfileClick: () -> Unit,
+    onRestoreDefaultProfilesClick: () -> Unit = {},
     onNavigateToProfiles: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -91,13 +92,13 @@ fun UnifiedDrawHubCard(
 
                     Column {
                         Text(
-                            text = "مركز القرعة والسحب",
+                            text = "القرعة والسحب",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = if (profile != null) "جاهز للسحب الفوري" else "ابدأ بتجهيز عناصرك",
+                            text = if (profile != null) "جاهز للقرعة" else "اختر بروفايل للبدء",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -113,7 +114,7 @@ fun UnifiedDrawHubCard(
                             .clickable { onNavigateToProfiles() }
                     ) {
                         Text(
-                            text = "تغيير البروفايل",
+                            text = "تغيير",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary,
@@ -177,7 +178,7 @@ fun UnifiedDrawHubCard(
                                         color = MaterialTheme.colorScheme.outline
                                     )
                                     Text(
-                                        text = "${profile.items.size} عناصر متوفرة",
+                                        text = "${profile.items.size} عنصر",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -219,34 +220,61 @@ fun UnifiedDrawHubCard(
                             .padding(14.dp)
                     ) {
                         Text(
-                            text = "لا يوجد بروفايل جاهز حالياً",
+                            text = "لا يوجد بروفايل",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "أنشئ بروفايلك الأول باللاعبين أو الأندية لبدء السحب والقرعة",
+                            text = "أنشئ بروفايل أو استرد القوائم الافتراضية للبدء",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        RndmButton(
-                            onClick = onCreateProfileClick,
-                            type = RndmButtonType.PRIMARY,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth()
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_add),
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "إنشاء بروفايل جديد",
-                                fontWeight = FontWeight.Bold
-                            )
+                            RndmButton(
+                                onClick = onRestoreDefaultProfilesClick,
+                                type = RndmButtonType.SECONDARY,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_star),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "استرداد الافتراضي",
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            RndmButton(
+                                onClick = onCreateProfileClick,
+                                type = RndmButtonType.PRIMARY,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_add),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "بروفايل جديد",
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
                 }
@@ -263,7 +291,7 @@ fun UnifiedDrawHubCard(
 
             // Sub-modes section: Direct Action Tiles
             Text(
-                text = "الأنماط المباشرة",
+                text = "أنماط سريعة",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -277,7 +305,7 @@ fun UnifiedDrawHubCard(
             ) {
                 QuickModeTile(
                     title = "عجلة الحظ",
-                    subtitle = "سحب عشوائي تفاعلي",
+                    subtitle = "سحب تفاعلي",
                     icon = painterResource(id = R.drawable.ic_wheel),
                     accentColor = MaterialTheme.colorScheme.primary,
                     onClick = {
@@ -288,7 +316,7 @@ fun UnifiedDrawHubCard(
 
                 QuickModeTile(
                     title = "حسم الأندية",
-                    subtitle = "مواجهة ثنائية فورية",
+                    subtitle = "مواجهة ثنائية",
                     icon = painterResource(id = R.drawable.ic_swords),
                     accentColor = MaterialTheme.colorScheme.secondary,
                     onClick = onNavigateToClubDuelDraw,

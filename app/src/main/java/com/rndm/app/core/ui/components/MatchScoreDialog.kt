@@ -58,14 +58,15 @@ fun MatchScoreDialog(
     initialScoreTwo: Int? = null,
     initialPenaltyScoreOne: Int? = null,
     initialPenaltyScoreTwo: Int? = null,
+    initialIsExtraTime: Boolean = false,
     isKnockout: Boolean = false,
     isRequestMode: Boolean = false,
     title: String = if (isRequestMode) "طلب تعديل النتيجة (إرسال للأدمن)" else "تسجيل النتيجة",
     subtitle: String? = null,
     onDismiss: () -> Unit,
     onConfirm: (scoreOne: Int, scoreTwo: Int) -> Unit = { _, _ -> },
-    onConfirmWithPenalties: ((scoreOne: Int, scoreTwo: Int, penaltyOne: Int?, penaltyTwo: Int?) -> Unit)? = null,
-    onConfirmRequest: ((scoreOne: Int, scoreTwo: Int, penaltyOne: Int?, penaltyTwo: Int?, note: String) -> Unit)? = null
+    onConfirmWithPenalties: ((scoreOne: Int, scoreTwo: Int, penaltyOne: Int?, penaltyTwo: Int?, isExtraTime: Boolean) -> Unit)? = null,
+    onConfirmRequest: ((scoreOne: Int, scoreTwo: Int, penaltyOne: Int?, penaltyTwo: Int?, isExtraTime: Boolean, note: String) -> Unit)? = null
 ) {
     var scoreOneText by remember(initialScoreOne) {
         mutableStateOf((initialScoreOne ?: 0).toString())
@@ -78,6 +79,9 @@ fun MatchScoreDialog(
     }
     var penaltyTwoText by remember(initialPenaltyScoreTwo) {
         mutableStateOf((initialPenaltyScoreTwo ?: 0).toString())
+    }
+    var isExtraTime by remember(initialIsExtraTime) {
+        mutableStateOf(initialIsExtraTime)
     }
     var requestNoteText by remember {
         mutableStateOf("")
@@ -344,13 +348,66 @@ fun MatchScoreDialog(
                     }
                 }
 
+                if (isKnockout && !isTied) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Surface(
+                        onClick = { isExtraTime = !isExtraTime },
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isExtraTime) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (isExtraTime) MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_fixtures),
+                                    contentDescription = null,
+                                    tint = if (isExtraTime) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Column {
+                                    Text(
+                                        text = "انتهت في الأشواط الإضافية (و.إ)",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isExtraTime) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "تعادل بالوقت الأصلي وسُجل هدف الفوز في الوقت الإضافي",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            androidx.compose.material3.Switch(
+                                checked = isExtraTime,
+                                onCheckedChange = { isExtraTime = it }
+                            )
+                        }
+                    }
+                }
+
                 if (isRequestMode) {
                     Spacer(modifier = Modifier.height(14.dp))
                     androidx.compose.material3.OutlinedTextField(
                         value = requestNoteText,
                         onValueChange = { requestNoteText = it },
                         label = { Text("ملاحظة أو سبب التعديل (اختياري)", style = MaterialTheme.typography.bodySmall) },
-                        placeholder = { Text("مثال: تم احتساب ركلات الترجيح باتفاق الطرفين", style = MaterialTheme.typography.bodySmall) },
+                        placeholder = { Text("مثال: تم حسم النتيجة في الأشواط الإضافية", style = MaterialTheme.typography.bodySmall) },
                         singleLine = false,
                         maxLines = 2,
                         shape = RoundedCornerShape(12.dp),
@@ -383,11 +440,12 @@ fun MatchScoreDialog(
                             val s2 = scoreTwoText.toIntOrNull() ?: 0
                             val p1 = if (isKnockout && s1 == s2) penaltyOneText.toIntOrNull() ?: 0 else null
                             val p2 = if (isKnockout && s1 == s2) penaltyTwoText.toIntOrNull() ?: 0 else null
+                            val finalIsExtraTime = if (isKnockout && !isTied) isExtraTime else (p1 != null && p2 != null)
 
                             if (isRequestMode && onConfirmRequest != null) {
-                                onConfirmRequest(s1, s2, p1, p2, requestNoteText)
+                                onConfirmRequest(s1, s2, p1, p2, finalIsExtraTime, requestNoteText)
                             } else if (onConfirmWithPenalties != null) {
-                                onConfirmWithPenalties(s1, s2, p1, p2)
+                                onConfirmWithPenalties(s1, s2, p1, p2, finalIsExtraTime)
                             } else {
                                 onConfirm(s1, s2)
                             }

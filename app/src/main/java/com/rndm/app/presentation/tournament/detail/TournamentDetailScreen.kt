@@ -216,7 +216,8 @@ fun TournamentDetailScreen(
                                     onReorderMatchClick = viewModel::onOpenReorderMatchDialog,
                                     onSwapPlayerClick = viewModel::onOpenSwapPlayerDialog,
                                     onEditParticipant = viewModel::onOpenPlayerEditDialog,
-                                    onAddPlayersClick = { viewModel.resumeDrawForTournament(onNavigateToDraw) }
+                                    onAddPlayersClick = { viewModel.resumeDrawForTournament(onNavigateToDraw) },
+                                    onDirectQualifyClick = viewModel::onOpenDirectQualifyDialog
                                 )
                             }
                             TournamentDetailTab.MATCHES -> {
@@ -225,7 +226,8 @@ fun TournamentDetailScreen(
                                     onMatchClick = viewModel::onSelectMatchForScore,
                                     onPlayerClick = onNavigateToPlayer,
                                     onReorderMatchClick = viewModel::onOpenReorderMatchDialog,
-                                    onSwapPlayerClick = viewModel::onOpenSwapPlayerDialog
+                                    onSwapPlayerClick = viewModel::onOpenSwapPlayerDialog,
+                                    onDirectQualifyClick = viewModel::onOpenDirectQualifyDialog
                                 )
                             }
                             TournamentDetailTab.STANDINGS -> {
@@ -243,7 +245,8 @@ fun TournamentDetailScreen(
                                 TournamentKnockoutTab(
                                     knockoutMatches = tournament.knockoutMatches,
                                     onMatchClick = viewModel::onSelectMatchForScore,
-                                    onPlayerClick = onNavigateToPlayer
+                                    onPlayerClick = onNavigateToPlayer,
+                                    onDirectQualifyClick = viewModel::onOpenDirectQualifyDialog
                                 )
                             }
                         }
@@ -260,14 +263,26 @@ fun TournamentDetailScreen(
                     match = match,
                     isRequestMode = isRequestMode,
                     onDismiss = viewModel::onDismissScoreDialog,
-                    onConfirm = { s1, s2, p1, p2 ->
-                        viewModel.onSaveScore(s1, s2, p1, p2)
+                    onConfirm = { s1, s2, p1, p2, isExtraTime ->
+                        viewModel.onSaveScore(s1, s2, p1, p2, isExtraTime)
                     },
-                    onConfirmRequest = { s1, s2, p1, p2, note ->
-                        viewModel.onSaveScore(s1, s2, p1, p2, note)
+                    onConfirmRequest = { s1, s2, p1, p2, isExtraTime, note ->
+                        viewModel.onSaveScore(s1, s2, p1, p2, isExtraTime, note)
                     }
                 )
             }
+        }
+
+        // Direct Qualify Confirm Dialog
+        uiState.directQualifyingMatch?.let { match ->
+            val isRequestMode = tournament?.isRemote == true && !uiState.isAdmin && tournament?.isHost != true
+            com.rndm.app.presentation.tournament.detail.components.DirectQualifyConfirmDialog(
+                match = match,
+                isRequestMode = isRequestMode,
+                isUndoMode = uiState.isUndoDirectQualify,
+                onDismiss = viewModel::onDismissDirectQualifyDialog,
+                onConfirm = viewModel::onConfirmDirectQualify
+            )
         }
 
         // Player Edit Request Dialog

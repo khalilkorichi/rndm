@@ -14,6 +14,7 @@ import com.rndm.app.domain.model.MatchStage
 import com.rndm.app.domain.model.MatchStatus
 import com.rndm.app.domain.model.TournamentStage
 import com.rndm.app.domain.model.TournamentType
+import com.rndm.app.domain.model.isRealPlayerName
 import com.rndm.app.domain.repository.DrawFixtureRepository
 import com.rndm.app.domain.usecase.tournament.EvaluateBestLosersUseCase
 import com.rndm.app.domain.usecase.tournament.GenerateKnockoutBracketUseCase
@@ -156,25 +157,29 @@ class DrawFixtureRepositoryImpl @Inject constructor(
             // Sync Participants
             val participants = mutableListOf<TournamentParticipantEntity>()
             fixtures.forEach { f ->
-                participants.add(
-                    TournamentParticipantEntity(
-                        tournamentId = currentTournamentId,
-                        playerItemId = 0L,
-                        playerName = f.playerOneName,
-                        clubName = f.playerOneTeam,
-                        groupIndex = 0
-                    )
-                )
-                f.playerTwoName?.let { p2 ->
+                if (f.playerOneName.isRealPlayerName()) {
                     participants.add(
                         TournamentParticipantEntity(
                             tournamentId = currentTournamentId,
                             playerItemId = 0L,
-                            playerName = p2,
-                            clubName = f.playerTwoTeam,
+                            playerName = f.playerOneName,
+                            clubName = f.playerOneTeam,
                             groupIndex = 0
                         )
                     )
+                }
+                f.playerTwoName?.let { p2 ->
+                    if (p2.isRealPlayerName()) {
+                        participants.add(
+                            TournamentParticipantEntity(
+                                tournamentId = currentTournamentId,
+                                playerItemId = 0L,
+                                playerName = p2,
+                                clubName = f.playerTwoTeam,
+                                groupIndex = 0
+                            )
+                        )
+                    }
                 }
             }
             tournamentDao.deleteParticipantsByTournamentId(currentTournamentId)
@@ -183,9 +188,17 @@ class DrawFixtureRepositoryImpl @Inject constructor(
             val distinctParticipants = participants.distinctBy { it.playerName }.map { it.toDomain() }
             val domainMatches = GenerateKnockoutBracketUseCase.generateBracketMatches(currentTournamentId, distinctParticipants)
 
+            val existingMatches = matchDao.getMatchesList(currentTournamentId)
+
             val matches = domainMatches.mapIndexed { idx, match ->
                 val matchingFixture = fixtures.getOrNull(match.bracketMatchIndex?.minus(1) ?: idx)
-                if (matchingFixture != null && matchingFixture.isFinished && match.roundIndex == 1) {
+                val existingMatch = existingMatches.firstOrNull {
+                    it.stage == match.stage && it.roundIndex == match.roundIndex && it.bracketMatchIndex == match.bracketMatchIndex
+                }
+
+                if (existingMatch != null && (existingMatch.status == MatchStatus.FINISHED || existingMatch.scoreOne != null)) {
+                    existingMatch
+                } else if (matchingFixture != null && matchingFixture.isFinished && match.roundIndex == 1) {
                     val winner = calculateWinner(matchingFixture.scoreOne, matchingFixture.scoreTwo, match.playerOneName, match.playerTwoName)
                     match.copy(
                         scoreOne = matchingFixture.scoreOne,
@@ -193,6 +206,11 @@ class DrawFixtureRepositoryImpl @Inject constructor(
                         winnerName = winner,
                         status = MatchStatus.FINISHED
                     ).toEntity(currentTournamentId)
+                } else if (existingMatch != null) {
+                    existingMatch.copy(
+                        playerOneName = if (existingMatch.playerOneName != "TBD" && existingMatch.playerOneName.isNotBlank()) existingMatch.playerOneName else match.playerOneName,
+                        playerTwoName = if (existingMatch.playerTwoName != "TBD" && !existingMatch.playerTwoName.isNullOrBlank()) existingMatch.playerTwoName else match.playerTwoName
+                    )
                 } else {
                     match.toEntity(currentTournamentId)
                 }

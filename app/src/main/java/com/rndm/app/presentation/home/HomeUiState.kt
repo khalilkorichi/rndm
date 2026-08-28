@@ -19,5 +19,6 @@ data class HomeUiState(
     val completedTournamentsCount: Int = 0,
     val recentChampionTournament: Tournament? = null,
     val selectedMatchForScore: Match? = null,
+    val isRestoreSuccessDialogOpen: Boolean = false,
     val error: String? = null
 )

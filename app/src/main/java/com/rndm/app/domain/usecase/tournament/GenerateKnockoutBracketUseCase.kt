@@ -173,7 +173,7 @@ class GenerateKnockoutBracketUseCase @Inject constructor(
                 }
 
                 count == 5 -> {
-                    // Quarter-Finals (2 matches for first 4 players)
+                    // Quarter-Finals (3 matches: 2 full pairs + Match 3: Player 5 vs Lucky Loser)
                     val p1 = qualifiers.getOrNull(0)
                     val p2 = qualifiers.getOrNull(1)
                     val p3 = qualifiers.getOrNull(2)
@@ -208,7 +208,21 @@ class GenerateKnockoutBracketUseCase @Inject constructor(
                         )
                     )
 
-                    // Semi-Finals (2 matches): SF1 is Winner QF1 vs Winner QF2, SF2 is P5 vs Lucky Loser
+                    matches.add(
+                        Match(
+                            tournamentId = tournamentId,
+                            stage = MatchStage.QUARTER_FINALS,
+                            roundIndex = 1,
+                            bracketMatchIndex = 3,
+                            playerOneName = p5?.playerName ?: "TBD",
+                            playerOneClub = p5?.clubName,
+                            playerTwoName = "أحسن خاسر",
+                            isPlayerTwoLuckyLoser = true,
+                            status = MatchStatus.PENDING
+                        )
+                    )
+
+                    // Semi-Finals (2 matches): SF1 is Winner QF1 vs Winner QF2, SF2 is Winner QF3 vs Lucky Loser
                     matches.add(
                         Match(
                             tournamentId = tournamentId,
@@ -227,8 +241,7 @@ class GenerateKnockoutBracketUseCase @Inject constructor(
                             stage = MatchStage.SEMI_FINALS,
                             roundIndex = 2,
                             bracketMatchIndex = 2,
-                            playerOneName = p5?.playerName ?: "TBD",
-                            playerOneClub = p5?.clubName,
+                            playerOneName = "فائز ربع النهائي 3",
                             playerTwoName = "أحسن خاسر",
                             isPlayerTwoLuckyLoser = true,
                             status = MatchStatus.PENDING
@@ -412,15 +425,16 @@ class GenerateKnockoutBracketUseCase @Inject constructor(
                 }
 
                 count <= 16 -> {
-                    // Round of 16 (8 matches)
-                    val missingCount = (16 - count).coerceIn(0, 7)
-                    val fullPairsCount = 8 - missingCount
+                    // Round of 16 (Pairs of 2 + at most ONE lone player vs Lucky Loser)
+                    val fullPairsCount = count / 2
+                    val hasLonePlayer = (count % 2) != 0
+                    val totalR16Matches = fullPairsCount + (if (hasLonePlayer) 1 else 0)
 
-                    for (i in 0 until 8) {
-                        val isMissingOpponent = i >= fullPairsCount
-                        val pA = qualifiers.getOrNull(if (isMissingOpponent) (fullPairsCount * 2 + (i - fullPairsCount)) else (i * 2))
-                        val pB = if (isMissingOpponent) null else qualifiers.getOrNull(i * 2 + 1)
-                        val isLuckyLoser = isMissingOpponent
+                    for (i in 0 until totalR16Matches) {
+                        val isLone = hasLonePlayer && i == totalR16Matches - 1
+                        val pA = qualifiers.getOrNull(if (isLone) (count - 1) else (i * 2))
+                        val pB = if (isLone) null else qualifiers.getOrNull(i * 2 + 1)
+                        val isLuckyLoser = isLone
 
                         matches.add(
                             Match(
@@ -438,8 +452,10 @@ class GenerateKnockoutBracketUseCase @Inject constructor(
                         )
                     }
 
-                    // Quarter-Finals (4 matches)
-                    for (i in 0 until 4) {
+                    // Quarter-Finals (Pairs of R16 winners)
+                    val totalQfMatches = totalR16Matches / 2
+
+                    for (i in 0 until totalQfMatches) {
                         matches.add(
                             Match(
                                 tournamentId = tournamentId,
@@ -454,28 +470,78 @@ class GenerateKnockoutBracketUseCase @Inject constructor(
                     }
 
                     // Semi-Finals (2 matches)
-                    matches.add(
-                        Match(
-                            tournamentId = tournamentId,
-                            stage = MatchStage.SEMI_FINALS,
-                            roundIndex = 3,
-                            bracketMatchIndex = 1,
-                            playerOneName = "فائز ربع النهائي 1",
-                            playerTwoName = "فائز ربع النهائي 2",
-                            status = MatchStatus.PENDING
+                    if (totalQfMatches == 2) {
+                        matches.add(
+                            Match(
+                                tournamentId = tournamentId,
+                                stage = MatchStage.SEMI_FINALS,
+                                roundIndex = 3,
+                                bracketMatchIndex = 1,
+                                playerOneName = "فائز ربع النهائي 1",
+                                playerTwoName = "فائز ربع النهائي 2",
+                                status = MatchStatus.PENDING
+                            )
                         )
-                    )
-                    matches.add(
-                        Match(
-                            tournamentId = tournamentId,
-                            stage = MatchStage.SEMI_FINALS,
-                            roundIndex = 3,
-                            bracketMatchIndex = 2,
-                            playerOneName = "فائز ربع النهائي 3",
-                            playerTwoName = "فائز ربع النهائي 4",
-                            status = MatchStatus.PENDING
+                        matches.add(
+                            Match(
+                                tournamentId = tournamentId,
+                                stage = MatchStage.SEMI_FINALS,
+                                roundIndex = 3,
+                                bracketMatchIndex = 2,
+                                playerOneName = "فائز دور الـ 16 5",
+                                playerTwoName = "أحسن خاسر",
+                                isPlayerTwoLuckyLoser = true,
+                                status = MatchStatus.PENDING
+                            )
                         )
-                    )
+                    } else if (totalQfMatches == 3) {
+                        matches.add(
+                            Match(
+                                tournamentId = tournamentId,
+                                stage = MatchStage.SEMI_FINALS,
+                                roundIndex = 3,
+                                bracketMatchIndex = 1,
+                                playerOneName = "فائز ربع النهائي 1",
+                                playerTwoName = "فائز ربع النهائي 2",
+                                status = MatchStatus.PENDING
+                            )
+                        )
+                        matches.add(
+                            Match(
+                                tournamentId = tournamentId,
+                                stage = MatchStage.SEMI_FINALS,
+                                roundIndex = 3,
+                                bracketMatchIndex = 2,
+                                playerOneName = "فائز ربع النهائي 3",
+                                playerTwoName = "أحسن خاسر",
+                                isPlayerTwoLuckyLoser = true,
+                                status = MatchStatus.PENDING
+                            )
+                        )
+                    } else {
+                        matches.add(
+                            Match(
+                                tournamentId = tournamentId,
+                                stage = MatchStage.SEMI_FINALS,
+                                roundIndex = 3,
+                                bracketMatchIndex = 1,
+                                playerOneName = "فائز ربع النهائي 1",
+                                playerTwoName = "فائز ربع النهائي 2",
+                                status = MatchStatus.PENDING
+                            )
+                        )
+                        matches.add(
+                            Match(
+                                tournamentId = tournamentId,
+                                stage = MatchStage.SEMI_FINALS,
+                                roundIndex = 3,
+                                bracketMatchIndex = 2,
+                                playerOneName = "فائز ربع النهائي 3",
+                                playerTwoName = "فائز ربع النهائي 4",
+                                status = MatchStatus.PENDING
+                            )
+                        )
+                    }
 
                     // 3rd place match
                     matches.add(

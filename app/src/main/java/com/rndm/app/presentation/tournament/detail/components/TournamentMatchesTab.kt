@@ -54,6 +54,7 @@ fun TournamentMatchesTab(
     onPlayerClick: ((String) -> Unit)? = null,
     onReorderMatchClick: ((Match) -> Unit)? = null,
     onSwapPlayerClick: ((match: Match, isSlotOne: Boolean) -> Unit)? = null,
+    onDirectQualifyClick: ((match: Match, isUndo: Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val spacing = RndmThemeTokens.spacing
@@ -152,7 +153,8 @@ fun TournamentMatchesTab(
                             onClick = { onMatchClick(match) },
                             onPlayerClick = onPlayerClick,
                             onReorderMatchClick = onReorderMatchClick,
-                            onSwapPlayerClick = onSwapPlayerClick
+                            onSwapPlayerClick = onSwapPlayerClick,
+                            onDirectQualifyClick = onDirectQualifyClick
                         )
                     }
 
@@ -172,6 +174,7 @@ fun MatchFixtureCard(
     onPlayerClick: ((String) -> Unit)? = null,
     onReorderMatchClick: ((Match) -> Unit)? = null,
     onSwapPlayerClick: ((match: Match, isSlotOne: Boolean) -> Unit)? = null,
+    onDirectQualifyClick: ((match: Match, isUndo: Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isFinished = match.status == MatchStatus.FINISHED
@@ -180,25 +183,29 @@ fun MatchFixtureCard(
     val hasPenalties = match.penaltyScoreOne != null && match.penaltyScoreTwo != null
 
     BentoCard(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
+        modifier = modifier.fillMaxWidth(),
+        onClick = onClick
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp)
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Header Row: Group / Round Index and Status
+            // Header: Stage, Match Index, and Actions
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val headerLabel = when {
-                    match.groupIndex != null -> "المجموعة ${('أ'.code + match.groupIndex).toChar()} • الجولة ${match.roundIndex}"
-                    else -> match.stage.displayName
+                val headerLabel = if (match.bracketMatchIndex != null) {
+                    "${match.stage.displayName} - مباراة ${match.bracketMatchIndex}"
+                } else if (match.groupIndex != null) {
+                    "المجموعة ${('A' + match.groupIndex)} - جولة ${match.roundIndex}"
+                } else {
+                    "${match.stage.displayName} - جولة ${match.roundIndex}"
                 }
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -209,6 +216,69 @@ fun MatchFixtureCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
+
+                    val isEligibleForDirectQualify = !isFinished && match.stage != MatchStage.GROUP_STAGE && match.stage != MatchStage.THIRD_PLACE && match.stage != MatchStage.FINAL && (
+                        (match.isPlayerTwoLuckyLoser || match.playerTwoName == "أحسن خاسر" || match.playerTwoName.isNullOrBlank() || match.playerTwoName == "BYE") &&
+                        match.playerOneName.isNotBlank() && match.playerOneName != "TBD" && !match.playerOneName.startsWith("فائز ") ||
+                        (match.isPlayerOneLuckyLoser || match.playerOneName == "أحسن خاسر" || match.playerOneName.isBlank() || match.playerOneName == "BYE") &&
+                        !match.playerTwoName.isNullOrBlank() && match.playerTwoName != "TBD" && !match.playerTwoName.startsWith("فائز ")
+                    )
+
+                    val isDirectlyQualified = isFinished && match.scoreOne == null && match.scoreTwo == null && match.stage != MatchStage.THIRD_PLACE && match.stage != MatchStage.FINAL
+
+                    if (isEligibleForDirectQualify && onDirectQualifyClick != null) {
+                        Surface(
+                            onClick = { onDirectQualifyClick(match, false) },
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_rocket),
+                                    contentDescription = "تأهيل مباشر",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(11.dp)
+                                )
+                                Text(
+                                    text = "تأهيل مباشر",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    } else if (isDirectlyQualified && onDirectQualifyClick != null) {
+                        Surface(
+                            onClick = { onDirectQualifyClick(match, true) },
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_redo),
+                                    contentDescription = "تراجع عن التأهيل",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(11.dp)
+                                )
+                                Text(
+                                    text = "تراجع عن التأهيل",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
 
                     if (onReorderMatchClick != null && !isFinished) {
                         Surface(
@@ -239,16 +309,22 @@ fun MatchFixtureCard(
                 }
 
                 if (isFinished) {
-                    val statusText = if (hasPenalties) "انتهت (ض.ج)" else "انتهت"
+                    val isDirectlyQualified = match.scoreOne == null && match.scoreTwo == null
+                    val statusText = when {
+                        isDirectlyQualified -> "تأهل مباشر"
+                        hasPenalties -> "انتهت (ض.ج)"
+                        match.isExtraTime -> "انتهت (و.إ)"
+                        else -> "انتهت"
+                    }
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                        color = if (isDirectlyQualified) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
                     ) {
                         Text(
                             text = statusText,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.secondary,
+                            color = if (isDirectlyQualified) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -359,13 +435,12 @@ fun MatchFixtureCard(
                     contentAlignment = Alignment.Center
                 ) {
                     if (isFinished && match.scoreOne != null && match.scoreTwo != null) {
-                        val scoreText = if (hasPenalties) {
-                            "(${match.penaltyScoreOne}) ${match.scoreOne} - ${match.scoreTwo} (${match.penaltyScoreTwo})"
-                        } else {
-                            "${match.scoreOne} - ${match.scoreTwo}"
-                        }
-                        LtrForcedText(
-                            text = scoreText,
+                        com.rndm.app.core.ui.components.MatchScoreBadge(
+                            scoreOne = match.scoreOne,
+                            scoreTwo = match.scoreTwo,
+                            penaltyScoreOne = match.penaltyScoreOne,
+                            penaltyScoreTwo = match.penaltyScoreTwo,
+                            isExtraTime = match.isExtraTime,
                             style = MaterialTheme.typography.titleSmall.copy(
                                 fontWeight = FontWeight.Black,
                                 color = MaterialTheme.colorScheme.primary

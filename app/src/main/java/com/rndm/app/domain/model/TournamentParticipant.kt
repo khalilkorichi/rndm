@@ -14,3 +14,17 @@ data class TournamentParticipant(
     val groupIndex: Int = 0,
     val remoteId: String? = null
 )
+
+fun String?.isRealPlayerName(): Boolean {
+    if (this.isNullOrBlank()) return false
+    val trimmed = this.trim()
+    if (trimmed.equals("BYE", ignoreCase = true)) return false
+    if (trimmed.equals("TBD", ignoreCase = true)) return false
+    if (trimmed == "أحسن خاسر") return false
+    if (trimmed.startsWith("فائز ")) return false
+    if (trimmed.startsWith("خاسر ")) return false
+    if (trimmed.startsWith("المركز ")) return false
+    return true
+}
+
+fun String?.isPlaceholderPlayerName(): Boolean = !this.isRealPlayerName()

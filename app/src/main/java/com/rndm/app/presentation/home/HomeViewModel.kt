@@ -5,16 +5,20 @@ import androidx.lifecycle.viewModelScope
 import com.rndm.app.domain.model.Match
 import com.rndm.app.domain.model.MatchStatus
 import com.rndm.app.domain.model.TournamentStage
+import com.rndm.app.domain.model.ProfilePresets
 import com.rndm.app.domain.repository.TournamentRepository
+import com.rndm.app.domain.usecase.profile.CreateProfileUseCase
 import com.rndm.app.domain.usecase.profile.GetAllProfilesUseCase
 import com.rndm.app.domain.usecase.tournament.UpdateMatchScoreUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -26,11 +30,13 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     getAllProfilesUseCase: GetAllProfilesUseCase,
+    private val createProfileUseCase: CreateProfileUseCase,
     private val tournamentRepository: TournamentRepository,
     private val updateMatchScoreUseCase: UpdateMatchScoreUseCase
 ) : ViewModel() {
 
     private val _selectedMatchForScore = MutableStateFlow<Match?>(null)
+    private val _isRestoreSuccessDialogOpen = MutableStateFlow(false)
 
     // Flow for profiles
     private val profilesFlow = getAllProfilesUseCase()
@@ -58,8 +64,9 @@ class HomeViewModel @Inject constructor(
         profilesFlow,
         tournamentsFlow,
         activeTournamentWithMatchesFlow,
-        _selectedMatchForScore
-    ) { profiles, tournaments, (activeTournament, matches), selectedMatch ->
+        _selectedMatchForScore,
+        _isRestoreSuccessDialogOpen
+    ) { profiles, tournaments, (activeTournament, matches), selectedMatch, isRestoreSuccessOpen ->
         val sortedProfiles = profiles.sortedByDescending { it.lastUsedAt ?: 0L }
         val recentProfile = sortedProfiles.firstOrNull()
         val topProfiles = sortedProfiles.take(6)
@@ -88,6 +95,7 @@ class HomeViewModel @Inject constructor(
             completedTournamentsCount = completedTournaments.size,
             recentChampionTournament = recentChampionTournament,
             selectedMatchForScore = selectedMatch,
+            isRestoreSuccessDialogOpen = isRestoreSuccessOpen,
             error = null
         )
     }.catch { exception ->
@@ -98,6 +106,28 @@ class HomeViewModel @Inject constructor(
         initialValue = HomeUiState(isLoading = true)
     )
 
+    fun onRestoreDefaultProfiles() {
+        viewModelScope.launch {
+            try {
+                val currentProfiles = profilesFlow.first()
+                val missingProfiles = ProfilePresets.getMissingDefaultProfiles(currentProfiles)
+                val toInsert = if (missingProfiles.isNotEmpty()) missingProfiles else ProfilePresets.createDefaultInitialProfiles()
+                toInsert.forEach { profile ->
+                    createProfileUseCase(profile)
+                }
+                _isRestoreSuccessDialogOpen.value = true
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                // Non-blocking fallback
+                _isRestoreSuccessDialogOpen.value = true
+            }
+        }
+    }
+
+    fun onDismissRestoreSuccessDialog() {
+        _isRestoreSuccessDialogOpen.value = false
+    }
+
     fun onSelectMatchForScore(match: Match) {
         _selectedMatchForScore.value = match
     }
@@ -106,11 +136,17 @@ class HomeViewModel @Inject constructor(
         _selectedMatchForScore.value = null
     }
 
-    fun onSaveScore(scoreOne: Int, scoreTwo: Int, penaltyOne: Int? = null, penaltyTwo: Int? = null) {
+    fun onSaveScore(
+        scoreOne: Int,
+        scoreTwo: Int,
+        penaltyOne: Int? = null,
+        penaltyTwo: Int? = null,
+        isExtraTime: Boolean = false
+    ) {
         val match = _selectedMatchForScore.value ?: return
         val tournamentId = match.tournamentId
         viewModelScope.launch {
-            updateMatchScoreUseCase(tournamentId, match, scoreOne, scoreTwo, penaltyOne, penaltyTwo)
+            updateMatchScoreUseCase(tournamentId, match, scoreOne, scoreTwo, penaltyOne, penaltyTwo, isExtraTime)
             _selectedMatchForScore.value = null
         }
     }

@@ -23,6 +23,7 @@ data class FirestoreAdminRequestDto(
     val scoreTwo: Int? = null,
     val penaltyScoreOne: Int? = null,
     val penaltyScoreTwo: Int? = null,
+    val isExtraTime: Boolean? = null,
     val playerOneName: String? = null,
     val playerOneClub: String? = null,
     val playerTwoName: String? = null,

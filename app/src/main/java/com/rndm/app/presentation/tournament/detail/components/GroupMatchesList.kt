@@ -19,7 +19,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.rndm.app.core.ui.components.BentoCard
-import com.rndm.app.core.ui.components.LtrForcedText
+import com.rndm.app.core.ui.components.MatchScoreBadge
 import com.rndm.app.domain.model.Match
 import com.rndm.app.domain.model.MatchStatus
 
@@ -62,12 +62,15 @@ fun GroupMatchesList(
                     Spacer(modifier = Modifier.width(8.dp))
 
                     if (match.status == MatchStatus.FINISHED && match.scoreOne != null && match.scoreTwo != null) {
-                        LtrForcedText(
-                            text = "${match.scoreOne} - ${match.scoreTwo}",
+                        MatchScoreBadge(
+                            scoreOne = match.scoreOne,
+                            scoreTwo = match.scoreTwo,
+                            penaltyScoreOne = match.penaltyScoreOne,
+                            penaltyScoreTwo = match.penaltyScoreTwo,
+                            isExtraTime = match.isExtraTime,
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                textAlign = TextAlign.Center
+                                color = MaterialTheme.colorScheme.primary
                             )
                         )
                     } else {

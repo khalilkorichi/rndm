@@ -499,11 +499,16 @@ private fun PreviewMatchCard(
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 if (isCompleted) {
-                    Text(
-                        text = "${match.scoreOne ?: 0} - ${match.scoreTwo ?: 0}",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    com.rndm.app.core.ui.components.MatchScoreBadge(
+                        scoreOne = match.scoreOne ?: 0,
+                        scoreTwo = match.scoreTwo ?: 0,
+                        penaltyScoreOne = match.penaltyScoreOne,
+                        penaltyScoreTwo = match.penaltyScoreTwo,
+                        isExtraTime = match.isExtraTime,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     )
                 } else if (isInProgress) {
                     Text(

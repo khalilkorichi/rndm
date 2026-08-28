@@ -12,6 +12,8 @@ data class TournamentBracketUiState(
     val selectedMatchForScore: Match? = null,
     val isLoading: Boolean = true,
     val userRole: UserRole = UserRole.GUEST,
+    val directQualifyingMatch: Match? = null,
+    val isUndoDirectQualify: Boolean = false,
     val requestFeedbackMessage: String? = null
 ) {
     val isRequestMode: Boolean

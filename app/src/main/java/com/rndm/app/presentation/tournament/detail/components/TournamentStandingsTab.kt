@@ -2,6 +2,7 @@ package com.rndm.app.presentation.tournament.detail.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -156,17 +158,17 @@ fun TournamentStandingsTab(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(36.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center
@@ -175,22 +177,22 @@ fun TournamentStandingsTab(
                                 painter = painterResource(id = R.drawable.ic_medal),
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "ترتيب أفضل الخاسرين (Lucky Loser)",
+                                text = "ترتيب أفضل الخاسرين",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             val luckyLoserSubtitle = when (tournament.participants.size) {
-                                3 -> "الخاسر من المواجهة الأولى يتأهل لملاقاة اللاعب الثالث في نصف النهائي"
-                                in listOf(5, 6, 7, 15) -> "المرتبة الأولى تتأهل كأحسن خاسر لإكمال الأدوار الإقصائية"
-                                in listOf(13, 14) -> "أفضل الخاسرين يتأهلون لإكمال أدوار خروج المغلوب"
-                                else -> "يتأهل أفضل الخاسرين تلقائياً لإكمال شجرة خروج المغلوب"
+                                3 -> "الخاسر يتأهل لملاقاة اللاعب الثالث في نصف النهائي"
+                                in listOf(5, 6, 7, 15) -> "المرتبة الأولى تتأهل كأفضل خاسر للدور القادم"
+                                in listOf(13, 14) -> "أفضل الخاسرين يتأهلون لإكمال الأدوار الإقصائية"
+                                else -> "تأهيل تلقائي لأفضل الخاسرين لإكمال الشجرة"
                             }
                             Text(
                                 text = luckyLoserSubtitle,
@@ -200,43 +202,56 @@ fun TournamentStandingsTab(
                         }
                     }
 
-                    // Qualification Criteria Chips
+                    // Qualification Criteria Chips with horizontal scroll support
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Surface(
                             shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                         ) {
                             Text(
                                 text = "1. ركلات الترجيح",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }
                         Surface(
                             shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                         ) {
                             Text(
-                                text = "2. فارق الأهداف",
+                                text = "2. الأشواط الإضافية",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }
                         Surface(
                             shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                         ) {
                             Text(
-                                text = "3. الأهداف المسجلة",
+                                text = "3. فارق الأهداف",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                        ) {
+                            Text(
+                                text = "4. الأهداف المسجلة",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }
                     }
@@ -244,8 +259,16 @@ fun TournamentStandingsTab(
             }
 
             if (bestLosers.isNotEmpty()) {
+                val luckySlotsCount = remember(allMatches) {
+                    val count = allMatches.count { 
+                        it.isPlayerTwoLuckyLoser || it.isPlayerOneLuckyLoser || 
+                        it.playerTwoName == "أحسن خاسر" || it.playerOneName == "أحسن خاسر" 
+                    }
+                    if (count > 0) count else 1
+                }
                 BestLosersStandingsTable(
                     candidates = bestLosers,
+                    qualifyingCount = luckySlotsCount,
                     onPlayerClick = onPlayerClick
                 )
             } else {
@@ -255,13 +278,13 @@ fun TournamentStandingsTab(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(24.dp),
+                            .padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(56.dp)
+                                .size(48.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.surfaceVariant),
                             contentAlignment = Alignment.Center
@@ -270,24 +293,24 @@ fun TournamentStandingsTab(
                                 painter = painterResource(id = R.drawable.ic_tournament_outlined),
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(28.dp)
+                                modifier = Modifier.size(24.dp)
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         Text(
-                            text = "بانتظار اكتمال مباريات الدور الأول",
+                            text = "بانتظار نتائج المباريات",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center
                         )
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "سيتم تصنيف الخاسرين وتأهيل صاحب المرتبة الأولى كأحسن خاسر تلقائياً فور تسجيل نتائج المباريات الإقصائية الأولى.",
+                            text = "سيتم تصنيف الخاسرين وتأهيل أفضل خاسر فور تسجيل النتائج.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center

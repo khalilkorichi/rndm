@@ -19,6 +19,7 @@ import com.rndm.app.domain.model.PlayerMatchRecord
 import com.rndm.app.domain.model.PlayerQuickStats
 import com.rndm.app.domain.model.PlayerTournamentParticipation
 import com.rndm.app.domain.model.ProfileType
+import com.rndm.app.domain.model.isRealPlayerName
 import com.rndm.app.domain.model.StageReachedType
 import com.rndm.app.domain.repository.PlayerProfileRepository
 import kotlinx.coroutines.CoroutineDispatcher
@@ -95,7 +96,7 @@ class PlayerProfileRepositoryImpl @Inject constructor(
             val profileMap = customProfiles.associateBy { it.name }
             val resultMap = mutableMapOf<String, PlayerQuickStats>()
 
-            playerNames.distinct().forEach { name ->
+            playerNames.filter { it.isRealPlayerName() }.distinct().forEach { name ->
                 val playerMatches = matches.filter {
                     (it.playerOneName == name || it.playerTwoName == name) && it.status == MatchStatus.FINISHED
                 }
@@ -459,7 +460,7 @@ class PlayerProfileRepositoryImpl @Inject constructor(
 
         val opponentGroups = playerMatches.groupBy { match ->
             if (match.playerOneName == playerName) match.playerTwoName ?: "BYE" else match.playerOneName
-        }
+        }.filterKeys { it.isRealPlayerName() }
 
         return opponentGroups.map { (oppName, oppMatches) ->
             var wins = 0
@@ -522,7 +523,7 @@ class PlayerProfileRepositoryImpl @Inject constructor(
                         participants.map { it.playerName } +
                         matches.flatMap { listOf(it.playerOneName, it.playerTwoName ?: "") } +
                         customProfiles.map { it.name }
-                ).filter { it.isNotBlank() && it != "BYE" && it != "TBD" && it != "أحسن خاسر" }.distinct()
+                ).filter { it.isRealPlayerName() }.distinct()
 
         val profileMap = customProfiles.associateBy { it.name }
         val finalMatchesWon = matches.filter { it.stage == MatchStage.FINAL && it.status == MatchStatus.FINISHED }

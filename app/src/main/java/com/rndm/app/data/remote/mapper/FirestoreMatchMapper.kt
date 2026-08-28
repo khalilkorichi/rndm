@@ -22,6 +22,7 @@ fun FirestoreMatchDto.toDomain(tournamentId: Long = 0L, localMatchId: Long = 0L)
         scoreTwo = scoreTwo,
         penaltyScoreOne = penaltyScoreOne,
         penaltyScoreTwo = penaltyScoreTwo,
+        isExtraTime = isExtraTime,
         winnerName = winnerName,
         status = try { MatchStatus.valueOf(status) } catch (e: Exception) { MatchStatus.PENDING },
         scheduledTimestamp = scheduledTimestamp,
@@ -33,9 +34,19 @@ fun FirestoreMatchDto.toDomain(tournamentId: Long = 0L, localMatchId: Long = 0L)
     )
 }
 
+fun Match.getDeterministicRemoteId(): String {
+    val rId = this.remoteId
+    if (!rId.isNullOrBlank()) return rId
+    return "m_${stage.name}_g${groupIndex ?: -1}_r${roundIndex}_b${bracketMatchIndex ?: 0}_${playerOneName.hashCode()}_${(playerTwoName ?: "").hashCode()}"
+}
+
 fun Match.toFirestoreDto(remoteId: String? = null, actorUid: String? = null): FirestoreMatchDto {
+    val finalId = this.remoteId?.takeIf { it.isNotBlank() }
+        ?: remoteId?.takeIf { it.isNotBlank() }
+        ?: getDeterministicRemoteId()
+
     return FirestoreMatchDto(
-        id = this.remoteId ?: remoteId ?: "",
+        id = finalId,
         stage = stage.name,
         groupIndex = groupIndex,
         roundIndex = roundIndex,
@@ -48,12 +59,13 @@ fun Match.toFirestoreDto(remoteId: String? = null, actorUid: String? = null): Fi
         scoreTwo = scoreTwo,
         penaltyScoreOne = penaltyScoreOne,
         penaltyScoreTwo = penaltyScoreTwo,
+        isExtraTime = isExtraTime,
         winnerName = winnerName,
         status = status.name,
         scheduledTimestamp = scheduledTimestamp,
         isPlayerOneLuckyLoser = isPlayerOneLuckyLoser,
         isPlayerTwoLuckyLoser = isPlayerTwoLuckyLoser,
         updatedByUid = actorUid,
-        updatedAt = updatedAt
+        updatedAt = if (updatedAt > 0) updatedAt else System.currentTimeMillis()
     )
 }

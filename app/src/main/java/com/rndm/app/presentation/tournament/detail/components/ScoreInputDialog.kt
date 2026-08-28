@@ -10,8 +10,8 @@ fun ScoreInputDialog(
     match: Match,
     isRequestMode: Boolean = false,
     onDismiss: () -> Unit,
-    onConfirm: (scoreOne: Int, scoreTwo: Int, penaltyOne: Int?, penaltyTwo: Int?) -> Unit,
-    onConfirmRequest: ((scoreOne: Int, scoreTwo: Int, penaltyOne: Int?, penaltyTwo: Int?, note: String) -> Unit)? = null
+    onConfirm: (scoreOne: Int, scoreTwo: Int, penaltyOne: Int?, penaltyTwo: Int?, isExtraTime: Boolean) -> Unit,
+    onConfirmRequest: ((scoreOne: Int, scoreTwo: Int, penaltyOne: Int?, penaltyTwo: Int?, isExtraTime: Boolean, note: String) -> Unit)? = null
 ) {
     val subtitleText = when {
         match.groupIndex != null -> "المجموعة ${('أ'.code + match.groupIndex).toChar()}"
@@ -27,6 +27,7 @@ fun ScoreInputDialog(
         initialScoreTwo = match.scoreTwo,
         initialPenaltyScoreOne = match.penaltyScoreOne,
         initialPenaltyScoreTwo = match.penaltyScoreTwo,
+        initialIsExtraTime = match.isExtraTime,
         isKnockout = match.stage != MatchStage.GROUP_STAGE,
         isRequestMode = isRequestMode,
         subtitle = subtitleText,

@@ -15,6 +15,7 @@ import com.rndm.app.data.local.MIGRATION_9_10
 import com.rndm.app.data.local.MIGRATION_10_11
 import com.rndm.app.data.local.MIGRATION_11_12
 import com.rndm.app.data.local.MIGRATION_12_13
+import com.rndm.app.data.local.MIGRATION_13_14
 import com.rndm.app.data.local.RndmDatabase
 import com.rndm.app.data.local.dao.MatchDao
 import com.rndm.app.data.local.dao.PlayerProfileDao
@@ -54,7 +55,8 @@ object DatabaseModule {
             MIGRATION_9_10,
             MIGRATION_10_11,
             MIGRATION_11_12,
-            MIGRATION_12_13
+            MIGRATION_12_13,
+            MIGRATION_13_14
         ).fallbackToDestructiveMigration()
          .build()
     }

@@ -4,6 +4,7 @@ import com.rndm.app.data.local.entity.TournamentEntity
 import com.rndm.app.data.local.entity.TournamentParticipantEntity
 import com.rndm.app.domain.model.Tournament
 import com.rndm.app.domain.model.TournamentParticipant
+import com.rndm.app.domain.model.isRealPlayerName
 
 fun TournamentEntity.toDomain(
     participants: List<TournamentParticipantEntity> = emptyList()
@@ -18,7 +19,7 @@ fun TournamentEntity.toDomain(
         clubsProfileId = clubsProfileId,
         groupsCount = groupsCount,
         qualifiersPerGroup = qualifiersPerGroup,
-        participants = participants.map { it.toDomain() },
+        participants = participants.filter { it.playerName.isRealPlayerName() }.map { it.toDomain() },
         createdAt = createdAt,
         updatedAt = updatedAt,
         isArchived = isArchived,

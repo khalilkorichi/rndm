@@ -3,6 +3,7 @@ package com.rndm.app.data.remote.firebase
 import android.util.Log
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import com.rndm.app.data.remote.firebase.dto.FirestoreCodeDto
 import com.rndm.app.data.remote.firebase.dto.FirestoreMatchDto
 import com.rndm.app.data.remote.firebase.dto.FirestoreParticipantDto
@@ -243,13 +244,35 @@ class FirestoreTournamentDataSource @Inject constructor(
 
     suspend fun updateMatchScore(tournamentId: String, match: FirestoreMatchDto): Result<Unit> {
         return try {
-            val matchRef = firestore.collection("tournaments").document(tournamentId)
-                .collection("matches").document(match.id)
-            matchRef.set(match).await()
+            val docId = if (match.id.isNotBlank()) match.id else "m_${match.stage}_g${match.groupIndex ?: -1}_r${match.roundIndex}_b${match.bracketMatchIndex ?: 0}"
+            val matchesCol = firestore.collection("tournaments").document(tournamentId).collection("matches")
+            val matchRef = matchesCol.document(docId)
+            val finalDto = match.copy(id = docId, updatedAt = if (match.updatedAt > 0) match.updatedAt else System.currentTimeMillis())
+            matchRef.set(finalDto, SetOptions.merge()).await()
             Result.success(Unit)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Log.e("SYNC_RNDM", "Failed update match score", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateMatchesBatch(tournamentId: String, matches: List<FirestoreMatchDto>): Result<Unit> {
+        return try {
+            if (matches.isEmpty()) return Result.success(Unit)
+            val batch = firestore.batch()
+            val matchesCol = firestore.collection("tournaments").document(tournamentId).collection("matches")
+            matches.forEach { m ->
+                val docId = if (m.id.isNotBlank()) m.id else "m_${m.stage}_g${m.groupIndex ?: -1}_r${m.roundIndex}_b${m.bracketMatchIndex ?: 0}"
+                val matchRef = matchesCol.document(docId)
+                val finalDto = m.copy(id = docId, updatedAt = if (m.updatedAt > 0) m.updatedAt else System.currentTimeMillis())
+                batch.set(matchRef, finalDto, SetOptions.merge())
+            }
+            batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Log.e("SYNC_RNDM", "Failed update matches batch", e)
             Result.failure(e)
         }
     }

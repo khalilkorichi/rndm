@@ -17,6 +17,7 @@ data class FirestoreMatchDto(
     val scoreTwo: Int? = null,
     val penaltyScoreOne: Int? = null,
     val penaltyScoreTwo: Int? = null,
+    val isExtraTime: Boolean = false,
     val winnerName: String? = null,
     val status: String = "PENDING",
     val scheduledTimestamp: Long? = null,

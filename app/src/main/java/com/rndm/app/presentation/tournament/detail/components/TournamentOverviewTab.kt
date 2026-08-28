@@ -62,6 +62,7 @@ fun TournamentOverviewTab(
     onSwapPlayerClick: ((match: Match, isSlotOne: Boolean) -> Unit)? = null,
     onEditParticipant: ((com.rndm.app.domain.model.TournamentParticipant) -> Unit)? = null,
     onAddPlayersClick: (() -> Unit)? = null,
+    onDirectQualifyClick: ((match: Match, isUndo: Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val spacing = RndmThemeTokens.spacing
@@ -400,6 +401,69 @@ fun TournamentOverviewTab(
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+
+                                    val isEligibleForDirectQualify = match.status != MatchStatus.FINISHED && match.stage != MatchStage.GROUP_STAGE && match.stage != MatchStage.THIRD_PLACE && match.stage != MatchStage.FINAL && (
+                                        (match.isPlayerTwoLuckyLoser || match.playerTwoName == "أحسن خاسر" || match.playerTwoName.isNullOrBlank() || match.playerTwoName == "BYE") &&
+                                        match.playerOneName.isNotBlank() && match.playerOneName != "TBD" && !match.playerOneName.startsWith("فائز ") ||
+                                        (match.isPlayerOneLuckyLoser || match.playerOneName == "أحسن خاسر" || match.playerOneName.isBlank() || match.playerOneName == "BYE") &&
+                                        !match.playerTwoName.isNullOrBlank() && match.playerTwoName != "TBD" && !match.playerTwoName.startsWith("فائز ")
+                                    )
+
+                                    val isDirectlyQualified = match.status == MatchStatus.FINISHED && match.scoreOne == null && match.scoreTwo == null && match.stage != MatchStage.THIRD_PLACE && match.stage != MatchStage.FINAL
+
+                                    if (isEligibleForDirectQualify && onDirectQualifyClick != null) {
+                                        Surface(
+                                            onClick = { onDirectQualifyClick(match, false) },
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.ic_rocket),
+                                                    contentDescription = "تأهيل مباشر",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(11.dp)
+                                                )
+                                                Text(
+                                                    text = "تأهيل مباشر",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    } else if (isDirectlyQualified && onDirectQualifyClick != null) {
+                                        Surface(
+                                            onClick = { onDirectQualifyClick(match, true) },
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f))
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.ic_redo),
+                                                    contentDescription = "تراجع عن التأهيل",
+                                                    tint = MaterialTheme.colorScheme.error,
+                                                    modifier = Modifier.size(11.dp)
+                                                )
+                                                Text(
+                                                    text = "تراجع عن التأهيل",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.error
+                                                )
+                                            }
+                                        }
+                                    }
 
                                     Surface(
                                         onClick = { onReorderMatchClick(match) },

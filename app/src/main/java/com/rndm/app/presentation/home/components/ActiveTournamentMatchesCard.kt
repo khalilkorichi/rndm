@@ -38,7 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rndm.app.R
 import com.rndm.app.core.ui.components.BentoCard
-import com.rndm.app.core.ui.components.LtrForcedText
+import com.rndm.app.core.ui.components.MatchScoreBadge
 import com.rndm.app.domain.model.Match
 import com.rndm.app.domain.model.MatchStatus
 import com.rndm.app.domain.model.Tournament
@@ -323,13 +323,12 @@ fun ActiveTournamentMatchesCard(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (isFinished && match.scoreOne != null && match.scoreTwo != null) {
-                                        val scoreText = if (hasPenalties) {
-                                            "(${match.penaltyScoreOne}) ${match.scoreOne} - ${match.scoreTwo} (${match.penaltyScoreTwo})"
-                                        } else {
-                                            "${match.scoreOne} - ${match.scoreTwo}"
-                                        }
-                                        LtrForcedText(
-                                            text = scoreText,
+                                        MatchScoreBadge(
+                                            scoreOne = match.scoreOne,
+                                            scoreTwo = match.scoreTwo,
+                                            penaltyScoreOne = match.penaltyScoreOne,
+                                            penaltyScoreTwo = match.penaltyScoreTwo,
+                                            isExtraTime = match.isExtraTime,
                                             style = MaterialTheme.typography.titleSmall.copy(
                                                 fontWeight = FontWeight.Black,
                                                 color = MaterialTheme.colorScheme.primary

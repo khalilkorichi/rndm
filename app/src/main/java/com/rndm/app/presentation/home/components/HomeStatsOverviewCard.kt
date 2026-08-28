@@ -78,13 +78,13 @@ fun HomeStatsOverviewCard(
 
                     Column {
                         Text(
-                            text = "البطولات والنشاط العام",
+                            text = "البطولات",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "متابعة التقدم والمسابقات",
+                            text = "سجل ومسابقات",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -99,7 +99,7 @@ fun HomeStatsOverviewCard(
                         .clickable { onNavigateToTournaments() }
                 ) {
                     Text(
-                        text = "كل البطولات",
+                        text = "عرض الكل",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary,
@@ -140,7 +140,7 @@ fun HomeStatsOverviewCard(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "إنشاء بطولة جديدة",
+                            text = "إنشاء بطولة",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -197,7 +197,7 @@ fun HomeStatsOverviewCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 StatPill(
-                    label = "بطولات جارية",
+                    label = "جارية",
                     value = activeTournamentsCount.toString(),
                     color = MaterialTheme.colorScheme.primary,
                     onClick = onNavigateToTournaments,
@@ -205,7 +205,7 @@ fun HomeStatsOverviewCard(
                 )
 
                 StatPill(
-                    label = "بطولات مكتملة",
+                    label = "مكتملة",
                     value = completedTournamentsCount.toString(),
                     color = MaterialTheme.colorScheme.secondary,
                     onClick = onNavigateToTournaments,

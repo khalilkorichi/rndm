@@ -9,6 +9,7 @@ import com.rndm.app.domain.model.MatchStage
 import com.rndm.app.domain.model.Tournament
 import com.rndm.app.domain.model.TournamentParticipant
 import com.rndm.app.domain.model.TournamentStage
+import com.rndm.app.domain.model.isRealPlayerName
 import com.rndm.app.domain.repository.TournamentRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
@@ -86,7 +87,8 @@ class TournamentRepositoryImpl @Inject constructor(
         matches: List<Match>
     ): Long = withContext(ioDispatcher) {
         val tournamentId = tournamentDao.insertTournament(tournament.toEntity())
-        tournamentDao.insertParticipants(participants.map { it.toEntity(tournamentId) })
+        val realParticipants = participants.filter { it.playerName.isRealPlayerName() }
+        tournamentDao.insertParticipants(realParticipants.map { it.toEntity(tournamentId) })
         matchDao.insertMatches(matches.map { it.toEntity(tournamentId) })
         tournamentId
     }

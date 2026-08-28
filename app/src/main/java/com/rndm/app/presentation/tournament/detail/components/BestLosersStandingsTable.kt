@@ -36,6 +36,7 @@ import com.rndm.app.domain.usecase.tournament.LoserCandidate
 @Composable
 fun BestLosersStandingsTable(
     candidates: List<LoserCandidate>,
+    qualifyingCount: Int = 1,
     onPlayerClick: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -82,11 +83,11 @@ fun BestLosersStandingsTable(
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    text = "ض.ج",
+                    text = "الحسم",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.width(36.dp),
+                    modifier = Modifier.width(40.dp),
                     textAlign = TextAlign.Center
                 )
                 Text(
@@ -102,9 +103,10 @@ fun BestLosersStandingsTable(
             Spacer(modifier = Modifier.height(spacing.xs))
 
             candidates.forEachIndexed { index, candidate ->
+                val isQualified = index < qualifyingCount
                 val isTopRank = index == 0
-                val rowBackground = if (isTopRank) {
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                val rowBackground = if (isQualified) {
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (isTopRank) 0.35f else 0.2f)
                 } else {
                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                 }
@@ -195,13 +197,21 @@ fun BestLosersStandingsTable(
                         modifier = Modifier.width(32.dp)
                     )
 
-                    // Penalties Indicator
+                    // Resolution Indicator (Penalties / Extra Time / Regular Time)
                     Text(
-                        text = if (candidate.lostByPenalties) "نعم" else "—",
+                        text = when {
+                            candidate.lostByPenalties -> "ض.ج"
+                            candidate.lostInExtraTime -> "و.إ"
+                            else -> "و.أ"
+                        },
                         style = MaterialTheme.typography.labelSmall,
-                        fontWeight = if (candidate.lostByPenalties) FontWeight.Bold else FontWeight.Normal,
-                        color = if (candidate.lostByPenalties) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.width(36.dp),
+                        fontWeight = if (candidate.lostByPenalties || candidate.lostInExtraTime) FontWeight.Bold else FontWeight.Normal,
+                        color = when {
+                            candidate.lostByPenalties -> MaterialTheme.colorScheme.tertiary
+                            candidate.lostInExtraTime -> MaterialTheme.colorScheme.secondary
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        },
+                        modifier = Modifier.width(40.dp),
                         textAlign = TextAlign.Center
                     )
 
@@ -210,7 +220,7 @@ fun BestLosersStandingsTable(
                         modifier = Modifier.width(84.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (isTopRank) {
+                        if (isQualified) {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),

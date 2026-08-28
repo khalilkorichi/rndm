@@ -9,15 +9,28 @@ data class LoserCandidate(
     val playerName: String,
     val clubName: String?,
     val lostByPenalties: Boolean,
+    val lostInExtraTime: Boolean = false,
     val goalDifference: Int, // (loserScore - winnerScore), e.g. 1 - 2 = -1
     val goalsScored: Int,
     val penaltyGoalsScored: Int = 0
 ) : Comparable<LoserCandidate> {
     override fun compareTo(other: LoserCandidate): Int {
-        // 1. Lost by penalty shootout is top priority (considered 0 goal difference in regular time)
-        if (this.lostByPenalties != other.lostByPenalties) {
-            return if (this.lostByPenalties) 1 else -1
+        // 1. Loss tier: Penalty Shootout (Tier 3) > Extra Time (Tier 2) > Regular Time (Tier 1)
+        val thisTier = when {
+            this.lostByPenalties -> 3
+            this.lostInExtraTime -> 2
+            else -> 1
         }
+        val otherTier = when {
+            other.lostByPenalties -> 3
+            other.lostInExtraTime -> 2
+            else -> 1
+        }
+        if (thisTier != otherTier) {
+            return thisTier.compareTo(otherTier)
+        }
+
+        // Within penalty shootout losers: compare penalty goals scored
         if (this.lostByPenalties && other.lostByPenalties) {
             val penaltyDiff = this.penaltyGoalsScored.compareTo(other.penaltyGoalsScored)
             if (penaltyDiff != 0) return penaltyDiff
@@ -68,6 +81,8 @@ class EvaluateBestLosersUseCase @Inject constructor() {
                     match.penaltyScoreTwo != null &&
                     s1 == s2
 
+            val lostInExtraTime = match.isExtraTime && !lostByPenalties
+
             val loserPenaltyScore = if (lostByPenalties) {
                 if (isP1Winner) match.penaltyScoreTwo ?: 0 else match.penaltyScoreOne ?: 0
             } else 0
@@ -77,6 +92,7 @@ class EvaluateBestLosersUseCase @Inject constructor() {
                 playerName = loserName,
                 clubName = loserClub,
                 lostByPenalties = lostByPenalties,
+                lostInExtraTime = lostInExtraTime,
                 goalDifference = loserScore - winnerScore,
                 goalsScored = loserScore,
                 penaltyGoalsScored = loserPenaltyScore

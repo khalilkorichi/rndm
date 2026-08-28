@@ -5,7 +5,7 @@
 Clean Architecture بثلاث طبقات، مع اتجاه اعتماد واحد فقط: `presentation → domain ← data`. طبقة `domain` لا تعرف بوجود Room أو Android SDK أو Compose نهائياً — هي كوتلن نقي (Pure Kotlin Module قابل حتى للفصل كـ Gradle module مستقل لاحقاً).
 
 ## 2. شجرة الحزم الكاملة (يجب إنشاؤها بالكامل في هذه المرحلة، حتى الفارغة)
-
+  
 ```
 com.rndm.app/
 │

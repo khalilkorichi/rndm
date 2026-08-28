@@ -22,6 +22,7 @@ fun HomeContent(
     onNavigateToFreeWheelDraw: (Long) -> Unit = {},
     onNavigateToClubDuelDraw: () -> Unit,
     onNavigateToCreateProfile: () -> Unit,
+    onRestoreDefaultProfilesClick: () -> Unit = {},
     onNavigateToProfiles: () -> Unit,
     onNavigateToTournaments: () -> Unit,
     onNavigateToCreateTournament: () -> Unit,
@@ -59,6 +60,7 @@ fun HomeContent(
                 onNavigateToFreeWheelDraw = onNavigateToFreeWheelDraw,
                 onNavigateToClubDuelDraw = onNavigateToClubDuelDraw,
                 onCreateProfileClick = onNavigateToCreateProfile,
+                onRestoreDefaultProfilesClick = onRestoreDefaultProfilesClick,
                 onNavigateToProfiles = onNavigateToProfiles
             )
         }

@@ -64,7 +64,8 @@ fun TournamentBracketScreen(
                 GoogleKnockoutBracketView(
                     matches = uiState.knockoutMatches,
                     onMatchClick = viewModel::onSelectMatchForScore,
-                    onPlayerClick = onNavigateToPlayer
+                    onPlayerClick = onNavigateToPlayer,
+                    onDirectQualifyClick = viewModel::onOpenDirectQualifyDialog
                 )
 
                 Spacer(modifier = Modifier.height(48.dp))
@@ -76,12 +77,22 @@ fun TournamentBracketScreen(
                 match = match,
                 isRequestMode = uiState.isRequestMode,
                 onDismiss = viewModel::onDismissScoreDialog,
-                onConfirm = { s1, s2, p1, p2 ->
-                    viewModel.onSaveScore(s1, s2, p1, p2)
+                onConfirm = { s1, s2, p1, p2, isExtraTime ->
+                    viewModel.onSaveScore(s1, s2, p1, p2, isExtraTime)
                 },
-                onConfirmRequest = { s1, s2, p1, p2, note ->
-                    viewModel.onSaveScore(s1, s2, p1, p2, note)
+                onConfirmRequest = { s1, s2, p1, p2, isExtraTime, note ->
+                    viewModel.onSaveScore(s1, s2, p1, p2, isExtraTime, note)
                 }
+            )
+        }
+
+        uiState.directQualifyingMatch?.let { match ->
+            com.rndm.app.presentation.tournament.detail.components.DirectQualifyConfirmDialog(
+                match = match,
+                isRequestMode = uiState.isRequestMode,
+                isUndoMode = uiState.isUndoDirectQualify,
+                onDismiss = viewModel::onDismissDirectQualifyDialog,
+                onConfirm = viewModel::onConfirmDirectQualify
             )
         }
     }

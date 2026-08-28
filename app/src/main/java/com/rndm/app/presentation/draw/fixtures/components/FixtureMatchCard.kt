@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.rndm.app.R
 import com.rndm.app.core.theme.RndmThemeTokens
 import com.rndm.app.core.ui.components.BentoCard
-import com.rndm.app.core.ui.components.LtrForcedText
+import com.rndm.app.core.ui.components.MatchScoreBadge
 import com.rndm.app.domain.model.DrawFixture
 
 @Composable
@@ -211,8 +211,9 @@ fun FixtureMatchCard(
                     contentAlignment = Alignment.Center
                 ) {
                     if (fixture.isFinished && fixture.scoreOne != null && fixture.scoreTwo != null) {
-                        LtrForcedText(
-                            text = "${fixture.scoreOne} - ${fixture.scoreTwo}",
+                        MatchScoreBadge(
+                            scoreOne = fixture.scoreOne,
+                            scoreTwo = fixture.scoreTwo,
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary

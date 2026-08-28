@@ -15,6 +15,7 @@ import com.rndm.app.R
 import com.rndm.app.core.ui.components.RndmTopAppBar
 import com.rndm.app.core.util.Constants
 import com.rndm.app.domain.model.DrawType
+import com.rndm.app.presentation.home.components.RestoreDefaultsSuccessDialog
 import com.rndm.app.presentation.home.components.HomeContent
 import com.rndm.app.presentation.home.components.HomeSkeleton
 import com.rndm.app.presentation.tournament.detail.components.ScoreInputDialog
@@ -59,6 +60,7 @@ fun HomeScreen(
                     onNavigateToFreeWheelDraw = onNavigateToFreeWheelDraw,
                     onNavigateToClubDuelDraw = onNavigateToClubDuelDraw,
                     onNavigateToCreateProfile = onNavigateToCreateProfile,
+                    onRestoreDefaultProfilesClick = viewModel::onRestoreDefaultProfiles,
                     onNavigateToProfiles = onNavigateToProfiles,
                     onNavigateToTournaments = onNavigateToTournaments,
                     onNavigateToCreateTournament = onNavigateToCreateTournament,
@@ -70,12 +72,18 @@ fun HomeScreen(
             }
         }
 
+        if (uiState.isRestoreSuccessDialogOpen) {
+            RestoreDefaultsSuccessDialog(
+                onDismiss = viewModel::onDismissRestoreSuccessDialog
+            )
+        }
+
         uiState.selectedMatchForScore?.let { match ->
             ScoreInputDialog(
                 match = match,
                 onDismiss = viewModel::onDismissScoreDialog,
-                onConfirm = { s1, s2, p1, p2 ->
-                    viewModel.onSaveScore(s1, s2, p1, p2)
+                onConfirm = { s1, s2, p1, p2, isExtraTime ->
+                    viewModel.onSaveScore(s1, s2, p1, p2, isExtraTime)
                 }
             )
         }

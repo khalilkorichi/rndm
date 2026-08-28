@@ -31,6 +31,8 @@ data class TournamentDetailUiState(
     val isBroadcasted: Boolean = false,
     val isShareDialogOpen: Boolean = false,
     val activeShareCode: String? = null,
+    val directQualifyingMatch: Match? = null,
+    val isUndoDirectQualify: Boolean = false,
     val requestFeedbackMessage: String? = null
 ) {
     val isRequestMode: Boolean

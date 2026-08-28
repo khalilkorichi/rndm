@@ -17,6 +17,7 @@ fun TournamentKnockoutTab(
     knockoutMatches: List<Match>,
     onMatchClick: (Match) -> Unit,
     onPlayerClick: ((String) -> Unit)? = null,
+    onDirectQualifyClick: ((match: Match, isUndo: Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -28,7 +29,8 @@ fun TournamentKnockoutTab(
         GoogleKnockoutBracketView(
             matches = knockoutMatches,
             onMatchClick = onMatchClick,
-            onPlayerClick = onPlayerClick
+            onPlayerClick = onPlayerClick,
+            onDirectQualifyClick = onDirectQualifyClick
         )
 
         Spacer(modifier = Modifier.height(32.dp))

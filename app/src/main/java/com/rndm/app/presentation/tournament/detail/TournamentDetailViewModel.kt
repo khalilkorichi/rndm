@@ -106,10 +106,34 @@ class TournamentDetailViewModel @Inject constructor(
                         Pair(false, false)
                     }
 
-                    val bestLosers = if (tournament.stage == TournamentStage.GROUPS) {
-                        evaluateBestLosersUseCase(allMatches)
+                    val bestLosers = if (tournament.groups.isNotEmpty() && tournament.stage == TournamentStage.GROUPS) {
+                        evaluateBestLosersUseCase(tournament.groups.flatMap { it.matches })
                     } else {
-                        emptyList()
+                        // For Knockout / Draw tournaments:
+                        // Find the relevant stage for lucky losers evaluation
+                        val luckySlotStage = allMatches.firstOrNull { it.isPlayerTwoLuckyLoser || it.isPlayerOneLuckyLoser || it.playerTwoName == "أحسن خاسر" || it.playerOneName == "أحسن خاسر" }?.stage
+                        val sourceMatches = when {
+                            luckySlotStage == MatchStage.SEMI_FINALS && allMatches.any { it.stage == MatchStage.QUARTER_FINALS } -> {
+                                allMatches.filter { it.stage == MatchStage.QUARTER_FINALS && !it.isPlayerTwoLuckyLoser && !it.isPlayerOneLuckyLoser }
+                            }
+                            luckySlotStage != null -> {
+                                allMatches.filter { it.stage == luckySlotStage && !it.isPlayerTwoLuckyLoser && !it.isPlayerOneLuckyLoser }
+                            }
+                            else -> {
+                                val firstKnockoutStage = allMatches.map { it.stage }.firstOrNull { it != MatchStage.GROUP_STAGE }
+                                if (firstKnockoutStage != null) {
+                                    allMatches.filter { it.stage == firstKnockoutStage && !it.isPlayerTwoLuckyLoser && !it.isPlayerOneLuckyLoser }
+                                } else {
+                                    allMatches.filter { !it.isPlayerTwoLuckyLoser && !it.isPlayerOneLuckyLoser }
+                                }
+                            }
+                        }
+                        val finishedSource = sourceMatches.filter { it.status == MatchStatus.FINISHED }
+                        if (finishedSource.isNotEmpty()) {
+                            evaluateBestLosersUseCase(finishedSource)
+                        } else {
+                            evaluateBestLosersUseCase(allMatches.filter { it.status == MatchStatus.FINISHED && !it.isPlayerTwoLuckyLoser && !it.isPlayerOneLuckyLoser })
+                        }
                     }
 
                     _uiState.update {
@@ -147,7 +171,14 @@ class TournamentDetailViewModel @Inject constructor(
         _uiState.update { it.copy(selectedMatchForScore = null) }
     }
 
-    fun onSaveScore(scoreOne: Int, scoreTwo: Int, penaltyOne: Int? = null, penaltyTwo: Int? = null, note: String = "") {
+    fun onSaveScore(
+        scoreOne: Int,
+        scoreTwo: Int,
+        penaltyOne: Int? = null,
+        penaltyTwo: Int? = null,
+        isExtraTime: Boolean = false,
+        note: String = ""
+    ) {
         val match = _uiState.value.selectedMatchForScore ?: return
         val tournament = _uiState.value.tournament ?: return
         val role = _uiState.value.userRole
@@ -170,6 +201,7 @@ class TournamentDetailViewModel @Inject constructor(
                     scoreTwo = scoreTwo,
                     penaltyScoreOne = penaltyOne,
                     penaltyScoreTwo = penaltyTwo,
+                    isExtraTime = isExtraTime,
                     playerOneName = match.playerOneName,
                     playerTwoName = match.playerTwoName,
                     description = "طلب تعديل نتيجة مباراة (${match.playerOneName} ضد ${match.playerTwoName}) إلى ($scoreOne - $scoreTwo)$noteSnippet"
@@ -192,8 +224,127 @@ class TournamentDetailViewModel @Inject constructor(
                 }
             } else {
                 // Direct update (Local or Admin or Host)
-                updateMatchScoreUseCase(tournamentId, match, scoreOne, scoreTwo, penaltyOne, penaltyTwo)
+                updateMatchScoreUseCase(tournamentId, match, scoreOne, scoreTwo, penaltyOne, penaltyTwo, isExtraTime)
                 _uiState.update { it.copy(selectedMatchForScore = null) }
+            }
+        }
+    }
+
+    fun onOpenDirectQualifyDialog(match: Match, isUndo: Boolean = false) {
+        _uiState.update { it.copy(directQualifyingMatch = match, isUndoDirectQualify = isUndo) }
+    }
+
+    fun onDismissDirectQualifyDialog() {
+        _uiState.update { it.copy(directQualifyingMatch = null, isUndoDirectQualify = false) }
+    }
+
+    fun onConfirmDirectQualify() {
+        val match = _uiState.value.directQualifyingMatch ?: return
+        val isUndo = _uiState.value.isUndoDirectQualify
+        val tournament = _uiState.value.tournament ?: return
+        val role = _uiState.value.userRole
+        val winnerName = if (
+            match.isPlayerTwoLuckyLoser || 
+            match.playerTwoName == "أحسن خاسر" || 
+            match.playerTwoName.isNullOrBlank() || 
+            match.playerTwoName == "BYE"
+        ) {
+            match.playerOneName
+        } else {
+            match.playerTwoName ?: match.playerOneName
+        }
+
+        viewModelScope.launch {
+            if (isUndo) {
+                if (tournament.isRemote && role != UserRole.ADMIN && !tournament.isHost) {
+                    val request = AdminRequest(
+                        id = "",
+                        type = RequestType.CHANGE_SCORE,
+                        tournamentId = tournament.remoteId ?: tournamentId.toString(),
+                        tournamentName = tournament.name,
+                        requesterUid = "",
+                        requesterName = "",
+                        requesterEmail = "",
+                        matchId = match.id,
+                        remoteMatchId = match.remoteId,
+                        playerOneName = match.playerOneName,
+                        playerTwoName = match.playerTwoName,
+                        description = "طلب التراجع عن تأهيل اللاعب ($winnerName) وإعادة المباراة للانتظار"
+                    )
+                    val result = submitTournamentRequestUseCase(request)
+                    if (result.isSuccess) {
+                        _uiState.update {
+                            it.copy(
+                                directQualifyingMatch = null,
+                                isUndoDirectQualify = false,
+                                requestFeedbackMessage = "تم إرسال طلب التراجع عن التأهيل للأدمن بنجاح 📨"
+                            )
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                directQualifyingMatch = null,
+                                isUndoDirectQualify = false,
+                                requestFeedbackMessage = "تعذر إرسال الطلب، يرجى التأكد من اتصال الإنترنت"
+                            )
+                        }
+                    }
+                } else {
+                    updateMatchScoreUseCase.undoDirectQualifyMatch(tournamentId, match)
+                    _uiState.update {
+                        it.copy(
+                            directQualifyingMatch = null,
+                            isUndoDirectQualify = false,
+                            requestFeedbackMessage = "تم التراجع عن التأهيل وإعادة المباراة لحالة الانتظار بنجاح"
+                        )
+                    }
+                }
+            } else {
+                if (tournament.isRemote && role != UserRole.ADMIN && !tournament.isHost) {
+                    // Submit Request to Admin
+                    val request = AdminRequest(
+                        id = "",
+                        type = RequestType.CHANGE_SCORE,
+                        tournamentId = tournament.remoteId ?: tournamentId.toString(),
+                        tournamentName = tournament.name,
+                        requesterUid = "",
+                        requesterName = "",
+                        requesterEmail = "",
+                        matchId = match.id,
+                        remoteMatchId = match.remoteId,
+                        playerOneName = match.playerOneName,
+                        playerTwoName = match.playerTwoName,
+                        description = "طلب تأهيل اللاعب ($winnerName) مباشرة للدور القادم دون انتظار أحسن خاسر"
+                    )
+                    val result = submitTournamentRequestUseCase(request)
+                    if (result.isSuccess) {
+                        _uiState.update {
+                            it.copy(
+                                directQualifyingMatch = null,
+                                isUndoDirectQualify = false,
+                                requestFeedbackMessage = "تم إرسال طلب التأهيل المباشر للأدمن بنجاح 📨"
+                            )
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                directQualifyingMatch = null,
+                                isUndoDirectQualify = false,
+                                requestFeedbackMessage = "تعذر إرسال الطلب، يرجى التأكد من اتصال الإنترنت"
+                            )
+                        }
+                    }
+                } else {
+                    // Direct local/admin update
+                    updateMatchScoreUseCase.directQualifyMatch(tournamentId, match)
+                    _uiState.update {
+                        it.copy(
+                            directQualifyingMatch = null,
+                            isUndoDirectQualify = false,
+                            requestFeedbackMessage = "تم تأهيل اللاعب ($winnerName) مباشرة إلى الدور القادم بنجاح"
+                        )
+                    }
+                }
             }
         }
     }

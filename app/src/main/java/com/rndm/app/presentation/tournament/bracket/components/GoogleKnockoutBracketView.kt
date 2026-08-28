@@ -53,6 +53,7 @@ fun GoogleKnockoutBracketView(
     matches: List<Match>,
     onMatchClick: (Match) -> Unit,
     onPlayerClick: ((String) -> Unit)? = null,
+    onDirectQualifyClick: ((match: Match, isUndo: Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -192,7 +193,8 @@ fun GoogleKnockoutBracketView(
                                     GoogleMatchCard(
                                         match = match,
                                         onClick = { onMatchClick(match) },
-                                        onPlayerClick = onPlayerClick
+                                        onPlayerClick = onPlayerClick,
+                                        onDirectQualifyClick = onDirectQualifyClick
                                     )
                                     if (matchIndex < stageMatches.size - 1) {
                                         Spacer(modifier = Modifier.height(16.dp))
@@ -245,6 +247,7 @@ fun GoogleKnockoutBracketView(
                             match = thirdPlaceMatch,
                             onClick = { onMatchClick(thirdPlaceMatch) },
                             onPlayerClick = onPlayerClick,
+                            onDirectQualifyClick = null,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -259,15 +262,26 @@ fun GoogleMatchCard(
     match: Match,
     onClick: () -> Unit,
     onPlayerClick: ((String) -> Unit)? = null,
+    onDirectQualifyClick: ((match: Match, isUndo: Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isFinished = match.status == MatchStatus.FINISHED
     val isP1Winner = isFinished && match.winnerName == match.playerOneName
     val isP2Winner = isFinished && match.winnerName == match.playerTwoName
     val hasPenalties = match.penaltyScoreOne != null && match.penaltyScoreTwo != null
+    val isDirectlyQualified = isFinished && match.scoreOne == null && match.scoreTwo == null && match.stage != MatchStage.THIRD_PLACE && match.stage != MatchStage.FINAL
+
+    val isEligibleForDirectQualify = !isFinished && match.stage != MatchStage.GROUP_STAGE && match.stage != MatchStage.THIRD_PLACE && match.stage != MatchStage.FINAL && (
+        (match.isPlayerTwoLuckyLoser || match.playerTwoName == "أحسن خاسر" || match.playerTwoName.isNullOrBlank() || match.playerTwoName == "BYE") &&
+        match.playerOneName.isNotBlank() && match.playerOneName != "TBD" && !match.playerOneName.startsWith("فائز ") ||
+        (match.isPlayerOneLuckyLoser || match.playerOneName == "أحسن خاسر" || match.playerOneName.isBlank() || match.playerOneName == "BYE") &&
+        !match.playerTwoName.isNullOrBlank() && match.playerTwoName != "TBD" && !match.playerTwoName.startsWith("فائز ")
+    )
 
     val statusBadgeText = when {
+        isDirectlyQualified -> "تأهل مباشر"
         isFinished && hasPenalties -> "النهائية (ض.ج)"
+        isFinished && match.isExtraTime -> "النهائية (و.إ)"
         isFinished -> "النهائية"
         else -> "لم تبدأ"
     }
@@ -296,17 +310,76 @@ fun GoogleMatchCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = if (isFinished) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
-                    else MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(
-                        text = statusBadgeText,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (isFinished) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = if (isFinished) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                    ) {
+                        Text(
+                            text = statusBadgeText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isFinished) (if (isDirectlyQualified) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                        )
+                    }
+
+                    if (isEligibleForDirectQualify && onDirectQualifyClick != null) {
+                        Surface(
+                            onClick = { onDirectQualifyClick(match, false) },
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_rocket),
+                                    contentDescription = "تأهيل مباشر",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(10.dp)
+                                )
+                                Text(
+                                    text = "تأهيل",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    } else if (isDirectlyQualified && onDirectQualifyClick != null) {
+                        Surface(
+                            onClick = { onDirectQualifyClick(match, true) },
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_redo),
+                                    contentDescription = "تراجع عن التأهيل",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(10.dp)
+                                )
+                                Text(
+                                    text = "تراجع",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
                 }
 
                 val matchNumber = (match.bracketMatchIndex?.takeIf { it > 0 }) ?: 1

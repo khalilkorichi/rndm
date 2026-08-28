@@ -185,7 +185,7 @@ class UpdateMatchScoreUseCaseTest {
     }
 
     @Test
-    fun `in 5-player tournament, finishing QF matches places top best loser into SF2 to play Player 5`() = runTest {
+    fun `in 5-player tournament, finishing QF matches places top best loser into QF3 to play Player 5`() = runTest {
         val qf1 = Match(
             id = 1L,
             tournamentId = 10L,
@@ -209,19 +209,21 @@ class UpdateMatchScoreUseCaseTest {
             status = MatchStatus.PENDING
         )
 
-        val sf1 = Match(id = 3L, tournamentId = 10L, stage = MatchStage.SEMI_FINALS, bracketMatchIndex = 1, playerOneName = "Player 1", playerTwoName = "TBD")
-        val sf2 = Match(
-            id = 4L,
+        val qf3 = Match(
+            id = 3L,
             tournamentId = 10L,
-            stage = MatchStage.SEMI_FINALS,
-            bracketMatchIndex = 2,
+            stage = MatchStage.QUARTER_FINALS,
+            bracketMatchIndex = 3,
             playerOneName = "Player 5",
             playerTwoName = "أحسن خاسر",
             isPlayerTwoLuckyLoser = true,
             status = MatchStatus.PENDING
         )
 
-        coEvery { tournamentRepository.getMatches(10L) } returns flowOf(listOf(qf1, qf2, sf1, sf2))
+        val semi1 = Match(id = 4L, tournamentId = 10L, stage = MatchStage.SEMI_FINALS, bracketMatchIndex = 1, playerOneName = "Player 1", playerTwoName = "TBD")
+        val semi2 = Match(id = 5L, tournamentId = 10L, stage = MatchStage.SEMI_FINALS, bracketMatchIndex = 2, playerOneName = "TBD", playerTwoName = "TBD")
+
+        coEvery { tournamentRepository.getMatches(10L) } returns flowOf(listOf(qf1, qf2, qf3, semi1, semi2))
 
         // QF2: Player 3 vs Player 4 (2-1) -> Player 4 loses with GD -1, Player 2 lost with GD -2
         useCase(
@@ -231,10 +233,10 @@ class UpdateMatchScoreUseCaseTest {
             scoreTwo = 1
         )
 
-        // Player 4 is the top best loser (GD -1 vs GD -2)
+        // Player 4 is the top best loser (GD -1 vs GD -2) placed into QF 3 against Player 5
         coVerify {
             tournamentRepository.updateMatch(match {
-                it.id == 4L && it.playerTwoName == "Player 4" && it.isPlayerTwoLuckyLoser
+                it.id == 3L && it.playerTwoName == "Player 4" && it.isPlayerTwoLuckyLoser
             })
         }
     }
@@ -262,6 +264,107 @@ class UpdateMatchScoreUseCaseTest {
 
         coVerify {
             tournamentRepository.updateTournamentStage(10L, TournamentStage.COMPLETED)
+        }
+    }
+
+    @Test
+    fun `directQualifyMatch qualifies playerOne when playerTwo is Lucky Loser and advances winner to next round`() = runTest {
+        val qf4 = Match(
+            id = 4L,
+            tournamentId = 10L,
+            stage = MatchStage.QUARTER_FINALS,
+            bracketMatchIndex = 4,
+            playerOneName = "Solo Star",
+            playerTwoName = "أحسن خاسر",
+            isPlayerTwoLuckyLoser = true,
+            status = MatchStatus.PENDING
+        )
+
+        val semi2 = Match(
+            id = 6L,
+            tournamentId = 10L,
+            stage = MatchStage.SEMI_FINALS,
+            bracketMatchIndex = 2,
+            playerOneName = "QF3 Winner",
+            playerTwoName = "QF4 Winner",
+            status = MatchStatus.PENDING
+        )
+
+        coEvery { tournamentRepository.getMatches(10L) } returns flowOf(listOf(qf4, semi2))
+
+        useCase.directQualifyMatch(
+            tournamentId = 10L,
+            match = qf4
+        )
+
+        // 1. Verify QF4 match was updated as finished with Solo Star as winner
+        coVerify {
+            tournamentRepository.updateMatch(match {
+                it.id == 4L && it.winnerName == "Solo Star" && it.status == MatchStatus.FINISHED
+            })
+        }
+
+        // 2. Verify Semi-Final 2 received Solo Star in playerTwo slot
+        coVerify {
+            tournamentRepository.updateMatch(match {
+                it.id == 6L && it.playerTwoName == "Solo Star"
+            })
+        }
+
+        // 3. Verify batch sync and score sync were triggered
+        coVerify {
+            syncRepository.syncTournamentMatches(10L, any())
+        }
+    }
+
+    @Test
+    fun `undoDirectQualifyMatch reverts match to PENDING and clears winner from next round`() = runTest {
+        val qf4 = Match(
+            id = 4L,
+            tournamentId = 10L,
+            stage = MatchStage.QUARTER_FINALS,
+            bracketMatchIndex = 4,
+            playerOneName = "Solo Star",
+            playerTwoName = "أحسن خاسر",
+            winnerName = "Solo Star",
+            isPlayerTwoLuckyLoser = true,
+            status = MatchStatus.FINISHED
+        )
+
+        val semi2 = Match(
+            id = 6L,
+            tournamentId = 10L,
+            stage = MatchStage.SEMI_FINALS,
+            bracketMatchIndex = 2,
+            playerOneName = "QF3 Winner",
+            playerTwoName = "Solo Star",
+            status = MatchStatus.PENDING
+        )
+
+        coEvery { tournamentRepository.getMatches(10L) } returns flowOf(listOf(qf4, semi2))
+
+        useCase.undoDirectQualifyMatch(
+            tournamentId = 10L,
+            match = qf4
+        )
+
+        // 1. Verify QF4 match was reverted to PENDING with null winner
+        coVerify {
+            tournamentRepository.updateMatch(match {
+                it.id == 4L && it.winnerName == null && it.status == MatchStatus.PENDING
+            })
+        }
+
+        // 2. Verify Semi-Final 2 had playerTwo reverted to placeholder
+        coVerify {
+            tournamentRepository.updateMatch(match {
+                it.id == 6L && it.playerTwoName == "فائز ربع النهائي 4"
+            })
+        }
+
+        // 3. Verify batch sync was triggered
+        coVerify {
+            syncRepository.syncTournamentMatches(10L, any())
         }
     }
 }
