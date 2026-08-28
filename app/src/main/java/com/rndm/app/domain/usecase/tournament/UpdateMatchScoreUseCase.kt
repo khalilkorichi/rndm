@@ -33,9 +33,13 @@ class UpdateMatchScoreUseCase @Inject constructor(
             penaltyScoreOne != null && penaltyScoreTwo != null -> {
                 if (penaltyScoreOne > penaltyScoreTwo) match.playerOneName else match.playerTwoName ?: "TBD"
             }
+            else -> null
+        }
+        val loserName = when {
+            winnerName == null -> null
+            winnerName == match.playerOneName -> match.playerTwoName ?: "TBD"
             else -> match.playerOneName
         }
-        val loserName = if (winnerName == match.playerOneName) match.playerTwoName ?: "TBD" else match.playerOneName
 
         val updatedMatch = match.copy(
             scoreOne = scoreOne,
@@ -50,7 +54,7 @@ class UpdateMatchScoreUseCase @Inject constructor(
         tournamentRepository.updateMatch(updatedMatch)
 
         // Advance in knockout bracket if applicable
-        if (match.stage != MatchStage.GROUP_STAGE) {
+        if (match.stage != MatchStage.GROUP_STAGE && winnerName != null && loserName != null) {
             val allMatchesFromRepo = tournamentRepository.getMatches(tournamentId).first()
             val allMatches = allMatchesFromRepo.map { if (it.id == updatedMatch.id) updatedMatch else it }
             advanceKnockoutWinners(tournamentId, updatedMatch, winnerName, loserName, allMatches)

@@ -21,7 +21,8 @@ data class PlayerLeaderboardItem(
     val goalsScored: Int = 0,
     val goalsConceded: Int = 0,
     val goalDifference: Int = 0,
-    val cleanSheets: Int = 0
+    val cleanSheets: Int = 0,
+    val points: Int = 0
 )
 
 @Immutable

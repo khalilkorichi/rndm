@@ -19,6 +19,7 @@ import com.rndm.app.domain.model.PlayerMatchRecord
 import com.rndm.app.domain.model.PlayerQuickStats
 import com.rndm.app.domain.model.PlayerTournamentParticipation
 import com.rndm.app.domain.model.ProfileType
+import com.rndm.app.domain.model.TournamentType
 import com.rndm.app.domain.model.isRealPlayerName
 import com.rndm.app.domain.model.StageReachedType
 import com.rndm.app.domain.repository.PlayerProfileRepository
@@ -91,22 +92,23 @@ class PlayerProfileRepositoryImpl @Inject constructor(
     override fun getPlayersQuickStats(playerNames: List<String>): Flow<Map<String, PlayerQuickStats>> {
         return combine(
             matchDao.getAllMatches(),
+            tournamentDao.getAllTournaments(),
+            tournamentDao.getAllParticipants(),
             playerProfileDao.getAllPlayerProfiles()
-        ) { matches, customProfiles ->
+        ) { matches, tournaments, participants, customProfiles ->
             val profileMap = customProfiles.associateBy { it.name }
+            val podiumMap = computeTournamentPodiums(tournaments, matches, participants)
             val resultMap = mutableMapOf<String, PlayerQuickStats>()
 
             playerNames.filter { it.isRealPlayerName() }.distinct().forEach { name ->
                 val playerMatches = matches.filter {
                     (it.playerOneName == name || it.playerTwoName == name) && it.status == MatchStatus.FINISHED
                 }
-                var titles = 0
                 var goals = 0
                 var wins = 0
                 val totalMatches = playerMatches.size
 
-                val finalMatches = matches.filter { it.stage == MatchStage.FINAL && it.status == MatchStatus.FINISHED && it.winnerName == name }
-                titles = finalMatches.map { it.tournamentId }.distinct().size
+                val titles = podiumMap.values.count { it.champion == name }
 
                 playerMatches.forEach { m ->
                     val isP1 = m.playerOneName == name
@@ -233,26 +235,18 @@ class PlayerProfileRepositoryImpl @Inject constructor(
                 playerMatches.map { it.tournamentId }).distinct()
         val totalTournaments = participatedTournamentIds.size
 
-        // Calculate Titles (Champions), Runner-ups, and Third-places
+        // Calculate Titles (Champions), Runner-ups, and Third-places across all tournament types
+        val podiumMap = computeTournamentPodiums(tournaments, matches, participants)
         var titlesCount = 0
         var runnerUpCount = 0
         var thirdPlaceCount = 0
 
         participatedTournamentIds.forEach { tId ->
-            val tMatches = matches.filter { it.tournamentId == tId && it.status == MatchStatus.FINISHED }
-            val finalMatch = tMatches.firstOrNull { it.stage == MatchStage.FINAL }
-            val thirdMatch = tMatches.firstOrNull { it.stage == MatchStage.THIRD_PLACE }
-
-            if (finalMatch != null) {
-                if (finalMatch.winnerName == playerName) {
-                    titlesCount++
-                } else if (finalMatch.playerOneName == playerName || finalMatch.playerTwoName == playerName) {
-                    runnerUpCount++
-                }
-            }
-
-            if (thirdMatch != null && thirdMatch.winnerName == playerName) {
-                thirdPlaceCount++
+            val podium = podiumMap[tId]
+            if (podium != null) {
+                if (podium.champion == playerName) titlesCount++
+                if (podium.runnerUp == playerName) runnerUpCount++
+                if (podium.thirdPlace == playerName) thirdPlaceCount++
             }
         }
 
@@ -320,6 +314,7 @@ class PlayerProfileRepositoryImpl @Inject constructor(
         val tournamentMap = tournaments.associateBy { it.id }
         val playerParticipations = participants.filter { it.playerName == playerName }
         val playerMatches = matches.filter { it.playerOneName == playerName || it.playerTwoName == playerName }
+        val podiumMap = computeTournamentPodiums(tournaments, matches, participants)
 
         val tournamentIds = (playerParticipations.map { it.tournamentId } + playerMatches.map { it.tournamentId }).distinct()
 
@@ -366,7 +361,12 @@ class PlayerProfileRepositoryImpl @Inject constructor(
             val r16Match = allTMatches.firstOrNull { it.stage == MatchStage.ROUND_OF_16 && (it.playerOneName == playerName || it.playerTwoName == playerName) }
             val r32Match = allTMatches.firstOrNull { it.stage == MatchStage.ROUND_OF_32 && (it.playerOneName == playerName || it.playerTwoName == playerName) }
 
+            val podium = podiumMap[tId]
+
             val (stageTitle, stageType) = when {
+                podium?.champion == playerName -> Pair("بطل البطولة", StageReachedType.CHAMPION)
+                podium?.runnerUp == playerName -> Pair("وصيف البطولة", StageReachedType.RUNNER_UP)
+                podium?.thirdPlace == playerName -> Pair("المركز الثالث", StageReachedType.THIRD_PLACE)
                 finalMatch != null && finalMatch.winnerName == playerName -> Pair("بطل البطولة", StageReachedType.CHAMPION)
                 finalMatch != null -> Pair("وصيف البطولة", StageReachedType.RUNNER_UP)
                 thirdMatch != null && thirdMatch.winnerName == playerName -> Pair("المركز الثالث", StageReachedType.THIRD_PLACE)
@@ -526,7 +526,7 @@ class PlayerProfileRepositoryImpl @Inject constructor(
                 ).filter { it.isRealPlayerName() }.distinct()
 
         val profileMap = customProfiles.associateBy { it.name }
-        val finalMatchesWon = matches.filter { it.stage == MatchStage.FINAL && it.status == MatchStatus.FINISHED }
+        val podiumMap = computeTournamentPodiums(tournaments, matches, participants)
 
         val items = allNames.map { name ->
             val pMatches = matches.filter {
@@ -560,10 +560,8 @@ class PlayerProfileRepositoryImpl @Inject constructor(
                 else losses++
             }
 
-            val titles = finalMatchesWon.count { it.winnerName == name }
-            val runnerUps = finalMatchesWon.count {
-                it.winnerName != name && (it.playerOneName == name || it.playerTwoName == name)
-            }
+            val titles = podiumMap.values.count { it.champion == name }
+            val runnerUps = podiumMap.values.count { it.runnerUp == name }
 
             val tIds = (participants.filter { it.playerName == name }.map { it.tournamentId } +
                     pMatches.map { it.tournamentId }).distinct().size
@@ -571,13 +569,14 @@ class PlayerProfileRepositoryImpl @Inject constructor(
             val total = pMatches.size
             val winRate = if (total > 0) (wins.toFloat() / total.toFloat()) * 100f else 0f
             val custom = profileMap[name]
+            val points = (wins * 3) + (draws * 1)
 
             PlayerLeaderboardItem(
                 playerName = name,
                 nickname = custom?.nickname,
                 avatarIcon = custom?.avatarIcon,
                 titlesCount = titles,
-                runnerUpCount = runnerUpCount(name, matches),
+                runnerUpCount = runnerUps,
                 totalTournaments = tIds,
                 totalMatches = total,
                 totalWins = wins,
@@ -587,23 +586,107 @@ class PlayerProfileRepositoryImpl @Inject constructor(
                 goalsScored = goalsScored,
                 goalsConceded = goalsConceded,
                 goalDifference = goalsScored - goalsConceded,
-                cleanSheets = cleanSheets
+                cleanSheets = cleanSheets,
+                points = points
             )
         }
 
         return items
             .sortedWith(
                 compareByDescending<PlayerLeaderboardItem> { it.titlesCount }
-                    .thenByDescending { it.goalsScored }
+                    .thenByDescending { it.goalDifference }
                     .thenByDescending { it.winRate }
-                    .thenByDescending { it.totalWins }
                     .thenByDescending { it.totalMatches }
+                    .thenByDescending { it.goalsScored }
+                    .thenByDescending { it.points }
             )
             .mapIndexed { index, item -> item.copy(rank = index + 1) }
     }
 
-    private fun runnerUpCount(name: String, matches: List<MatchEntity>): Int {
-        val finalMatches = matches.filter { it.stage == MatchStage.FINAL && it.status == MatchStatus.FINISHED }
-        return finalMatches.count { it.winnerName != name && (it.playerOneName == name || it.playerTwoName == name) }
+    private data class TournamentPodium(
+        val champion: String? = null,
+        val runnerUp: String? = null,
+        val thirdPlace: String? = null
+    )
+
+    private fun computeTournamentPodiums(
+        tournaments: List<TournamentEntity>,
+        matches: List<MatchEntity>,
+        participants: List<TournamentParticipantEntity>
+    ): Map<Long, TournamentPodium> {
+        val result = mutableMapOf<Long, TournamentPodium>()
+        val participantsByTournament = participants.groupBy { it.tournamentId }
+        val matchesByTournament = matches.groupBy { it.tournamentId }
+
+        tournaments.forEach { tournament ->
+            val tMatches = matchesByTournament[tournament.id] ?: emptyList()
+            val tParticipants = participantsByTournament[tournament.id] ?: emptyList()
+            val finishedMatches = tMatches.filter { it.status == MatchStatus.FINISHED }
+
+            val finalMatch = finishedMatches.firstOrNull { it.stage == MatchStage.FINAL }
+            val thirdMatch = finishedMatches.firstOrNull { it.stage == MatchStage.THIRD_PLACE }
+
+            if (finalMatch != null) {
+                val champ = finalMatch.winnerName?.takeIf { it.isRealPlayerName() }
+                val runner = if (champ != null) {
+                    if (finalMatch.playerOneName == champ) finalMatch.playerTwoName else finalMatch.playerOneName
+                } else null
+                val third = thirdMatch?.winnerName?.takeIf { it.isRealPlayerName() }
+                result[tournament.id] = TournamentPodium(
+                    champion = champ,
+                    runnerUp = runner?.takeIf { it.isRealPlayerName() },
+                    thirdPlace = third
+                )
+            } else if (tournament.type == TournamentType.LEAGUE || tournament.type == TournamentType.TRIANGLE_SOLO || (tMatches.isNotEmpty() && tMatches.all { it.stage == MatchStage.GROUP_STAGE })) {
+                if (finishedMatches.isNotEmpty()) {
+                    val playerNames = (tParticipants.map { it.playerName } + finishedMatches.flatMap { listOf(it.playerOneName, it.playerTwoName ?: "") })
+                        .filter { it.isRealPlayerName() }.distinct()
+
+                    val standings = playerNames.map { name ->
+                        var pts = 0
+                        var gf = 0
+                        var ga = 0
+                        var wins = 0
+                        finishedMatches.filter { it.playerOneName == name || it.playerTwoName == name }.forEach { m ->
+                            val isP1 = m.playerOneName == name
+                            val s1 = m.scoreOne ?: 0
+                            val s2 = m.scoreTwo ?: 0
+                            val scored = if (isP1) s1 else s2
+                            val conceded = if (isP1) s2 else s1
+                            gf += scored
+                            ga += conceded
+                            val isWin = m.winnerName == name || (scored > conceded && m.winnerName.isNullOrBlank())
+                            val isDraw = scored == conceded && m.winnerName.isNullOrBlank()
+                            if (isWin) { pts += 3; wins++ }
+                            else if (isDraw) { pts += 1 }
+                        }
+                        StandingData(name, pts, gf - ga, gf, wins)
+                    }.sortedWith(
+                        compareByDescending<StandingData> { it.points }
+                            .thenByDescending { it.diff }
+                            .thenByDescending { it.gf }
+                            .thenByDescending { it.wins }
+                    )
+
+                    val allMatchesFinished = tMatches.isNotEmpty() && tMatches.all { it.status == MatchStatus.FINISHED }
+                    if (standings.isNotEmpty() && (allMatchesFinished || tournament.stage.name == "COMPLETED" || tournament.isArchived)) {
+                        result[tournament.id] = TournamentPodium(
+                            champion = standings.getOrNull(0)?.name,
+                            runnerUp = standings.getOrNull(1)?.name,
+                            thirdPlace = standings.getOrNull(2)?.name
+                        )
+                    }
+                }
+            }
+        }
+        return result
     }
+
+    private data class StandingData(
+        val name: String,
+        val points: Int,
+        val diff: Int,
+        val gf: Int,
+        val wins: Int
+    )
 }
